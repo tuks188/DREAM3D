@@ -70,7 +70,7 @@ m_AspectRatios(NULL)
   grainmoments = NULL;
   graineigenvals = NULL;
 
-  INIT_DataArray(m_GrainMoments,float);
+  INIT_DataArray(m_GrainMoments,double);
   INIT_DataArray(m_GrainEigenVals,float);
 
   setupFilterParameters();
@@ -312,9 +312,9 @@ void FindShapes::find_moments2D()
   else if(m->getYPoints() == 1) Res1 = m->getXRes(), Res2 = m->getZRes();
   else if(m->getZPoints() == 1) Res1 = m->getXRes(), Res2 = m->getYRes();
 
-  for (size_t i = 0; i < numgrains; i++)
+  for (size_t i = 0; i < 6*numgrains; i++)
   {
-      grainmoments[i] = 0.0f;
+      grainmoments[i] = 0.0;
   }
   for (int j = 0; j < totalPoints; j++)
   {
@@ -342,10 +342,21 @@ void FindShapes::find_moments2D()
     grainmoments[gnum*6 + 0] = grainmoments[gnum*6 + 0] + u200;
     grainmoments[gnum*6 + 1] = grainmoments[gnum*6 + 1] + u020;
     grainmoments[gnum*6 + 2] = grainmoments[gnum*6 + 2] + u110;
+
+
   }
   float konst1 = (Res1 / 2.0f) * (Res2 / 2.0f);
+
+
+
   for (size_t i = 1; i < numgrains; i++)
   {
+
+    if (i == 57)
+    {
+      float stop = 0.0 ;
+    } 
+
     grainmoments[i*6 + 0] = grainmoments[i*6 + 0] * konst1;
     grainmoments[i*6 + 1] = grainmoments[i*6 + 1] * konst1;
     grainmoments[i*6 + 2] = -grainmoments[i*6 + 2] * konst1;
@@ -457,18 +468,19 @@ void FindShapes::find_axes2D()
     Ixx = grainmoments[i*6+0];
     Iyy = grainmoments[i*6+1];
     Ixy = grainmoments[i*6+2];
-    float r1 = (Ixx + Iyy) / 2.0f + sqrt(((Ixx + Iyy) * (Ixx + Iyy)) / 4.0f + (Ixy * Ixy - Ixx * Iyy));
-    float r2 = (Ixx + Iyy) / 2.0f - sqrt(((Ixx + Iyy) * (Ixx + Iyy)) / 4.0f + (Ixy * Ixy - Ixx * Iyy));
-    float preterm = 4.0f / m_pi;
+    double r1 = (Ixx + Iyy) / 2.0f + sqrt(((Ixx + Iyy) * (Ixx + Iyy)) / 4.0f - (Ixx * Iyy - Ixy * Ixy));
+    double r2 = (Ixx + Iyy) / 2.0f - sqrt(((Ixx + Iyy) * (Ixx + Iyy)) / 4.0f - (Ixx * Iyy - Ixy * Ixy));
+    double preterm = 4.0f / m_pi;
     preterm = powf(preterm, 0.25f);
-    float postterm1 = r1 * r1 * r1 / r2;
-    float postterm2 = r2 * r2 * r2 / r1;
+    double postterm1 = r1 * r1 * r1 / r2;
+    double postterm2 = r2 * r2 * r2 / r1;
     postterm1 = powf(postterm1, 0.125f);
     postterm2 = powf(postterm2, 0.125f);
     r1 = preterm * postterm1;
     r2 = preterm * postterm2;
     m_AxisLengths[3*i] = r1;
     m_AxisLengths[3*i+1] = r2;
+
   m_AspectRatios[2*i] = r2/r1;
   m_AspectRatios[2*i+1] = 0;
   }
@@ -614,6 +626,10 @@ void FindShapes::find_axiseulers()
     n3x = n3x / norm3;
     n3y = n3y / norm3;
     n3z = n3z / norm3;
+    if (i == 69917) 
+    { 
+      int stop = 0 ;
+    } 
     float ea1= 0.0, ea2 = 0.0, ea3 = 0.0; 
     ea2 = acos(n1z);
     if (ea2 == 0.0) 

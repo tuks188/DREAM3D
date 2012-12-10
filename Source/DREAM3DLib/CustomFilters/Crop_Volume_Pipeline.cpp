@@ -68,6 +68,8 @@
 #include "DREAM3DLib/ProcessingFilters/MinNeighbors.h"
 #include "DREAM3DLib/ProcessingFilters/ConvertEulerAngles.h"
 #include "DREAM3DLib/GenericFilters/FindNeighbors.h"
+#include "DREAM3DLib/GenericFilters/FindGrainPhases.h"
+#include "DREAM3DLib/GenericFilters/FindSurfaceGrains.h"
 #include "DREAM3DLib/SamplingFilters/CropVolume.h"
 #include "DREAM3DLib/SamplingFilters/RegularizeZSpacing.h"
 #include "DREAM3DLib/StatisticsFilters/FindSizes.h"
@@ -167,7 +169,7 @@ std::string convertIntToString(int number)
 
 std::string getH5EbsdFile()
 {
-  std::string s = "D:/IN100_run1/DREAM3D_files/slice_11_173_transformed.h5ebsd";
+  std::string s = "D:/IN100_run1/DREAM3D_files/montage/ctf_files2.h5ebsd";
   return s;
 }
 
@@ -237,8 +239,8 @@ unsigned int getNumLinesinFile(std::string filename)
 
 
 
-int getZStartIndex() { return 11; }
-int getZEndIndex() { return 173; }
+int getZStartIndex() { return 140; }
+int getZEndIndex() { return 160; }
 DataArray<unsigned int>::Pointer getPhaseTypes()
 {
   DataArray<unsigned int>::Pointer phaseTypes
@@ -310,7 +312,7 @@ void Crop_Volume_Pipeline::execute()
   int m_Ymax = 355; 
   int m_Zmax = 163;*/ 
 
-for (DimType i = 1; i < NUM_OF_CROPS+1; i++)
+for (DimType i = 1035; i <1080; i++)
 {
       
       
@@ -325,8 +327,8 @@ for (DimType i = 1; i < NUM_OF_CROPS+1; i++)
   
       read_h5ebsd->setH5EbsdFile(getH5EbsdFile());
       //read_h5ebsd->setRefFrameZDir(Ebsd::LowtoHigh);
-      read_h5ebsd->setZStartIndex(getZStartIndex());
-      read_h5ebsd->setZEndIndex(getZEndIndex());
+      read_h5ebsd->setZStartIndex(i);
+      read_h5ebsd->setZEndIndex(i);
       read_h5ebsd->setPTypes(getPhaseTypes());
       read_h5ebsd->setQualityMetricFilters(getQualityMetricFilters());
       read_h5ebsd->setDataContainer(m);
@@ -342,30 +344,30 @@ for (DimType i = 1; i < NUM_OF_CROPS+1; i++)
       pipeline->pushBack(convert_euler); 
       
 
-      AlignSectionsMisorientation::Pointer align_sections = AlignSectionsMisorientation::New();
+     /* AlignSectionsMisorientation::Pointer align_sections = AlignSectionsMisorientation::New();
       align_sections->setMisorientationTolerance(m_AlignMisorientationTolerance); 
       align_sections->setDataContainer(m);
       align_sections->execute();     
       pipeline->pushBack(align_sections);
+*/
+      //CropVolume::Pointer crop_volume = CropVolume::New(); 
+      //crop_volume->setXMin(m_Xmin[i]);
+      //crop_volume->setYMin(m_Ymin[i]);
+      //crop_volume->setZMin(m_Zmin[i]);
+      //crop_volume->setXMax(m_Xmax[i]);
+      //crop_volume->setYMax(m_Ymax[i]);
+      //crop_volume->setZMax(m_Zmax[i]); 
+      //crop_volume->setRenumberGrains(false); 
+      //crop_volume->setDataContainer(m);
+      //crop_volume->execute();
+      //pipeline->pushBack(crop_volume);
 
-      CropVolume::Pointer crop_volume = CropVolume::New(); 
-      crop_volume->setXMin(m_Xmin[i]);
-      crop_volume->setYMin(m_Ymin[i]);
-      crop_volume->setZMin(m_Zmin[i]);
-      crop_volume->setXMax(m_Xmax[i]);
-      crop_volume->setYMax(m_Ymax[i]);
-      crop_volume->setZMax(m_Zmax[i]); 
-      crop_volume->setRenumberGrains(false); 
-      crop_volume->setDataContainer(m);
-      crop_volume->execute();
-      pipeline->pushBack(crop_volume);
-
-      RegularizeZSpacing::Pointer regularize_z = RegularizeZSpacing::New(); 
-      regularize_z->setInputFile(getZ_spacingfile()); 
-      regularize_z->setZRes(m_Zres); 
-      regularize_z->setDataContainer(m);
-      regularize_z->execute();
-      pipeline->pushBack(regularize_z);
+      //RegularizeZSpacing::Pointer regularize_z = RegularizeZSpacing::New(); 
+      //regularize_z->setInputFile(getZ_spacingfile()); 
+      //regularize_z->setZRes(m_Zres); 
+      //regularize_z->setDataContainer(m);
+      //regularize_z->execute();
+      //pipeline->pushBack(regularize_z);
 
       EBSDSegmentGrains::Pointer ebsdsegment_grains = EBSDSegmentGrains::New();
       ebsdsegment_grains->setMisorientationTolerance(m_MisorientationTolerance);
@@ -373,31 +375,43 @@ for (DimType i = 1; i < NUM_OF_CROPS+1; i++)
       ebsdsegment_grains->execute();
       pipeline->pushBack(ebsdsegment_grains);
 
-      OpenCloseBadData::Pointer erode_dilate = OpenCloseBadData::New(); 
-      erode_dilate->setDirection(1); // 1 is erode.  
-      erode_dilate->setNumIterations(m_NumIterations_Erode); 
-      erode_dilate->setDataContainer(m);
-      erode_dilate->execute();
-      pipeline->pushBack(erode_dilate);
+      //OpenCloseBadData::Pointer erode_dilate = OpenCloseBadData::New(); 
+      //erode_dilate->setDirection(1); // 1 is erode.  
+      //erode_dilate->setNumIterations(m_NumIterations_Erode); 
+      //erode_dilate->setDataContainer(m);
+      //erode_dilate->execute();
+      //pipeline->pushBack(erode_dilate);
     
-      FindNeighbors::Pointer find_neighbors = FindNeighbors::New();
-      find_neighbors->setDataContainer(m);
-      find_neighbors->execute();
-      pipeline->pushBack(find_neighbors);
+      //FindNeighbors::Pointer find_neighbors = FindNeighbors::New();
+      //find_neighbors->setDataContainer(m);
+      //find_neighbors->execute();
+      //pipeline->pushBack(find_neighbors);
 
 
-      MinSize::Pointer min_size = MinSize::New();
-      min_size->setMinAllowedGrainSize(m_MinAllowedGrainSize);
-      min_size->setPhaseNumber(m_PhaseNumberMinSize);
-      min_size->setDataContainer(m);
-      min_size->execute();
-      pipeline->pushBack(min_size);
+      //MinSize::Pointer min_size = MinSize::New();
+      //min_size->setMinAllowedGrainSize(m_MinAllowedGrainSize);
+      //min_size->setPhaseNumber(m_PhaseNumberMinSize);
+      //min_size->setDataContainer(m);
+      //min_size->execute();
+      //pipeline->pushBack(min_size);
 
-      MinNeighbors::Pointer min_neighbors = MinNeighbors::New();
-      min_neighbors->setMinNumNeighbors(m_MinNumNeighbors);
-      min_neighbors->setDataContainer(m);
-      min_neighbors->execute();
-      pipeline->pushBack(min_neighbors);
+      //MinNeighbors::Pointer min_neighbors = MinNeighbors::New();
+      //min_neighbors->setMinNumNeighbors(m_MinNumNeighbors);
+      //min_neighbors->setDataContainer(m);
+      //min_neighbors->execute();
+      //pipeline->pushBack(min_neighbors);
+
+      FindGrainPhases::Pointer find_phases = FindGrainPhases::New(); 
+      //find_sizes->setDistributionType(DREAM3D::DistributionType::Beta);
+      find_phases->setDataContainer(m);
+      find_phases->execute();
+      pipeline->pushBack(find_phases);
+
+      FindSurfaceGrains::Pointer find_surface = FindSurfaceGrains::New(); 
+      //find_sizes->setDistributionType(DREAM3D::DistributionType::Beta);
+      find_surface->setDataContainer(m);
+      find_surface->execute();
+      pipeline->pushBack(find_surface);
 
       FindSizes::Pointer find_sizes = FindSizes::New(); 
       //find_sizes->setDistributionType(DREAM3D::DistributionType::Beta);
@@ -415,7 +429,7 @@ for (DimType i = 1; i < NUM_OF_CROPS+1; i++)
 
 
       FieldDataCSVWriter::Pointer field_data_write_csv = FieldDataCSVWriter::New(); 
-      std::string field_csv =  "D:/IN100_run1/DREAM3D_files/crop_line_"+ convertIntToString(i) +".csv";
+      std::string field_csv =  "D:/IN100_run1/DREAM3D_files/montage/slice"+ convertIntToString(i) +".csv";
       field_data_write_csv->setFieldDataFile(field_csv); 
       field_data_write_csv->setDataContainer(m); 
       field_data_write_csv->execute(); 
@@ -436,7 +450,7 @@ for (DimType i = 1; i < NUM_OF_CROPS+1; i++)
      
       if(m_WriteVtkFile)
       {
-        std::string vtk_file = "D:/IN100_run1/DREAM3D_files/crop_line_" + convertIntToString(i) + ".vtk";
+        std::string vtk_file = "D:/IN100_run1/DREAM3D_files/montage/slice" + convertIntToString(i) + ".vtk";
         vtkWriter->setOutputFile(vtk_file);
         vtkWriter->setWriteGrainIds(m_WriteGrainID);
         vtkWriter->setWritePhaseIds(m_WritePhaseId);
@@ -451,7 +465,7 @@ for (DimType i = 1; i < NUM_OF_CROPS+1; i++)
       }
 
       DataContainerWriter::Pointer writer = DataContainerWriter::New();
-      std::string dream_3d_file = "D:/IN100_run1/DREAM3D_files/crop_line_" + convertIntToString(i) + ".dream3d";
+      std::string dream_3d_file = "D:/IN100_run1/DREAM3D_files/montage/slice" + convertIntToString(i) + ".dream3d";
       writer->setOutputFile(dream_3d_file);
       writer->setDataContainer(m); 
       pipeline->pushBack(writer);

@@ -289,6 +289,7 @@ void MergeTwins::execute()
     for(int64_t i = 0; i < totalPoints; ++i)
     {
        m_ParentIds[i] = pid[ m_ParentIds[i] ];
+      
     }
   }
 

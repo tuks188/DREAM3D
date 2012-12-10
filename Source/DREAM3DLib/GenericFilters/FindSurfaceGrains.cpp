@@ -151,15 +151,15 @@ void FindSurfaceGrains::find_surfacegrains()
       if(row >= yPoints - 1) m_SurfaceFields[gnum] = true;
       if(plane <= 0) m_SurfaceFields[gnum] = true;
       if(plane >= zPoints - 1) m_SurfaceFields[gnum] = true;
-      if(m_SurfaceFields[gnum] == false)
-      {
-        if(m_GrainIds[j - 1] == 0) m_SurfaceFields[gnum] = true;
-        if(m_GrainIds[j + 1] == 0)m_SurfaceFields[gnum] = true;
-        if(m_GrainIds[j - xPoints] == 0) m_SurfaceFields[gnum] = true;
-        if(m_GrainIds[j + xPoints] == 0) m_SurfaceFields[gnum] = true;
-        if(m_GrainIds[j - (xPoints * yPoints)] == 0) m_SurfaceFields[gnum] = true;
-        if(m_GrainIds[j + (xPoints * yPoints)] == 0) m_SurfaceFields[gnum] = true;
-      }
+      //if(m_SurfaceFields[gnum] == false)
+      //{
+      //  if(m_GrainIds[j - 1] == 0) m_SurfaceFields[gnum] = true;
+      //  if(m_GrainIds[j + 1] == 0)m_SurfaceFields[gnum] = true;
+      //  if(m_GrainIds[j - xPoints] == 0) m_SurfaceFields[gnum] = true;
+      //  if(m_GrainIds[j + xPoints] == 0) m_SurfaceFields[gnum] = true;
+      //  if(m_GrainIds[j - (xPoints * yPoints)] == 0) m_SurfaceFields[gnum] = true;
+      //  if(m_GrainIds[j + (xPoints * yPoints)] == 0) m_SurfaceFields[gnum] = true;
+      //}
     }
   }
 }

@@ -360,7 +360,7 @@ void MinNeighbors::merge_containedgrains()
 //	ss << "Cleaning Up Grains - Removing Contained Fields" << ((float)i/totalPoints)*100 << "Percent Complete";
 //	notifyStatusMessage(ss.str());
     int grainname = m_GrainIds[i];
-    if(m_NumNeighbors[grainname] < m_MinNumNeighbors && m_FieldPhases[grainname] > 0)
+    if(m_NumNeighbors[grainname] < m_MinNumNeighbors && grainname > 0)
     {
       m_Active[grainname] = false;
       m_GrainIds[i] = -1;

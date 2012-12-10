@@ -10,7 +10,8 @@
 #--////////////////////////////////////////////////////////////////////////////
 
 SET (CustomFilters_FILTERS_HDRS
-        ${DREAM3DLib_SOURCE_DIR}/CustomFilters/Crop_Volume_Pipeline.h   
+        ${DREAM3DLib_SOURCE_DIR}/CustomFilters/Crop_Volume_Pipeline.h
+        ${DREAM3DLib_SOURCE_DIR}/CustomFilters/MergeTwinsForStats.h    
 )
 
 #-- Add in any additional NON Filter classes or filters that will NOT show up in the GUI filter list
@@ -20,6 +21,7 @@ SET (DREAM3DLib_CustomFilters_HDRS
 )
 SET (DREAM3DLib_CustomFilters_SRCS
     ${DREAM3DLib_SOURCE_DIR}/CustomFilters/Crop_Volume_Pipeline.cpp
+    ${DREAM3DLib_SOURCE_DIR}/CustomFilters/MergeTwinsForStats.cpp
    
 )
 if (NOT DEFINED ONLY_FILTERS)
