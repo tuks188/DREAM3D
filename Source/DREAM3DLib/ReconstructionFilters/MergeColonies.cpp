@@ -204,7 +204,7 @@ void MergeColonies::dataCheck(bool preflight, size_t voxels, size_t fields, size
 {
   setErrorCondition(0);
   std::stringstream ss;
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
   int err = 0;
 
   // Cell Data
@@ -218,7 +218,7 @@ void MergeColonies::dataCheck(bool preflight, size_t voxels, size_t fields, size
     setErrorCondition(0);
     FindAvgOrientations::Pointer find_avgorients = FindAvgOrientations::New();
     find_avgorients->setObservers(this->getObservers());
-    find_avgorients->setDataContainer(getDataContainer());
+    find_avgorients->setVoxelDataContainer(getVoxelDataContainer());
     if(preflight == true) find_avgorients->preflight();
     if(preflight == false) find_avgorients->execute();
   }
@@ -230,7 +230,7 @@ void MergeColonies::dataCheck(bool preflight, size_t voxels, size_t fields, size
     setErrorCondition(0);
     FindGrainPhases::Pointer find_grainphases = FindGrainPhases::New();
     find_grainphases->setObservers(this->getObservers());
-    find_grainphases->setDataContainer(getDataContainer());
+    find_grainphases->setVoxelDataContainer(getVoxelDataContainer());
     if(preflight == true) find_grainphases->preflight();
     if(preflight == false) find_grainphases->execute();
   }
@@ -244,7 +244,7 @@ void MergeColonies::dataCheck(bool preflight, size_t voxels, size_t fields, size
     setErrorCondition(0);
     FindNeighbors::Pointer find_neighbors = FindNeighbors::New();
     find_neighbors->setObservers(this->getObservers());
-    find_neighbors->setDataContainer(getDataContainer());
+    find_neighbors->setVoxelDataContainer(getVoxelDataContainer());
     if(preflight == true) find_neighbors->preflight();
     if(preflight == false) find_neighbors->execute();
     m_NeighborList = NeighborList<int>::SafeObjectDownCast<IDataArray*, NeighborList<int>*>(m->getFieldData(DREAM3D::FieldData::NeighborList).get());
@@ -273,7 +273,7 @@ void MergeColonies::preflight()
 // -----------------------------------------------------------------------------
 void MergeColonies::execute()
 {
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
   if(NULL == m)
   {
     setErrorCondition(-999);
@@ -294,6 +294,7 @@ void MergeColonies::execute()
  notifyStatusMessage("Characterizing Colonies");
   characterize_colonies();
 
+  m_RandomizeParentIds = false;
   if (true == m_RandomizeParentIds)
   {
     int64_t totalPoints = m->getTotalPoints();
@@ -316,23 +317,23 @@ void MergeColonies::execute()
     pid[0] = 0;
     std::set<int32_t> parentIdSet;
     parentIdSet.insert(0);
-    for(size_t i = 1; i < numParents; ++i)
+    for(int i = 1; i < numParents; ++i)
     {
       pid[i] = i; //numberGenerator();
       parentIdSet.insert(pid[i]);
     }
 
-    size_t r;
+    int r;
     size_t temp;
     //--- Shuffle elements by randomly exchanging each with one other.
-    for (size_t i=1; i< numParents; i++) {
-        r = numberGenerator(); // Random remaining position.
-        if (r >= numParents) {
-          continue;
-        }
-        temp = pid[i];
-        pid[i] = pid[r];
-        pid[r] = temp;
+    for (int i=1; i< numParents; i++) {
+      r = numberGenerator(); // Random remaining position.
+      if (r >= numParents) {
+        continue;
+      }
+      temp = pid[i];
+      pid[i] = pid[r];
+      pid[r] = temp;
     }
 
     // Now adjust all the Grain Id values for each Voxel
@@ -352,7 +353,7 @@ void MergeColonies::merge_colonies()
 {
   // Since this method is called from the 'execute' and the DataContainer validity
   // was checked there we are just going to get the Shared Pointer to the DataContainer
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
 
   NeighborList<int>& neighborlist = *m_NeighborList;
 
@@ -440,8 +441,8 @@ void MergeColonies::merge_colonies()
                 colony = check_for_burgers(q2, q1);
                 if (colony == 1)
                 {
-                  parentnumbers[neigh] = parentcount;
-                  colonylist.push_back(neigh);
+//                  parentnumbers[neigh] = parentcount;
+//                  colonylist.push_back(neigh);
                 }
             }
             else if ((phase1 == Ebsd::CrystalStructure::Cubic && phase2 == Ebsd::CrystalStructure::Hexagonal))
@@ -449,8 +450,8 @@ void MergeColonies::merge_colonies()
                 colony = check_for_burgers(q1, q2);
                 if (colony == 1)
                 {
-                  parentnumbers[neigh] = parentcount;
-                  colonylist.push_back(neigh);
+//                  parentnumbers[neigh] = parentcount;
+//                  colonylist.push_back(neigh);
                 }
             }
           }
@@ -471,7 +472,7 @@ void MergeColonies::merge_colonies()
 
 void MergeColonies::characterize_colonies()
 {
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
   size_t numgrains = m->getNumFieldTuples();
   for (size_t i = 0; i < numgrains; i++)
   {

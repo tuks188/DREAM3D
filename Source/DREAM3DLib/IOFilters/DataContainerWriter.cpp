@@ -52,6 +52,26 @@
 typedef std::list<std::string> NameListType;
 
 
+/**
+ * @brief The HDF5FileSentinel class ensures the HDF5 file that is currently open
+ * is closed when the variable goes out of Scope
+ */
+class HDF5ScopedFileSentinel
+{
+  public:
+    HDF5ScopedFileSentinel(hid_t fileId) : m_FileId(fileId)
+    {}
+    virtual ~HDF5ScopedFileSentinel()
+    {
+       if (m_FileId > 0) {
+        H5Utilities::closeFile(m_FileId);
+      }
+    }
+
+    DREAM3D_INSTANCE_PROPERTY(hid_t, FileId)
+
+};
+
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
@@ -130,7 +150,7 @@ void DataContainerWriter::execute()
 {
 
 
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
   if (NULL == m)
   {
     setErrorCondition(-1);
@@ -177,6 +197,10 @@ void DataContainerWriter::execute()
     addErrorMessage(getHumanLabel(), ss.str(), err);
     return;
   }
+
+  // This will make sure if we return early from this method that the HDF5 File is properly closed.
+  HDF5ScopedFileSentinel scopedFileSentinel(0);
+  scopedFileSentinel.setFileId(m_FileId);
 
   // Create the HDF5 Group for the Data Container
   err = H5Utilities::createGroupsFromPath(DREAM3D::HDF5::DataContainerName.c_str(), m_FileId);
@@ -250,7 +274,10 @@ void DataContainerWriter::execute()
   H5Gclose(pipelineGroupId);
   // Now finally close the group and the HDf5 File
   H5Gclose(dcGid); // Close the Data Container Group
-  closeFile();
+//  err = closeFile();
+//  if (err >= 0) {
+//   scopedFileSentinel.setFileId(0);
+//  }
 
   notifyStatusMessage("Complete");
 }
@@ -351,7 +378,7 @@ int DataContainerWriter::writeCellData(hid_t dcGid)
 {
   std::stringstream ss;
   int err = 0;
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
 
   // Write the Voxel Data
   err = H5Utilities::createGroupsFromPath(H5_CELL_DATA_GROUP_NAME, dcGid);
@@ -377,6 +404,9 @@ int DataContainerWriter::writeCellData(hid_t dcGid)
   NameListType names = m->getCellArrayNameList();
   for (NameListType::iterator iter = names.begin(); iter != names.end(); ++iter)
   {
+    ss.str("");
+    ss << "Writing Cell Data '" << *iter << "' to HDF5 File" << std::endl;
+    notifyStatusMessage(ss.str());
     IDataArray::Pointer array = m->getCellData(*iter);
     err = array->writeH5Data(cellGroupId);
     if(err < 0)
@@ -402,7 +432,7 @@ int DataContainerWriter::writeFieldData(hid_t dcGid)
 {
   std::stringstream ss;
   int err = 0;
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
 
   // Write the Field Data
   err = H5Utilities::createGroupsFromPath(H5_FIELD_DATA_GROUP_NAME, dcGid);
@@ -455,7 +485,7 @@ int DataContainerWriter::writeEnsembleData(hid_t dcGid)
 {
   std::stringstream ss;
   int err = 0;
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
 
   // Write the Ensemble data
   err = H5Utilities::createGroupsFromPath(H5_ENSEMBLE_DATA_GROUP_NAME, dcGid);

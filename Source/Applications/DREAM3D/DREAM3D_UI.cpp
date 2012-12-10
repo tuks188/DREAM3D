@@ -319,7 +319,7 @@ void DREAM3D_UI::setupGui()
   // Register all of the Filters we know about - the rest will be loaded through plugins
   //  which all should have been loaded by now.
   FilterWidgetsLib::RegisterKnownQFilterWidgets();
-  Q_INIT_RESOURCE(FilterDocs);
+  Q_INIT_RESOURCE(Generated_FilterDocs);
 
   // Now create our central widget
   m_PipelineBuilderWidget = new PipelineBuilderWidget(this);
@@ -514,7 +514,7 @@ void DREAM3D_UI::threadHasMessage(QString message)
 // -----------------------------------------------------------------------------
 void DREAM3D_UI::loadPlugins()
 {
- // std::cout << "DREAM3D_UI::loadPlugins" << std::endl;
+//  std::cout << "DREAM3D_UI::loadPlugins" << std::endl;
 
   foreach (QObject *plugin, QPluginLoader::staticInstances())
     populateMenus(plugin);
@@ -523,6 +523,7 @@ void DREAM3D_UI::loadPlugins()
   m_PluginDirs << qApp->applicationDirPath();
 
   QDir aPluginDir = QDir(qApp->applicationDirPath());
+ // std::cout << "aPluginDir: " << aPluginDir.absolutePath().toStdString() << std::endl;
   QString thePath;
 
 #if defined(Q_OS_WIN)
@@ -551,6 +552,8 @@ void DREAM3D_UI::loadPlugins()
    m_PluginDirs << thePath;
 #endif
 #else
+  // We are on Linux - I think
+  aPluginDir.cdUp();
   if (aPluginDir.cd("plugins"))
   {
     thePath = aPluginDir.absolutePath();
@@ -576,11 +579,10 @@ void DREAM3D_UI::loadPlugins()
 #endif
       {
         pluginFilePaths << aPluginDir.absoluteFilePath(fileName);
-    //    qWarning(aPluginDir.absoluteFilePath(fileName).toAscii(), "%s");
-    //    std::cout << "Adding " << aPluginDir.absoluteFilePath(fileName).toStdString() << std::endl;
+        //qWarning(aPluginDir.absoluteFilePath(fileName).toAscii(), "%s");
+        //std::cout << "Adding " << aPluginDir.absoluteFilePath(fileName).toStdString() << std::endl;
       }
     }
-
   }
 
 
@@ -588,7 +590,7 @@ void DREAM3D_UI::loadPlugins()
   // file system and add each to the toolbar and menu
   foreach(QString path, pluginFilePaths)
   {
-    //     std::cout << "File Extension matches.." << std::endl;
+    //std::cout << "File Extension matches.." << std::endl;
     QPluginLoader loader(path);
     QFileInfo fi(path);
     QString fileName = fi.fileName();

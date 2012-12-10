@@ -105,7 +105,7 @@ void FieldInfoReader::dataCheck(bool preflight, size_t voxels, size_t fields, si
 
   setErrorCondition(0);
   std::stringstream ss;
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
 
   if (getInputInfoFile().empty() == true)
   {
@@ -129,13 +129,20 @@ void FieldInfoReader::preflight()
 {
   dataCheck(true, 1, 1, 1);
 }
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+int  FieldInfoReader::readHeader()
+{
+  return 0;
+}
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
 int  FieldInfoReader::readFile()
 {
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
   if(NULL == m)
   {
     std::stringstream ss;
@@ -144,6 +151,11 @@ int  FieldInfoReader::readFile()
     setErrorCondition(-1);
     return -1;
   }
+
+  int64_t totalPoints = m->getTotalPoints();
+  size_t totalFields = m->getNumFieldTuples();
+  size_t totalEnsembles = m->getNumEnsembleTuples();
+  dataCheck(false, totalPoints, totalFields, totalEnsembles);
 
   std::ifstream inFile;
   inFile.open(getInputInfoFile().c_str(), std::ios_base::binary);
@@ -175,7 +187,6 @@ int  FieldInfoReader::readFile()
   m->addFieldData(DREAM3D::FieldData::EulerAngles, m_FieldEulerData);
   m->addFieldData(DREAM3D::FieldData::Phases, m_FieldPhaseData);
 
-  int64_t totalPoints = m->getTotalPoints();
   FloatArrayType::Pointer m_CellEulerData = FloatArrayType::CreateArray(3*totalPoints, DREAM3D::FieldData::EulerAngles);
   m_CellEulerData->SetNumberOfComponents(3);
   Int32ArrayType::Pointer m_CellPhaseData = Int32ArrayType::CreateArray(totalPoints, DREAM3D::FieldData::Phases);

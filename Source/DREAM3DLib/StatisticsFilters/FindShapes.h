@@ -48,7 +48,7 @@
 #include "DREAM3DLib/Common/StatsData.h"
 
 #include "DREAM3DLib/Common/AbstractFilter.h"
-#include "DREAM3DLib/Common/DataContainer.h"
+#include "DREAM3DLib/Common/VoxelDataContainer.h"
 #include "DREAM3DLib/DistributionAnalysisOps/DistributionAnalysisOps.h"
 
 
@@ -83,7 +83,7 @@ class DREAM3DLib_EXPORT FindShapes : public AbstractFilter
     DECLARE_WRAPPED_ARRAY(graineigenvals, m_GrainEigenVals, float) // N x 3 Array
 
     virtual const std::string getGroupName() { return DREAM3D::FilterGroups::StatisticsFilters; }
-    virtual const std::string getHumanLabel() { return "Find Shapes"; }
+    virtual const std::string getHumanLabel() { return "Find Field Shapes"; }
 
 
     /**

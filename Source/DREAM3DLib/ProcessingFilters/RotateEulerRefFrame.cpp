@@ -69,73 +69,74 @@ class RotateEulerRefFrameImpl
   //  float degToRad = m_pi/180.0;
 
 
-    if (axis == DREAM3D::EulerFrameRotationAxis::RD)
-    {
-      if (angle == DREAM3D::EulerFrameRotationAngle::Ninety)
-      {
-      rotMat[0][0] = 1, rotMat[0][1] = 0, rotMat[0][2] = 0;
-      rotMat[1][0] = 0, rotMat[1][1] = 0, rotMat[1][2] = 1;
-      rotMat[2][0] = 0, rotMat[2][1] = -1, rotMat[2][2] = 0;
-      }
-      else if (angle == DREAM3D::EulerFrameRotationAngle::oneEighty)
-      {
-      rotMat[0][0] = 1, rotMat[0][1] = 0, rotMat[0][2] = 0;
-      rotMat[1][0] = 0, rotMat[1][1] = -1, rotMat[1][2] = 0;
-      rotMat[2][0] = 0, rotMat[2][1] = 0, rotMat[2][2] = -1;
-      }
-      else if (angle == DREAM3D::EulerFrameRotationAngle::twoSeventy)
-      {
-      rotMat[0][0] = 1, rotMat[0][1] = 0, rotMat[0][2] = 0;
-      rotMat[1][0] = 0, rotMat[1][1] = 0, rotMat[1][2] = -1;
-      rotMat[2][0] = 0, rotMat[2][1] = 1, rotMat[2][2] = 0;
-      }
-    }
-    else if (axis == DREAM3D::EulerFrameRotationAxis::TD)
-    {
-      if (angle == DREAM3D::EulerFrameRotationAngle::Ninety)
-      {
-      rotMat[0][0] = 0, rotMat[0][1] = 0, rotMat[0][2] = -1;
-      rotMat[1][0] = 0, rotMat[1][1] = 1, rotMat[1][2] = 0;
-      rotMat[2][0] = 1, rotMat[2][1] = 0, rotMat[2][2] = 0;
-      }
-      else if (angle == DREAM3D::EulerFrameRotationAngle::oneEighty)
-      {
-      rotMat[0][0] = -1, rotMat[0][1] = 0, rotMat[0][2] = 0;
-      rotMat[1][0] = 0, rotMat[1][1] = 1, rotMat[1][2] = 0;
-      rotMat[2][0] = 0, rotMat[2][1] = 0, rotMat[2][2] = -1;
-      }
-      else if (angle == DREAM3D::EulerFrameRotationAngle::twoSeventy)
-      {
-      rotMat[0][0] = 0, rotMat[0][1] = 0, rotMat[0][2] = 1;
-      rotMat[1][0] = 0, rotMat[1][1] = 1, rotMat[1][2] = 0;
-      rotMat[2][0] = -1, rotMat[2][1] = 0, rotMat[2][2] = 0;
-      }
-    }
-    else if (axis == DREAM3D::EulerFrameRotationAxis::ND)
-    {
-      if (angle == DREAM3D::EulerFrameRotationAngle::Ninety)
-      {
-      rotMat[0][0] = 0, rotMat[0][1] = 1, rotMat[0][2] = 0;
-      rotMat[1][0] = -1, rotMat[1][1] = 0, rotMat[1][2] = 0;
-      rotMat[2][0] = 0, rotMat[2][1] = 0, rotMat[2][2] = 1;
-      }
-      else if (angle == DREAM3D::EulerFrameRotationAngle::oneEighty)
-      {
-      rotMat[0][0] = -1, rotMat[0][1] = 0, rotMat[0][2] = 0;
-      rotMat[1][0] = 0, rotMat[1][1] = -1, rotMat[1][2] = 0;
-      rotMat[2][0] = 0, rotMat[2][1] = 0, rotMat[2][2] = 1;
-      }
-      else if (angle == DREAM3D::EulerFrameRotationAngle::twoSeventy)
-      {
-      rotMat[0][0] = 0, rotMat[0][1] = -1, rotMat[0][2] = 0;
-      rotMat[1][0] = 1, rotMat[1][1] = 0, rotMat[1][2] = 0;
-      rotMat[2][0] = 0, rotMat[2][1] = 0, rotMat[2][2] = 1;
-      }
-    }
-    float ea1=0, ea2=0, ea3=0;
-    float ea1new=0, ea2new=0, ea3new=0;
-    float g[3][3];
-    float gNew[3][3];
+	  if (axis == DREAM3D::EulerFrameRotationAxis::RD)
+	  {
+		  if (angle == DREAM3D::RefFrameRotationAngle::Ninety)
+		  {
+			rotMat[0][0] = 1, rotMat[0][1] = 0, rotMat[0][2] = 0;
+			rotMat[1][0] = 0, rotMat[1][1] = 0, rotMat[1][2] = 1;
+			rotMat[2][0] = 0, rotMat[2][1] = -1, rotMat[2][2] = 0;
+		  }
+		  else if (angle == DREAM3D::RefFrameRotationAngle::oneEighty)
+		  {
+			rotMat[0][0] = 1, rotMat[0][1] = 0, rotMat[0][2] = 0;
+			rotMat[1][0] = 0, rotMat[1][1] = -1, rotMat[1][2] = 0;
+			rotMat[2][0] = 0, rotMat[2][1] = 0, rotMat[2][2] = -1;
+		  }
+		  else if (angle == DREAM3D::RefFrameRotationAngle::twoSeventy)
+		  {
+			rotMat[0][0] = 1, rotMat[0][1] = 0, rotMat[0][2] = 0;
+			rotMat[1][0] = 0, rotMat[1][1] = 0, rotMat[1][2] = -1;
+			rotMat[2][0] = 0, rotMat[2][1] = 1, rotMat[2][2] = 0;
+		  }
+	  }
+	  else if (axis == DREAM3D::EulerFrameRotationAxis::TD)
+	  {
+		  if (angle == DREAM3D::RefFrameRotationAngle::Ninety)
+		  {
+			rotMat[0][0] = 0, rotMat[0][1] = 0, rotMat[0][2] = -1;
+			rotMat[1][0] = 0, rotMat[1][1] = 1, rotMat[1][2] = 0;
+			rotMat[2][0] = 1, rotMat[2][1] = 0, rotMat[2][2] = 0;
+		  }
+		  else if (angle == DREAM3D::RefFrameRotationAngle::oneEighty)
+		  {
+			rotMat[0][0] = -1, rotMat[0][1] = 0, rotMat[0][2] = 0;
+			rotMat[1][0] = 0, rotMat[1][1] = 1, rotMat[1][2] = 0;
+			rotMat[2][0] = 0, rotMat[2][1] = 0, rotMat[2][2] = -1;
+		  }
+		  else if (angle == DREAM3D::RefFrameRotationAngle::twoSeventy)
+		  {
+			rotMat[0][0] = 0, rotMat[0][1] = 0, rotMat[0][2] = 1;
+			rotMat[1][0] = 0, rotMat[1][1] = 1, rotMat[1][2] = 0;
+			rotMat[2][0] = -1, rotMat[2][1] = 0, rotMat[2][2] = 0;
+		  }
+	  }
+	  else if (axis == DREAM3D::EulerFrameRotationAxis::ND)
+	  {
+		  if (angle == DREAM3D::RefFrameRotationAngle::Ninety)
+		  {
+			rotMat[0][0] = 0, rotMat[0][1] = 1, rotMat[0][2] = 0;
+			rotMat[1][0] = -1, rotMat[1][1] = 0, rotMat[1][2] = 0;
+			rotMat[2][0] = 0, rotMat[2][1] = 0, rotMat[2][2] = 1;
+		  }
+		  else if (angle == DREAM3D::RefFrameRotationAngle::oneEighty)
+		  {
+			rotMat[0][0] = -1, rotMat[0][1] = 0, rotMat[0][2] = 0;
+			rotMat[1][0] = 0, rotMat[1][1] = -1, rotMat[1][2] = 0;
+			rotMat[2][0] = 0, rotMat[2][1] = 0, rotMat[2][2] = 1;
+		  }
+		  else if (angle == DREAM3D::RefFrameRotationAngle::twoSeventy)
+		  {
+			rotMat[0][0] = 0, rotMat[0][1] = -1, rotMat[0][2] = 0;
+			rotMat[1][0] = 1, rotMat[1][1] = 0, rotMat[1][2] = 0;
+			rotMat[2][0] = 0, rotMat[2][1] = 0, rotMat[2][2] = 1;
+		  }
+	  }
+	  float ea1=0, ea2=0, ea3=0;
+	  float ea1new=0, ea2new=0, ea3new=0;
+	  float g[3][3];
+	  float gNew[3][3];
+	  for (size_t i = start; i < end; i++)
     for (size_t i = start; i < end; i++)
       {
       ea1 = m_CellEulerAngles[3*i+0];
@@ -169,7 +170,7 @@ RotateEulerRefFrame::RotateEulerRefFrame() :
 AbstractFilter(),
 m_CellEulerAnglesArrayName(DREAM3D::CellData::EulerAngles),
 m_RotationAxis(DREAM3D::EulerFrameRotationAxis::None),
-m_RotationAngle(DREAM3D::EulerFrameRotationAngle::Zero),
+m_RotationAngle(DREAM3D::RefFrameRotationAngle::Zero),
 m_CellEulerAngles(NULL)
 {
   setupFilterParameters();
@@ -234,7 +235,7 @@ void RotateEulerRefFrame::dataCheck(bool preflight, size_t voxels, size_t fields
 {
   setErrorCondition(0);
   std::stringstream ss;
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
 
   GET_PREREQ_DATA(m, DREAM3D, CellData, CellEulerAngles, ss, -301, float, FloatArrayType, voxels, 3)
 }
@@ -252,7 +253,7 @@ void RotateEulerRefFrame::preflight()
 // -----------------------------------------------------------------------------
 void RotateEulerRefFrame::execute()
 {
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
   if(NULL == m)
   {
     setErrorCondition(-999);
@@ -270,8 +271,8 @@ void RotateEulerRefFrame::execute()
   }
 
 //  std::cout << "RotateEulerRefFrame: " << m_ConversionFactor << std::endl;
-#if DREAM3D_USE_PARALLEL_ALGORITHMS
-//#if 0
+//#if DREAM3D_USE_PARALLEL_ALGORITHMS
+#if 0
   tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints),
                     RotateEulerRefFrameImpl(m_CellEulerAngles, conversionFactor), tbb::auto_partitioner());
 

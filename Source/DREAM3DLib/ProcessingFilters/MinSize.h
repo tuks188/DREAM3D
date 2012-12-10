@@ -46,14 +46,14 @@
 #include "DREAM3DLib/Common/IDataArray.h"
 
 #include "DREAM3DLib/Common/AbstractFilter.h"
-#include "DREAM3DLib/Common/DataContainer.h"
+#include "DREAM3DLib/Common/VoxelDataContainer.h"
 #include "DREAM3DLib/Common/OrientationMath.h"
 #include "DREAM3DLib/Common/NeighborList.hpp"
 
 
 /**
- * @class MinSize MinSize.h DREAM3DLib/ReconstructionFilters/MinSize.h
- * @brief
+ * @class MinSize MinSize.h DREAM3DLib/ProcessingFilters/MinSize.h
+ * @brief This filter ensures each Grain or Region has a minimum number of voxels.
  * @author
  * @date Nov 19, 2011
  * @version 1.0
@@ -67,46 +67,45 @@ class DREAM3DLib_EXPORT MinSize : public AbstractFilter
 
     virtual ~MinSize();
 
-	//------ Required Cell Data
-	DREAM3D_INSTANCE_STRING_PROPERTY(GrainIdsArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(CellPhasesArrayName)
-	//------ Required Field Data
-	DREAM3D_INSTANCE_STRING_PROPERTY(FieldPhasesArrayName)
-	//------ Created Field Data
-	DREAM3D_INSTANCE_STRING_PROPERTY(ActiveArrayName)
+    //------ Required Cell Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(GrainIdsArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(CellPhasesArrayName)
+    //------ Required Field Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(FieldPhasesArrayName)
+    //------ Created Field Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(ActiveArrayName)
 
     DREAM3D_INSTANCE_PROPERTY(int, MinAllowedGrainSize)
-    DREAM3D_INSTANCE_PROPERTY(int, PhaseNumber)
 
     virtual const std::string getGroupName() { return DREAM3D::FilterGroups::ProcessingFilters; }
-    virtual const std::string getHumanLabel() { return "Minimum Size Filter"; }
+    virtual const std::string getHumanLabel() { return "Minimum Size Filter (All Phases)"; }
 
     virtual void setupFilterParameters();
-	virtual void writeFilterParameters(AbstractFilterParametersWriter* writer);
+    virtual void writeFilterParameters(AbstractFilterParametersWriter* writer);
 
 
     virtual void execute();
     virtual void preflight();
 
+    virtual void dataCheck(bool preflight, size_t voxels, size_t fields, size_t ensembles);
+
   protected:
     MinSize();
 
-    void remove_smallgrains();
-    void assign_badpoints();
+    virtual void remove_smallgrains();
+    virtual void assign_badpoints();
 
 
   private:
     int32_t* m_Neighbors;
 
-	int32_t* m_GrainIds;
+    int32_t* m_GrainIds;
     int32_t* m_CellPhases;
     int32_t* m_FieldPhases;
     bool* m_Active;
 
     std::vector<std::vector<int> > voxellists;
     std::vector<int> nuclei;
-
-    void dataCheck(bool preflight, size_t voxels, size_t fields, size_t ensembles);
 
 
     MinSize(const MinSize&); // Copy Constructor Not Implemented

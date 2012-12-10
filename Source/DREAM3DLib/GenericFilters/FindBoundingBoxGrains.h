@@ -45,7 +45,7 @@
 #include "DREAM3DLib/Common/IDataArray.h"
 
 #include "DREAM3DLib/Common/AbstractFilter.h"
-#include "DREAM3DLib/Common/DataContainer.h"
+#include "DREAM3DLib/Common/VoxelDataContainer.h"
 
 /**
  * @class FindBoundingBoxGrains FindBoundingBoxGrains.h DREAM3DLib/GenericFilters/FindBoundingBoxGrains.h
@@ -72,7 +72,7 @@ class DREAM3DLib_EXPORT FindBoundingBoxGrains : public AbstractFilter
     DECLARE_WRAPPED_ARRAY(totalsurfacearea, m_TotalSurfaceArea, float)
 
     virtual const std::string getGroupName() { return DREAM3D::FilterGroups::GenericFilters; }
-    virtual const std::string getHumanLabel() { return "Find Biased Grains (Bounding Box)"; }
+    virtual const std::string getHumanLabel() { return "Find Biased Fields (Bounding Box)"; }
 
 
 	virtual void writeFilterParameters(AbstractFilterParametersWriter* writer);
