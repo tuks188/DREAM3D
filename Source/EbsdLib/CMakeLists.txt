@@ -87,7 +87,7 @@ include_directories(${EbsdLib_BINARY_DIR})
 include ( ${EbsdLib_SOURCE_DIR}/Utilities/SourceList.cmake)
 include ( ${EbsdLib_SOURCE_DIR}/TSL/SourceList.cmake)
 include ( ${EbsdLib_SOURCE_DIR}/HKL/SourceList.cmake)
-
+include ( ${EbsdLib_SOURCE_DIR}/Bruker/SourceList.cmake)
 
 set(EbsdLib_SRCS
     ${EbsdLib_SOURCE_DIR}/H5EbsdVolumeInfo.cpp
