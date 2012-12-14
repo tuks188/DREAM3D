@@ -419,13 +419,13 @@ for (DimType i = 1035; i <1080; i++)
 
       FindGrainPhases::Pointer find_phases = FindGrainPhases::New(); 
       //find_sizes->setDistributionType(DREAM3D::DistributionType::Beta);
-      find_phases->setDataContainer(m);
+      find_phases->setVoxelDataContainer(m);
       find_phases->execute();
       pipeline->pushBack(find_phases);
 
       FindSurfaceGrains::Pointer find_surface = FindSurfaceGrains::New(); 
       //find_sizes->setDistributionType(DREAM3D::DistributionType::Beta);
-      find_surface->setDataContainer(m);
+      find_surface->setVoxelDataContainer(m);
       find_surface->execute();
       pipeline->pushBack(find_surface);
 
@@ -448,7 +448,7 @@ for (DimType i = 1035; i <1080; i++)
       FieldDataCSVWriter::Pointer field_data_write_csv = FieldDataCSVWriter::New(); 
       std::string field_csv =  "D:/IN100_run1/DREAM3D_files/montage/slice"+ convertIntToString(i) +".csv";
       field_data_write_csv->setFieldDataFile(field_csv); 
-      field_data_write_csv->setDataContainer(m); 
+      field_data_write_csv->setVoxelDataContainer(m);
       field_data_write_csv->execute(); 
 
       pipeline->pushBack(field_data_write_csv);
