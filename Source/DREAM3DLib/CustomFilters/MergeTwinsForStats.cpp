@@ -152,7 +152,7 @@ void MergeTwinsForStats::dataCheck(bool preflight, size_t voxels, size_t fields,
 {
   setErrorCondition(0);
   std::stringstream ss;
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
   int err = 0;
 
   // Cell Data
@@ -166,7 +166,7 @@ void MergeTwinsForStats::dataCheck(bool preflight, size_t voxels, size_t fields,
   setErrorCondition(0);
   FindAvgOrientations::Pointer find_avgorients = FindAvgOrientations::New();
   find_avgorients->setObservers(this->getObservers());
-  find_avgorients->setDataContainer(getDataContainer());
+  find_avgorients->setVoxelDataContainer(getVoxelDataContainer());
   if(preflight == true) find_avgorients->preflight();
   if(preflight == false) find_avgorients->execute();
   }
@@ -178,7 +178,7 @@ void MergeTwinsForStats::dataCheck(bool preflight, size_t voxels, size_t fields,
     setErrorCondition(0);
     FindGrainPhases::Pointer find_grainphases = FindGrainPhases::New();
     find_grainphases->setObservers(this->getObservers());
-    find_grainphases->setDataContainer(getDataContainer());
+    find_grainphases->setVoxelDataContainer(getVoxelDataContainer());
     if(preflight == true) find_grainphases->preflight();
     if(preflight == false) find_grainphases->execute();
   }
@@ -186,14 +186,14 @@ void MergeTwinsForStats::dataCheck(bool preflight, size_t voxels, size_t fields,
 
 
   CREATE_NON_PREREQ_DATA(m, DREAM3D, FieldData, Active, ss, bool, BoolArrayType, true, fields, 1)
-  // Now we are going to get a "Pointer" to the NeighborList object out of the DataContainer
+  // Now we are going to get a "Pointer" to the NeighborList object out of the VoxelDataContainer
   m_NeighborList = NeighborList<int>::SafeObjectDownCast<IDataArray*, NeighborList<int>*>(m->getFieldData(DREAM3D::FieldData::NeighborList).get());
   if(m_NeighborList == NULL)
   {
     setErrorCondition(0);
     FindNeighbors::Pointer find_neighbors = FindNeighbors::New();
     find_neighbors->setObservers(this->getObservers());
-    find_neighbors->setDataContainer(getDataContainer());
+    find_neighbors->setVoxelDataContainer(getVoxelDataContainer());
     if(preflight == true) find_neighbors->preflight();
     if(preflight == false) find_neighbors->execute();
     m_NeighborList = NeighborList<int>::SafeObjectDownCast<IDataArray*, NeighborList<int>*>(m->getFieldData(DREAM3D::FieldData::NeighborList).get());
@@ -222,11 +222,11 @@ void MergeTwinsForStats::preflight()
 // -----------------------------------------------------------------------------
 void MergeTwinsForStats::execute()
 {
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
   if(NULL == m)
   {
     setErrorCondition(-999);
-    notifyErrorMessage("The DataContainer Object was NULL", -999);
+    notifyErrorMessage("The VoxelDataContainer Object was NULL", -999);
     return;
   }
 
@@ -308,10 +308,10 @@ void MergeTwinsForStats::execute()
 // -----------------------------------------------------------------------------
 void MergeTwinsForStats::merge_twins()
 {
-  // Since this method is called from the 'execute' and the DataContainer validity
-  // was checked there we are just going to get the Shared Pointer to the DataContainer
-  DataContainer* m = getDataContainer();
-  // Now we are going to get a "Pointer" to the NeighborList object out of the DataContainer
+  // Since this method is called from the 'execute' and the VoxelDataContainer validity
+  // was checked there we are just going to get the Shared Pointer to the VoxelDataContainer
+  VoxelDataContainer* m = getVoxelDataContainer();
+  // Now we are going to get a "Pointer" to the NeighborList object out of the VoxelDataContainer
   m_NeighborList = NeighborList<int>::SafeObjectDownCast<IDataArray*, NeighborList<int>* >(m->getFieldData(DREAM3D::FieldData::NeighborList).get());
   // But since a pointer is difficult to use operators with we will now create a
   // reference variable to the pointer with the correct variable name that allows
@@ -391,7 +391,7 @@ void MergeTwinsForStats::merge_twins()
 
 void MergeTwinsForStats::characterize_twins()
 {
-  DataContainer* m = getDataContainer();
+  VoxelDataContainer* m = getVoxelDataContainer();
   size_t numgrains = m->getNumFieldTuples();
   for (size_t i = 0; i < numgrains; i++)
   {

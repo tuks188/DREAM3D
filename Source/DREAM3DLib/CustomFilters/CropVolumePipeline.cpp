@@ -33,7 +33,7 @@
  *                           FA8650-07-D-5800
  *
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-#include "Crop_Volume_Pipeline.h"
+#include "CropVolumePipeline.h"
 #include <stdlib.h>
 
 #include <iostream>
@@ -86,7 +86,7 @@ typedef int64_t DimType;
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-Crop_Volume_Pipeline::Crop_Volume_Pipeline() :
+CropVolumePipeline::CropVolumePipeline() :
 AbstractFilter()
 {
   setupFilterParameters();
@@ -95,14 +95,14 @@ AbstractFilter()
 //
 // -----------------------------------------------------------------------------
 
-Crop_Volume_Pipeline::~Crop_Volume_Pipeline()
+CropVolumePipeline::~CropVolumePipeline()
 {
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void Crop_Volume_Pipeline::setupFilterParameters()
+void CropVolumePipeline::setupFilterParameters()
 {
     // Now append our options
   std::vector<FilterParameter::Pointer> parameters;
@@ -120,7 +120,7 @@ void Crop_Volume_Pipeline::setupFilterParameters()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void Crop_Volume_Pipeline::writeFilterParameters(AbstractFilterParametersWriter* writer)
+void CropVolumePipeline::writeFilterParameters(AbstractFilterParametersWriter* writer)
 {
   writer->writeValue("InputFile", getInputFile() );
 }
@@ -128,7 +128,7 @@ void Crop_Volume_Pipeline::writeFilterParameters(AbstractFilterParametersWriter*
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void Crop_Volume_Pipeline::dataCheck(bool preflight, size_t voxels, size_t fields, size_t ensembles)
+void CropVolumePipeline::dataCheck(bool preflight, size_t voxels, size_t fields, size_t ensembles)
 {
 
   setErrorCondition(0);
@@ -147,7 +147,7 @@ void Crop_Volume_Pipeline::dataCheck(bool preflight, size_t voxels, size_t field
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void Crop_Volume_Pipeline::preflight()
+void CropVolumePipeline::preflight()
 {
   dataCheck(true, 1, 1, 1);
 }
@@ -196,7 +196,7 @@ std::string getFieldDataFile()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void Crop_Volume_Pipeline::get_max_and_min_xyz_for_crop(std::vector<int> &xmax, std::vector<int> &ymax, std::vector<int> &zmax, std::vector<int> &xmin, std::vector<int> &ymin, std::vector<int> &zmin)
+void CropVolumePipeline::get_max_and_min_xyz_for_crop(std::vector<int> &xmax, std::vector<int> &ymax, std::vector<int> &zmax, std::vector<int> &xmin, std::vector<int> &ymin, std::vector<int> &zmin)
 {
     VoxelDataContainer* m = getVoxelDataContainer();
   //int64_t totalPoints = m->totalPoints();
@@ -299,7 +299,7 @@ std::vector<QualityMetricFilter::Pointer> getQualityMetricFilters()
 
 
 
-void Crop_Volume_Pipeline::execute()
+void CropVolumePipeline::execute()
 {
     VoxelDataContainer* m = getVoxelDataContainer();
   float m_MisorientationTolerance = 5.0f;
