@@ -1,4 +1,3 @@
-
 /* ============================================================================
  * Copyright (c) 2011 Michael A. Jackson (BlueQuartz Software)
  * Copyright (c) 2011 Dr. Michael A. Groeber (US Air Force Research Laboratories)
@@ -218,7 +217,7 @@ void SegmentGrains::execute()
 // -----------------------------------------------------------------------------
 int SegmentGrains::getSeed(size_t gnum)
 {
-	return -1;
+  return -1;
 }
 
 // -----------------------------------------------------------------------------
@@ -226,5 +225,5 @@ int SegmentGrains::getSeed(size_t gnum)
 // -----------------------------------------------------------------------------
 bool SegmentGrains::determineGrouping(int referencepoint, int neighborpoint, size_t gnum)
 {
-	return false;
+  return false;
 }
