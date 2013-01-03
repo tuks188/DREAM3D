@@ -70,6 +70,8 @@
 #include "DREAM3DLib/GenericFilters/FindNeighbors.h"
 #include "DREAM3DLib/GenericFilters/FindGrainPhases.h"
 #include "DREAM3DLib/GenericFilters/FindSurfaceGrains.h"
+#include "DREAM3DLib/GenericFilters/FindBoundingBoxGrains.h"
+#include "DREAM3DLib/GenericFilters/FindGrainCentroids.h"
 #include "DREAM3DLib/SamplingFilters/CropVolume.h"
 #include "DREAM3DLib/SamplingFilters/RegularizeZSpacing.h"
 #include "DREAM3DLib/StatisticsFilters/FindSizes.h"
@@ -79,7 +81,7 @@
 #include "DREAM3DLib/GenericFilters/FindNeighbors.h"
 #include "DREAM3DLib/StatisticsFilters/FindODF.h"
 #include "DREAM3DLib/StatisticsFilters/FindMDF.h"
-
+#include "DREAM3DLib/CustomFilters/MergeTwinsForStats.h"
 
 typedef int64_t DimType;
 
@@ -251,8 +253,8 @@ unsigned int getNumLinesinFile(std::string filename)
 }
 
 
-int getZStartIndex() { return 140; }
-int getZEndIndex() { return 160; }
+int getZStartIndex() { return 11; }
+int getZEndIndex() { return 173; }
 
 DataArray<unsigned int>::Pointer getPhaseTypes()
 {
@@ -305,8 +307,8 @@ void CropVolumePipeline::execute()
   float m_MisorientationTolerance = 5.0f;
   float m_AlignMisorientationTolerance = 5.0f;
   float m_Zres = 4.0f;
-  int m_MinAllowedGrainSize = 10;
-  int m_MinNumNeighbors = 1;
+  int m_MinAllowedGrainSize = 5;
+  int m_MinNumNeighbors = 2;
   int m_PhaseNumberMinSize = 1;
   int m_NumIterations_Erode = 3;
   int NUM_OF_CROPS = getNumLinesinFile(m_InputFile);
@@ -325,7 +327,7 @@ void CropVolumePipeline::execute()
   int m_Ymax = 355;
   int m_Zmax = 163;*/
 
-for (DimType i = 1035; i <1080; i++)
+for (DimType i = 50; i < NUM_OF_CROPS+50; i++)
 {
 
 
@@ -334,55 +336,65 @@ for (DimType i = 1035; i <1080; i++)
 
 
 
+      DataContainerReader::Pointer reader = DataContainerReader::New();
+      std::string main_dream_3d_file = "D:/IN100_run1/DREAM3D_files/RVE/full_volume_for_RVE_calc.dream3d";
+      reader->setInputFile(main_dream_3d_file); 
+      reader->setReadCellData(true);
+      reader->setReadFieldData(true); 
+      reader->setReadEnsembleData(true); 
+      reader->setVoxelDataContainer(m);
+      pipeline->pushBack(reader);
+      reader->execute();
 
-     // updateProgressAndMessage(("Loading Slices"), 10);
-      ReadH5Ebsd::Pointer read_h5ebsd = ReadH5Ebsd::New();
+     //// updateProgressAndMessage(("Loading Slices"), 10);
+     // ReadH5Ebsd::Pointer read_h5ebsd = ReadH5Ebsd::New();
 
-      read_h5ebsd->setH5EbsdFile(getH5EbsdFile());
-      //read_h5ebsd->setRefFrameZDir(Ebsd::LowtoHigh);
-      read_h5ebsd->setZStartIndex(i);
-      read_h5ebsd->setZEndIndex(i);
-      read_h5ebsd->setPTypes(getPhaseTypes());
-      read_h5ebsd->setQualityMetricFilters(getQualityMetricFilters());
-      read_h5ebsd->setVoxelDataContainer(m);
-      read_h5ebsd->execute();
-      pipeline->pushBack(read_h5ebsd);
-
-
-
-      ConvertEulerAngles::Pointer convert_euler = ConvertEulerAngles::New();
-      convert_euler->setConversionType(DREAM3D::EulerAngleConversionType::DegreesToRadians);
-      convert_euler->setVoxelDataContainer(m);
-      convert_euler->execute();
-      pipeline->pushBack(convert_euler);
+     // read_h5ebsd->setH5EbsdFile(getH5EbsdFile());
+     // //read_h5ebsd->setRefFrameZDir(Ebsd::LowtoHigh);
+     // read_h5ebsd->setZStartIndex(i);
+     // read_h5ebsd->setZEndIndex(i);
+     // read_h5ebsd->setPTypes(getPhaseTypes());
+     // read_h5ebsd->setQualityMetricFilters(getQualityMetricFilters());
+     // read_h5ebsd->setVoxelDataContainer(m);
+     // read_h5ebsd->execute();
+     // pipeline->pushBack(read_h5ebsd);
 
 
 
-     /* AlignSectionsMisorientation::Pointer align_sections = AlignSectionsMisorientation::New();
-      align_sections->setMisorientationTolerance(m_AlignMisorientationTolerance); 
-      align_sections->setDataContainer(m);
-      align_sections->execute();     
-      pipeline->pushBack(align_sections);
-*/
-      //CropVolume::Pointer crop_volume = CropVolume::New(); 
-      //crop_volume->setXMin(m_Xmin[i]);
-      //crop_volume->setYMin(m_Ymin[i]);
-      //crop_volume->setZMin(m_Zmin[i]);
-      //crop_volume->setXMax(m_Xmax[i]);
-      //crop_volume->setYMax(m_Ymax[i]);
-      //crop_volume->setZMax(m_Zmax[i]); 
-      //crop_volume->setRenumberGrains(false); 
-      //crop_volume->setDataContainer(m);
-      //crop_volume->execute();
-      //pipeline->pushBack(crop_volume);
+     // ConvertEulerAngles::Pointer convert_euler = ConvertEulerAngles::New();
+     // convert_euler->setConversionType(DREAM3D::EulerAngleConversionType::DegreesToRadians);
+     // convert_euler->setVoxelDataContainer(m);
+     // convert_euler->execute();
+     // pipeline->pushBack(convert_euler);
+
+
+
+     // AlignSectionsMisorientation::Pointer align_sections = AlignSectionsMisorientation::New();
+     // align_sections->setMisorientationTolerance(m_AlignMisorientationTolerance); 
+     // align_sections->setVoxelDataContainer(m);
+     // align_sections->execute();     
+     // pipeline->pushBack(align_sections);
+
+      CropVolume::Pointer crop_volume = CropVolume::New(); 
+      crop_volume->setXMin(m_Xmin[i]);
+      crop_volume->setYMin(m_Ymin[i]);
+      crop_volume->setZMin(m_Zmin[i]);
+      crop_volume->setXMax(m_Xmax[i]);
+      crop_volume->setYMax(m_Ymax[i]);
+      crop_volume->setZMax(m_Zmax[i]); 
+      crop_volume->setRenumberGrains(false); 
+      crop_volume->setVoxelDataContainer(m);
+      crop_volume->execute();
+      pipeline->pushBack(crop_volume);
 
       //RegularizeZSpacing::Pointer regularize_z = RegularizeZSpacing::New(); 
       //regularize_z->setInputFile(getZ_spacingfile()); 
       //regularize_z->setZRes(m_Zres); 
-      //regularize_z->setDataContainer(m);
+      //regularize_z->setVoxelDataContainer(m);
       //regularize_z->execute();
       //pipeline->pushBack(regularize_z);
 
+      
 
       EBSDSegmentGrains::Pointer ebsdsegment_grains = EBSDSegmentGrains::New();
       ebsdsegment_grains->setMisorientationTolerance(m_MisorientationTolerance);
@@ -390,6 +402,13 @@ for (DimType i = 1035; i <1080; i++)
       ebsdsegment_grains->execute();
       pipeline->pushBack(ebsdsegment_grains);
 
+      MergeTwinsForStats::Pointer mergetwinsstats = MergeTwinsForStats::New(); 
+      mergetwinsstats->setVoxelDataContainer(m);
+      mergetwinsstats->setAngleTolerance(2); 
+      mergetwinsstats->setAxisTolerance(2); 
+      mergetwinsstats->execute();
+      pipeline->pushBack(mergetwinsstats) ; 
+      
 
       //OpenCloseBadData::Pointer erode_dilate = OpenCloseBadData::New(); 
       //erode_dilate->setDirection(1); // 1 is erode.  
@@ -397,25 +416,26 @@ for (DimType i = 1035; i <1080; i++)
       //erode_dilate->setDataContainer(m);
       //erode_dilate->execute();
       //pipeline->pushBack(erode_dilate);
+
+
     
-      //FindNeighbors::Pointer find_neighbors = FindNeighbors::New();
-      //find_neighbors->setDataContainer(m);
-      //find_neighbors->execute();
-      //pipeline->pushBack(find_neighbors);
+      FindNeighbors::Pointer find_neighbors = FindNeighbors::New();
+      find_neighbors->setVoxelDataContainer(m);
+      find_neighbors->execute();
+      pipeline->pushBack(find_neighbors);
 
 
-      //MinSize::Pointer min_size = MinSize::New();
-      //min_size->setMinAllowedGrainSize(m_MinAllowedGrainSize);
-      //min_size->setPhaseNumber(m_PhaseNumberMinSize);
-      //min_size->setDataContainer(m);
-      //min_size->execute();
-      //pipeline->pushBack(min_size);
+      MinSize::Pointer min_size = MinSize::New();
+      min_size->setMinAllowedGrainSize(m_MinAllowedGrainSize);
+      min_size->setVoxelDataContainer(m);
+      min_size->execute();
+      pipeline->pushBack(min_size);
 
-      //MinNeighbors::Pointer min_neighbors = MinNeighbors::New();
-      //min_neighbors->setMinNumNeighbors(m_MinNumNeighbors);
-      //min_neighbors->setDataContainer(m);
-      //min_neighbors->execute();
-      //pipeline->pushBack(min_neighbors);
+      MinNeighbors::Pointer min_neighbors = MinNeighbors::New();
+      min_neighbors->setMinNumNeighbors(m_MinNumNeighbors);
+      min_neighbors->setVoxelDataContainer(m);
+      min_neighbors->execute();
+      pipeline->pushBack(min_neighbors);
 
       FindGrainPhases::Pointer find_phases = FindGrainPhases::New(); 
       //find_sizes->setDistributionType(DREAM3D::DistributionType::Beta);
@@ -444,9 +464,19 @@ for (DimType i = 1035; i <1080; i++)
       pipeline->pushBack(find_shapes);
 
 
+      FindBoundingBoxGrains::Pointer findboundbox = FindBoundingBoxGrains::New(); 
+      findboundbox->setVoxelDataContainer(m); 
+      findboundbox->execute(); 
+      pipeline->pushBack(findboundbox); 
+
+      FindGrainCentroids::Pointer findcentroids = FindGrainCentroids::New(); 
+      findcentroids->setVoxelDataContainer(m); 
+      findcentroids->execute(); 
+      pipeline->pushBack(findcentroids); 
+
 
       FieldDataCSVWriter::Pointer field_data_write_csv = FieldDataCSVWriter::New(); 
-      std::string field_csv =  "D:/IN100_run1/DREAM3D_files/montage/slice"+ convertIntToString(i) +".csv";
+      std::string field_csv =  "D:/IN100_run1/DREAM3D_files/RVE/slice"+ convertIntToString(i) +".csv";
       field_data_write_csv->setFieldDataFile(field_csv); 
       field_data_write_csv->setVoxelDataContainer(m);
       field_data_write_csv->execute(); 
@@ -468,7 +498,7 @@ for (DimType i = 1035; i <1080; i++)
 
       if(m_WriteVtkFile)
       {
-        std::string vtk_file = "D:/IN100_run1/DREAM3D_files/montage/slice" + convertIntToString(i) + ".vtk";
+        std::string vtk_file = "D:/IN100_run1/DREAM3D_files/RVE/slice" + convertIntToString(i) + ".vtk";
         vtkWriter->setOutputFile(vtk_file);
         vtkWriter->setWriteGrainIds(m_WriteGrainID);
         vtkWriter->setWritePhaseIds(m_WritePhaseId);
@@ -483,7 +513,7 @@ for (DimType i = 1035; i <1080; i++)
       }
 
       DataContainerWriter::Pointer writer = DataContainerWriter::New();
-      std::string dream_3d_file = "D:/IN100_run1/DREAM3D_files/montage/slice" + convertIntToString(i) + ".dream3d";
+      std::string dream_3d_file = "D:/IN100_run1/DREAM3D_files/RVE/slice" + convertIntToString(i) + ".dream3d";
       writer->setOutputFile(dream_3d_file);
       writer->setVoxelDataContainer(m);
       pipeline->pushBack(writer);
