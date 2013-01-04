@@ -327,7 +327,7 @@ void CropVolumePipeline::execute()
   int m_Ymax = 355;
   int m_Zmax = 163;*/
 
-for (DimType i = 50; i < NUM_OF_CROPS+50; i++)
+for (DimType i = 1; i < NUM_OF_CROPS+1; i++)
 {
 
 
@@ -476,7 +476,7 @@ for (DimType i = 50; i < NUM_OF_CROPS+50; i++)
 
 
       FieldDataCSVWriter::Pointer field_data_write_csv = FieldDataCSVWriter::New(); 
-      std::string field_csv =  "D:/IN100_run1/DREAM3D_files/RVE/slice"+ convertIntToString(i) +".csv";
+      std::string field_csv =  "D:/IN100_run1/DREAM3D_files/RVE/box_slicing/slice"+ convertIntToString(i) +".csv";
       field_data_write_csv->setFieldDataFile(field_csv); 
       field_data_write_csv->setVoxelDataContainer(m);
       field_data_write_csv->execute(); 
@@ -498,7 +498,7 @@ for (DimType i = 50; i < NUM_OF_CROPS+50; i++)
 
       if(m_WriteVtkFile)
       {
-        std::string vtk_file = "D:/IN100_run1/DREAM3D_files/RVE/slice" + convertIntToString(i) + ".vtk";
+        std::string vtk_file = "D:/IN100_run1/DREAM3D_files/RVE/box_slicing/slice" + convertIntToString(i) + ".vtk";
         vtkWriter->setOutputFile(vtk_file);
         vtkWriter->setWriteGrainIds(m_WriteGrainID);
         vtkWriter->setWritePhaseIds(m_WritePhaseId);
@@ -513,7 +513,7 @@ for (DimType i = 50; i < NUM_OF_CROPS+50; i++)
       }
 
       DataContainerWriter::Pointer writer = DataContainerWriter::New();
-      std::string dream_3d_file = "D:/IN100_run1/DREAM3D_files/RVE/slice" + convertIntToString(i) + ".dream3d";
+      std::string dream_3d_file = "D:/IN100_run1/DREAM3D_files/RVE/box_slicing/slice" + convertIntToString(i) + ".dream3d";
       writer->setOutputFile(dream_3d_file);
       writer->setVoxelDataContainer(m);
       pipeline->pushBack(writer);
