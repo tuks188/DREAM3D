@@ -327,7 +327,7 @@ void CropVolumePipeline::execute()
   int m_Ymax = 355;
   int m_Zmax = 163;*/
 
-for (DimType i = 1; i < NUM_OF_CROPS+1; i++)
+for (DimType i = 2; i < NUM_OF_CROPS+1; i++)
 {
 
 
