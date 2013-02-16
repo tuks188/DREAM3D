@@ -89,6 +89,23 @@ class StringDataArray : public IDataArray
     virtual ~StringDataArray(){}
 
     /**
+     * @brief GetTypeName Returns a string representation of the type of data that is stored by this class. This
+     * can be a primitive like char, float, int or the name of a class.
+     * @return
+     */
+    void GetXdmfTypeAndSize(std::string &xdmfTypeName, int &precision)
+    {
+      xdmfTypeName = getNameOfClass();
+      precision = 0;
+    }
+
+    /**
+     * @brief getTypeAsString
+     * @return
+     */
+    virtual std::string getTypeAsString() { return "StringDataArray";}
+
+    /**
      * @brief Gives this array a human readable name
      * @param name The name of this array
      */

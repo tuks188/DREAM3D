@@ -15,6 +15,10 @@
     <file>GenericFilters/FindGrainCentroids.html</file>
     <file>GenericFilters/FindSurfaceGrains.html</file>
     <file>GenericFilters/FindBoundingBoxGrains.html</file>
+    <file>GenericFilters/GenerateIPFColors.html</file>
+    <file>GenericFilters/IPFFilterLegend.jpg</file>
+    <file>GenericFilters/RemoveArrays.html</file>
+    <file>GenericFilters/SingleThresholdCells.html</file>
 
     <!-- ***** IOFilters ***** -->
     <file>IOFilters/AvizoRectilinearCoordinateWriter.html</file>
@@ -37,8 +41,12 @@
     <file>IOFilters/SurfaceMeshToNodesTrianglesEdges.html</file>
     <file>IOFilters/SurfaceMeshToStl.html</file>
     <file>IOFilters/SurfaceMeshToVtk.html</file>
+    <file>IOFilters/SurfaceMeshToNonconformalVtk.html</file>
     <file>IOFilters/VtkRectilinearGridWriter.html</file>
     <file>IOFilters/YSChoiAbaqusReader.html</file>
+    <file>IOFilters/RawBinaryReader.html</file>
+    <file>IOFilters/VtkGrainIdReader.html</file>
+    <file>IOFilters/SolidMeshToVtk.html</file>
 
     <!-- ***** ProcessingFilters ***** -->
     <file>ProcessingFilters/MinNeighbors.html</file>
@@ -47,9 +55,11 @@
     <file>ProcessingFilters/PerPhaseMinSize.html</file>
     <file>ProcessingFilters/FillBadData.html</file>
     <file>ProcessingFilters/OpenCloseBadData.html</file>
+    <file>ProcessingFilters/OpenCloseCoordinationNumber.html</file>
     <file>ProcessingFilters/ConvertEulerAngles.html</file>
     <file>ProcessingFilters/StandardizeEulerAngles.html</file>
     <file>ProcessingFilters/RotateEulerRefFrame.html</file>
+    <file>ProcessingFilters/IdentifySample.html</file>
 
     <!-- ***** ReconstructionFilters ***** -->
     <file>ReconstructionFilters/AlignSectionsMisorientation.html</file>
@@ -75,6 +85,7 @@
     <file>StatisticsFilters/FindAvgOrientations.html</file>
     <file>StatisticsFilters/FindAvgCAxes.html</file>
     <file>StatisticsFilters/FindAxisODF.html</file>
+    <file>StatisticsFilters/FindBoundaryStrengths.html</file>
     <file>StatisticsFilters/FindDeformationStatistics.html</file>
     <file>StatisticsFilters/FindEuclideanDistMap.html</file>
     <file>StatisticsFilters/FindGrainReferenceMisorientations.html</file>
@@ -89,21 +100,28 @@
     <file>StatisticsFilters/FindSizes.html</file>
     <file>StatisticsFilters/FindSlicetoSliceRotations.html</file>
 
-    <!-- ***** SurfaceMeshFilters ***** -->
-    <file>SurfaceMeshFilters/QuickSurfaceMesh.html</file>
-    <file>SurfaceMeshFilters/M3CEntireVolume.html</file>
-    <file>SurfaceMeshFilters/M3CSliceBySlice.html</file>
-    <file>SurfaceMeshFilters/MovingFiniteElementSmoothing.html</file>
-    <file>SurfaceMeshFilters/LaplacianSmoothing.html</file>
-    <file>SurfaceMeshFilters/GenerateMeshConnectivity.html</file>
+    <!-- ***** SurfaceMeshingFilters ***** -->
+    <file>SurfaceMeshingFilters/GenerateSurfaceMeshConnectivity.html</file>
+    <file>SurfaceMeshingFilters/LaplacianSmoothing.html</file>
+    <file>SurfaceMeshingFilters/M3CSliceBySlice.html</file>
+    <file>SurfaceMeshingFilters/MovingFiniteElementSmoothing.html</file>
+    <file>SurfaceMeshingFilters/QuickSurfaceMesh.html</file>
+    <file>SurfaceMeshingFilters/ReverseTriangleWinding.html</file>
+    <file>SurfaceMeshingFilters/SharedGrainFaceFilter.html</file>
+    <file>SurfaceMeshingFilters/TriangleCentroidFilter.html</file>
+    <file>SurfaceMeshingFilters/TriangleNormalFilter.html</file>
+    <file>SurfaceMeshingFilters/VerifyTriangleWinding.html</file>
+    <file>SurfaceMeshingFilters/GrainFaceCurvatureFilter.html</file>
 
-    <!-- ***** SyntheticBuilderFilters ***** -->
-    <file>SyntheticBuilderFilters/PackPrimaryPhases.html</file>
-    <file>SyntheticBuilderFilters/MatchCrystallography.html</file>
-    <file>SyntheticBuilderFilters/JumbleOrientations.html</file>
-    <file>SyntheticBuilderFilters/InsertPrecipitatePhases.html</file>
-    <file>SyntheticBuilderFilters/EstablishMatrixPhase.html</file>
-    <file>SyntheticBuilderFilters/InitializeSyntheticVolume.html</file>
-    <file>SyntheticBuilderFilters/InitSynthVol.jpg</file>
+    <!-- ***** SyntheticBuildingFilters ***** -->
+    <file>SyntheticBuildingFilters/PackPrimaryPhases.html</file>
+    <file>SyntheticBuildingFilters/MatchCrystallography.html</file>
+    <file>SyntheticBuildingFilters/JumbleOrientations.html</file>
+    <file>SyntheticBuildingFilters/InsertPrecipitatePhases.html</file>
+    <file>SyntheticBuildingFilters/EstablishMatrixPhase.html</file>
+    <file>SyntheticBuildingFilters/AddBadData.html</file>
+    <file>SyntheticBuildingFilters/AddOrientationNoise.html</file>
+    <file>SyntheticBuildingFilters/InitializeSyntheticVolume.html</file>
+    <file>SyntheticBuildingFilters/InitSynthVol.jpg</file>
   </qresource>
 </RCC>

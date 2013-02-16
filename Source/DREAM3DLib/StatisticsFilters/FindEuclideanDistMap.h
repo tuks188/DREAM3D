@@ -66,13 +66,16 @@ class DREAM3DLib_EXPORT FindEuclideanDistMap : public AbstractFilter
 	//------ Required Cell Data
 	DREAM3D_INSTANCE_STRING_PROPERTY(GrainIdsArrayName)
 	//------ Created Cell Data
-	DREAM3D_INSTANCE_STRING_PROPERTY(NearestNeighborDistancesArrayName)
+	DREAM3D_INSTANCE_STRING_PROPERTY(GBEuclideanDistancesArrayName)
+	DREAM3D_INSTANCE_STRING_PROPERTY(TJEuclideanDistancesArrayName)
+	DREAM3D_INSTANCE_STRING_PROPERTY(QPEuclideanDistancesArrayName)
 	DREAM3D_INSTANCE_STRING_PROPERTY(NearestNeighborsArrayName)
 
     virtual const std::string getGroupName() { return DREAM3D::FilterGroups::StatisticsFilters; }
     virtual const std::string getHumanLabel() { return "Find Euclidean Distance Map"; }
 
-	virtual void writeFilterParameters(AbstractFilterParametersWriter* writer);
+    virtual void setupFilterParameters();
+    virtual void writeFilterParameters(AbstractFilterParametersWriter* writer);
 
     /**
      * @brief Reimplemented from @see AbstractFilter class
@@ -91,7 +94,9 @@ class DREAM3DLib_EXPORT FindEuclideanDistMap : public AbstractFilter
   private:
     int32_t* m_GrainIds;
     int32_t* m_NearestNeighbors;
-    float* m_NearestNeighborDistances;
+    float* m_GBEuclideanDistances;
+    float* m_TJEuclideanDistances;
+    float* m_QPEuclideanDistances;
 
 	  void dataCheck(bool preflight, size_t voxels, size_t fields, size_t ensembles);
 

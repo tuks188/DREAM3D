@@ -36,9 +36,13 @@
 #ifndef _StructArray_H_
 #define _StructArray_H_
 
+#include <string>
+
 #include "DREAM3DLib/DREAM3DLib.h"
 #include "DREAM3DLib/Common/DREAM3DSetGetMacros.h"
+#include "DREAM3DLib/Common/IDataArrayFilter.h"
 #include "DREAM3DLib/Common/IDataArray.h"
+
 
 template<typename T>
 class StructArray : public IDataArray
@@ -94,6 +98,37 @@ class StructArray : public IDataArray
         _deallocate();
       }
     }
+
+    /**
+     * @brief GetTypeName Returns a string representation of the type of data that is stored by this class. This
+     * can be a primitive like char, float, int or the name of a class.
+     * @return
+     */
+    void GetXdmfTypeAndSize(std::string &xdmfTypeName, int &precision)
+    {
+      xdmfTypeName = getNameOfClass();
+      precision = 0;
+    }
+
+    /**
+     * @brief getTypeAsString
+     * @return
+     */
+    virtual std::string getTypeAsString(){ return "struct"; }
+
+        /**
+    * @brief Returns the HDF Type for a given primitive value.
+     * @param value A value to use. Can be anything. Just used to get the type info
+     * from
+     * @return The HDF5 native type for the value
+     */
+    virtual std::string getFullNameOfClass()
+    {
+      std::string theType = getTypeAsString();
+      theType = "StrucArray<" + theType + ">";
+      return theType;
+    }
+
 
     /**
      * @brief Gives this array a human readable name
@@ -488,7 +523,6 @@ class StructArray : public IDataArray
     {
       assert(false);
       return -1;
-      //   return H5StructArrayWriter<T>::writeArray(parentId, GetName(), GetNumberOfTuples(), GetNumberOfComponents(), Array, getFullNameOfClass());
     }
 
     /**
@@ -500,18 +534,6 @@ class StructArray : public IDataArray
     {
       assert(false);
       int err = -1;
-
-      //      this->Resize(0);
-      //      IStructArray::Pointer p = H5StructArrayReader::readIStructArray(parentId, GetName());
-      //      if (p.get() == NULL)
-      //      {
-      //        return -1;
-      //      }
-      //      this->NumberOfComponents = p->GetNumberOfComponents();
-      //      this->Size = p->GetSize();
-      //      this->MaxId = (Size == 0) ? 0 : Size -1;
-      //      this->Array = reinterpret_cast<T*>(p->GetVoidPointer(0));
-      //      p->releaseOwnership();
 
       return err;
     }
@@ -526,6 +548,7 @@ class StructArray : public IDataArray
       assert(i < Size);
       return Array[i];
     }
+
 
   protected:
     /**
@@ -662,7 +685,6 @@ class StructArray : public IDataArray
 
       return this->Array;
     }
-
 
   private:
 

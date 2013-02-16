@@ -191,11 +191,10 @@ macro(ADD_DREAM3D_FILTER filterGroup filterName filterDocFile filterDocImages pu
             endif()
         endif()
 
-
-        file(APPEND ${CodeGeneratorFile} "createHeaderFile<${filterName}>(\"${filterGroup}\", \"${filterName}\");\n")
-        file(APPEND ${CodeGeneratorFile} "createSourceFile<${filterName}>(\"${filterGroup}\", \"${filterName}\");\n")
-        file(APPEND ${CodeGeneratorFile} "createHTMLFile<${filterName}>(\"${filterGroup}\", \"${filterName}\");\n")
-
+        file(APPEND ${CodeGeneratorFile} "  ${filterName}::Pointer _${filterName} = ${filterName}::New();\n")
+        file(APPEND ${CodeGeneratorFile} "  createHeaderFile(\"${filterGroup}\", \"${filterName}\", _${filterName}->getFilterParameters());\n")
+        file(APPEND ${CodeGeneratorFile} "  createSourceFile(\"${filterGroup}\", \"${filterName}\", _${filterName}->getFilterParameters());\n")
+        file(APPEND ${CodeGeneratorFile} "  createHTMLFile(\"${filterGroup}\", \"${filterName}\", _${filterName}.get());\n\n")
 
         file(APPEND ${AllFilterWidgetsHeaderFile} "#include \"FilterWidgets/${filterGroup}Widgets/Q${filterName}Widget.h\"\n")
 
@@ -219,8 +218,8 @@ include(${DREAM3DLib_SOURCE_DIR}/ProcessingFilters/SourceList.cmake)
 include(${DREAM3DLib_SOURCE_DIR}/ReconstructionFilters/SourceList.cmake)
 include(${DREAM3DLib_SOURCE_DIR}/SamplingFilters/SourceList.cmake)
 include(${DREAM3DLib_SOURCE_DIR}/StatisticsFilters/SourceList.cmake)
-include(${DREAM3DLib_SOURCE_DIR}/SurfaceMeshFilters/SourceList.cmake)
-include(${DREAM3DLib_SOURCE_DIR}/SyntheticBuilderFilters/SourceList.cmake)
+include(${DREAM3DLib_SOURCE_DIR}/SurfaceMeshingFilters/SourceList.cmake)
+include(${DREAM3DLib_SOURCE_DIR}/SyntheticBuildingFilters/SourceList.cmake)
 
 #-----------------------------------------------------
 # Close up all the files that we just generated
@@ -242,10 +241,9 @@ include_directories( ${HDF5_INCLUDE_DIR} )
 include_directories( ${PROJECT_CODE_DIR} )
 include_directories( ${DREAM3DLib_BINARY_DIR} )
 
-
 #-- Add a library for the DREAM3DLib Code
 add_library(${PROJECT_NAME} ${LIB_TYPE} ${Project_SRCS} )
-target_link_libraries(${PROJECT_NAME} MXA EbsdLib ${TBB_LIBRARIES} ${VXL_LIBRARIES} )
+target_link_libraries(${PROJECT_NAME} MXA EbsdLib ${TBB_LIBRARIES})
 LibraryProperties( ${PROJECT_NAME} ${EXE_DEBUG_EXTENSION} )
 
 set(install_dir "tools")

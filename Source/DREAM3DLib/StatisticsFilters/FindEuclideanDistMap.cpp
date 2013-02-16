@@ -39,7 +39,7 @@
 #include "DREAM3DLib/Common/DREAM3DMath.h"
 #include "DREAM3DLib/Common/Constants.h"
 
-#if DREAM3D_USE_PARALLEL_ALGORITHMS
+#ifdef DREAM3D_USE_PARALLEL_ALGORITHMS
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
 #include <tbb/atomic.h>
@@ -53,19 +53,18 @@
 class FindEuclideanMap
 {
     VoxelDataContainer* m;
-    int loop;
+    int mapType;
 
   public:
     /**
      * @brief
      * @param datacontainer
      */
-    FindEuclideanMap(VoxelDataContainer* datacontainer, int l) :
+    FindEuclideanMap(VoxelDataContainer* datacontainer, int type) :
     m(datacontainer),
-    loop(l)
+    mapType(type)
     {
     }
-
     virtual ~FindEuclideanMap()
     {
     }
@@ -75,9 +74,11 @@ class FindEuclideanMap
       // std::cout << "  FindEuclideanMap: Loop = " << loop << std::endl;
       int64_t totalPoints = m->getTotalPoints();
       GET_NAMED_ARRAY_SIZE_CHK_NOMSG(m, Cell, DREAM3D::CellData::NearestNeighbors, Int32ArrayType, int32_t, (totalPoints*3), m_NearestNeighbors);
-      GET_NAMED_ARRAY_SIZE_CHK_NOMSG(m, Cell, DREAM3D::CellData::NearestNeighborDistances, FloatArrayType, float, (totalPoints*3), m_NearestNeighborDistances);
+	  GET_NAMED_ARRAY_SIZE_CHK_NOMSG(m, Cell, DREAM3D::CellData::GBEuclideanDistances, FloatArrayType, float, totalPoints, m_GBEuclideanDistances);
+	  GET_NAMED_ARRAY_SIZE_CHK_NOMSG(m, Cell, DREAM3D::CellData::TJEuclideanDistances, FloatArrayType, float, totalPoints, m_TJEuclideanDistances);
+	  GET_NAMED_ARRAY_SIZE_CHK_NOMSG(m, Cell, DREAM3D::CellData::QPEuclideanDistances, FloatArrayType, float, totalPoints, m_QPEuclideanDistances);
 
-      int nearestneighbordistance = 0;
+      int euclideanDistance = 0;
       int count = 1;
 //      int good = 1;
 //      double x, y, z;
@@ -98,12 +99,14 @@ class FindEuclideanMap
       neighbors[4] = xpoints;
       neighbors[5] = xpoints * ypoints;
       int* voxel_NearestNeighbor = new int[totalPoints];
-      double* voxel_NearestNeighborDistance = new double[totalPoints];
-      nearestneighbordistance = 0;
+      double* voxel_EuclideanDistance = new double[totalPoints];
+      euclideanDistance = 0;
       for (int a = 0; a < (totalPoints); ++a)
       {
-        voxel_NearestNeighbor[a] = m_NearestNeighbors[a * 3 + loop];
-        voxel_NearestNeighborDistance[a] = m_NearestNeighborDistances[a * 3 + loop];
+        voxel_NearestNeighbor[a] = m_NearestNeighbors[a * 3 + mapType];
+        if(mapType == 0) voxel_EuclideanDistance[a] = m_GBEuclideanDistances[a];
+        else if(mapType == 1) voxel_EuclideanDistance[a] = m_TJEuclideanDistances[a];
+        else if(mapType == 2) voxel_EuclideanDistance[a] = m_QPEuclideanDistances[a];
       }
       count = 1;
       int i;
@@ -112,7 +115,7 @@ class FindEuclideanMap
       while (count != 0)
       {
         count = 0;
-        nearestneighbordistance++;
+        euclideanDistance++;
 
         for (int z = 0; z < zpoints; ++z)
         {
@@ -159,7 +162,7 @@ class FindEuclideanMap
                   neighpoint = i + neighbors[j];
                   if(mask[j] == 1)
                   {
-                    if(voxel_NearestNeighborDistance[neighpoint] != -1.0)
+                    if(voxel_EuclideanDistance[neighpoint] != -1.0)
                     {
                       voxel_NearestNeighbor[i] = voxel_NearestNeighbor[neighpoint];
                     }
@@ -171,9 +174,9 @@ class FindEuclideanMap
         }
         for (int j = 0; j < (totalPoints); ++j)
         {
-          if(voxel_NearestNeighbor[j] != -1 && voxel_NearestNeighborDistance[j] == -1)
+          if(voxel_NearestNeighbor[j] != -1 && voxel_EuclideanDistance[j] == -1)
           {
-            voxel_NearestNeighborDistance[j] = nearestneighbordistance;
+            voxel_EuclideanDistance[j] = euclideanDistance;
           }
         }
       }
@@ -190,15 +193,17 @@ class FindEuclideanMap
         z2 = resz * double(nearestneighbor / (xpoints * ypoints)); // find_zcoord(nearestneighbor);
         dist = ((x1 - x2) * (x1 - x2)) + ((y1 - y2) * (y1 - y2)) + ((z1 - z2) * (z1 - z2));
         dist = sqrt(dist);
-        voxel_NearestNeighborDistance[j] = dist + (0.5 * resx);
+//        voxel_EuclideanDistance[j] = dist + (0.5 * resx);
       }
       for (int a = 0; a < (totalPoints); ++a)
       {
-        m_NearestNeighbors[a * 3 + loop] = voxel_NearestNeighbor[a];
-        m_NearestNeighborDistances[a * 3 + loop] = static_cast<float>(voxel_NearestNeighborDistance[a]);
+        m_NearestNeighbors[a * 3 + mapType] = voxel_NearestNeighbor[a];
+        if(mapType == 0) m_GBEuclideanDistances[a] = static_cast<float>(voxel_EuclideanDistance[a]);
+        else if(mapType == 1) m_TJEuclideanDistances[a] = static_cast<float>(voxel_EuclideanDistance[a]);
+        else if(mapType == 2) m_QPEuclideanDistances[a] = static_cast<float>(voxel_EuclideanDistance[a]);
       }
       delete[] voxel_NearestNeighbor;
-      delete[] voxel_NearestNeighborDistance;
+      delete[] voxel_EuclideanDistance;
     }
 
 };
@@ -210,11 +215,15 @@ class FindEuclideanMap
 FindEuclideanDistMap::FindEuclideanDistMap() :
 AbstractFilter(),
 m_GrainIdsArrayName(DREAM3D::CellData::GrainIds),
-m_NearestNeighborDistancesArrayName(DREAM3D::CellData::NearestNeighborDistances),
+m_GBEuclideanDistancesArrayName(DREAM3D::CellData::GBEuclideanDistances),
+m_TJEuclideanDistancesArrayName(DREAM3D::CellData::TJEuclideanDistances),
+m_QPEuclideanDistancesArrayName(DREAM3D::CellData::QPEuclideanDistances),
 m_NearestNeighborsArrayName(DREAM3D::CellData::NearestNeighbors),
 m_GrainIds(NULL),
 m_NearestNeighbors(NULL),
-m_NearestNeighborDistances(NULL)
+m_GBEuclideanDistances(NULL),
+m_TJEuclideanDistances(NULL),
+m_QPEuclideanDistances(NULL)
 {
 }
 
@@ -225,6 +234,15 @@ FindEuclideanDistMap::~FindEuclideanDistMap()
 {
 }
 
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void FindEuclideanDistMap::setupFilterParameters()
+{
+}
+
+// -----------------------------------------------------------------------------
+//
 // -----------------------------------------------------------------------------
 void FindEuclideanDistMap::writeFilterParameters(AbstractFilterParametersWriter* writer)
 {
@@ -241,7 +259,9 @@ void FindEuclideanDistMap::dataCheck(bool preflight, size_t voxels, size_t field
   GET_PREREQ_DATA(m, DREAM3D, CellData, GrainIds, ss, -300, int32_t, Int32ArrayType, voxels, 1)
 
   CREATE_NON_PREREQ_DATA(m, DREAM3D, CellData, NearestNeighbors, ss, int32_t, Int32ArrayType, 0, voxels, 3)
-  CREATE_NON_PREREQ_DATA(m, DREAM3D, CellData, NearestNeighborDistances, ss, float, FloatArrayType, 0, voxels, 3)
+  CREATE_NON_PREREQ_DATA(m, DREAM3D, CellData, GBEuclideanDistances, ss, float, FloatArrayType, 0, voxels, 1)
+  CREATE_NON_PREREQ_DATA(m, DREAM3D, CellData, TJEuclideanDistances, ss, float, FloatArrayType, 0, voxels, 1)
+  CREATE_NON_PREREQ_DATA(m, DREAM3D, CellData, QPEuclideanDistances, ss, float, FloatArrayType, 0, voxels, 1)
 }
 
 // -----------------------------------------------------------------------------
@@ -289,7 +309,12 @@ void FindEuclideanDistMap::find_euclideandistmap()
   for (int i = 0; i < totalPoints*3; i++)
   {
     m_NearestNeighbors[i] = -1;
-    m_NearestNeighborDistances[i] = -1;
+    if(i < totalPoints)
+	{
+		m_GBEuclideanDistances[i] = -1;
+		m_TJEuclideanDistances[i] = -1;
+		m_QPEuclideanDistances[i] = -1;
+	}
   }
 
   size_t column, row, plane;
@@ -354,12 +379,12 @@ void FindEuclideanDistMap::find_euclideandistmap()
 		}
 	  }
 	}
-	if(coordination.size() > 2) m_NearestNeighborDistances[a*3+0] = 0, m_NearestNeighborDistances[a*3+1] = 0, m_NearestNeighborDistances[a*3+2] = 0, m_NearestNeighbors[a*3+0] = coordination[0], m_NearestNeighbors[a*3+1] = coordination[0], m_NearestNeighbors[a*3+2] = coordination[0];
-	if(coordination.size() == 2) m_NearestNeighborDistances[a*3+0] = 0, m_NearestNeighborDistances[a*3+1] = 0, m_NearestNeighborDistances[a*3+2] = -1, m_NearestNeighbors[a*3+0] = coordination[0], m_NearestNeighbors[a*3+1] = coordination[0], m_NearestNeighbors[a*3+2] = -1;
-	if(coordination.size() == 1) m_NearestNeighborDistances[a*3+0] = 0, m_NearestNeighborDistances[a*3+1] = -1, m_NearestNeighborDistances[a*3+2] = -1, m_NearestNeighbors[a*3+0] = coordination[0], m_NearestNeighbors[a*3+1] = -1, m_NearestNeighbors[a*3+2] = -1;
-	if(coordination.size() == 0) m_NearestNeighborDistances[a*3+0] = -1, m_NearestNeighborDistances[a*3+1] = -1, m_NearestNeighborDistances[a*3+2] = -1, m_NearestNeighbors[a*3+0] = -1, m_NearestNeighbors[a*3+1] = -1, m_NearestNeighbors[a*3+2] = -1;
+	if(coordination.size() == 0) m_NearestNeighbors[a*3+0] = -1, m_NearestNeighbors[a*3+1] = -1, m_NearestNeighbors[a*3+2] = -1;
+	if(coordination.size() >= 1) m_GBEuclideanDistances[a] = 0, m_NearestNeighbors[a*3+0] = coordination[0], m_NearestNeighbors[a*3+1] = -1, m_NearestNeighbors[a*3+2] = -1;
+	if(coordination.size() >= 2) m_TJEuclideanDistances[a] = 0, m_NearestNeighbors[a*3+0] = coordination[0], m_NearestNeighbors[a*3+1] = coordination[0], m_NearestNeighbors[a*3+2] = -1;
+	if(coordination.size() > 2) m_QPEuclideanDistances[a] = 0, m_NearestNeighbors[a*3+0] = coordination[0], m_NearestNeighbors[a*3+1] = coordination[0], m_NearestNeighbors[a*3+2] = coordination[0];
  }
-#if DREAM3D_USE_PARALLEL_ALGORITHMS
+#ifdef DREAM3D_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   tbb::task_group* g = new tbb::task_group;
   g->run(FindEuclideanMap(m, 0));
@@ -368,10 +393,10 @@ void FindEuclideanDistMap::find_euclideandistmap()
   g->wait();
   delete g;
 #else
-  for (int loop = 0; loop < 3; loop++)
+  for(int i=0;i<3;i++)
   {
-    FindEuclideanMap f(m, loop);
-    f();
+		FindEuclideanMap f(m, i);
+	    f();
   }
 #endif
 }

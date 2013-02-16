@@ -46,9 +46,11 @@
 
 #include "DREAM3DLib/DREAM3DLib.h"
 #include "DREAM3DLib/Common/DREAM3DSetGetMacros.h"
+#include "DREAM3DLib/Common/IDataArrayFilter.h"
 #include "DREAM3DLib/Common/IDataArray.h"
 #include "DREAM3DLib/HDF5/H5DataArrayWriter.hpp"
 #include "DREAM3DLib/HDF5/H5DataArrayReader.h"
+
 
 #define mxa_bswap(s,d,t)\
   t[0] = ptr[s];\
@@ -86,6 +88,34 @@ class DataArray : public IDataArray
     typedef std::vector<Pointer>   ContainterType;
 
     /**
+     * @brief GetTypeName Returns a string representation of the type of data that is stored by this class. This
+     * can be a primitive like char, float, int or the name of a class.
+     * @return
+     */
+    void GetXdmfTypeAndSize(std::string &xdmfTypeName, int &precision)
+    {
+      T value = 0x00;
+      xdmfTypeName = "UNKNOWN";
+      precision = 0;
+      if (typeid(value) == typeid(int8_t)) { xdmfTypeName = "Char"; precision = 1;}
+      if (typeid(value) == typeid(uint8_t)) { xdmfTypeName = "UChar"; precision = 1;}
+
+      if (typeid(value) == typeid(int16_t)) { xdmfTypeName = "16 BIT NOT SUPPORTED BY XDMF"; precision = 0;}
+      if (typeid(value) == typeid(uint16_t)) { xdmfTypeName = "16 BIT NOT SUPPORTED BY XDMF"; precision = 0;}
+
+      if (typeid(value) == typeid(int32_t)) { xdmfTypeName = "Int"; precision = 4;}
+      if (typeid(value) == typeid(uint32_t)) { xdmfTypeName = "UInt"; precision = 4;}
+
+      if (typeid(value) == typeid(int64_t)) { xdmfTypeName = "Int"; precision = 8;}
+      if (typeid(value) == typeid(uint64_t)) { xdmfTypeName = "UInt"; precision = 8;}
+
+      if (typeid(value) == typeid(float)) { xdmfTypeName = "Float"; precision = 4;}
+      if (typeid(value) == typeid(double)) { xdmfTypeName = "Float"; precision = 8;}
+
+      if (typeid(value) == typeid(bool)) { xdmfTypeName = "uchar"; precision = 1;}
+    }
+
+    /**
      * @brief Static constructor
      * @param numElements The number of elements in the internal array.
      * @param name The name of the array
@@ -108,7 +138,7 @@ class DataArray : public IDataArray
       return ptr;
     }
 
-     /**
+    /**
      * @brief Static constructor
      * @param numTuples The number of tuples in the array.
      * @param numComponents The number of Components in each Tuple
@@ -117,6 +147,7 @@ class DataArray : public IDataArray
      */
     static Pointer CreateArray(size_t numTuples, int numComponents, const std::string &name)
     {
+
       DataArray<T>* d = new DataArray<T> (numTuples, numComponents, true);
       if (d->Allocate() < 0)
       { // Could not allocate enough memory, reset the pointer to null and return
@@ -128,7 +159,7 @@ class DataArray : public IDataArray
       return ptr;
     }
 
-     /**
+    /**
      * @brief Static Method to create a DataArray from a std::vector through a deep copy of the data
      * contained in the vector. The number of components will be set to 1.
      * @param vec The vector to copy the data from
@@ -136,13 +167,13 @@ class DataArray : public IDataArray
      * @return Boost::Shared_Ptr wrapping an instance of DataArrayTemplate<T>
      */
     static Pointer FromStdVector(std::vector<T> &vec, const std::string &name)
-     {
-       Pointer p = CreateArray(vec.size(), name);
-       ::memcpy(p->GetPointer(0), &(vec.front()), vec.size() * sizeof(T));
-       return p;
-     }
+    {
+      Pointer p = CreateArray(vec.size(), name);
+      ::memcpy(p->GetPointer(0), &(vec.front()), vec.size() * sizeof(T));
+      return p;
+    }
 
-     /**
+    /**
      * @brief Static Method to create a DataArray from a std::vector through a deep copy of the data
      * contained in the vector. The number of components will be set to 1.
      * @param vec The vector to copy the data from
@@ -171,7 +202,7 @@ class DataArray : public IDataArray
      * @brief Gives this array a human readable name
      * @param name The name of this array
      */
-    void SetName(const std::string &name)
+    virtual void SetName(const std::string &name)
     {
       m_Name = name;
     }
@@ -180,7 +211,7 @@ class DataArray : public IDataArray
      * @brief Returns the human readable name of this array
      * @return
      */
-    std::string GetName()
+    virtual std::string GetName()
     {
       return m_Name;
     }
@@ -207,7 +238,7 @@ class DataArray : public IDataArray
      * @brief Allocates the memory needed for this class
      * @return 1 on success, -1 on failure
      */
-    int32_t Allocate()
+    virtual int32_t Allocate()
     {
       if ((NULL != this->Array) && (true == this->_ownsData))
       {
@@ -238,7 +269,7 @@ class DataArray : public IDataArray
       return 1;
     }
 
-   /**
+    /**
     * @brief Get the address of a particular data index. Make sure data is allocated
     * for the number of items requested. Set MaxId according to the number of
     * data values requested. For example if you want to ensure that you have enough
@@ -251,20 +282,20 @@ class DataArray : public IDataArray
     * @param number The number of elements to ensure memory allocation
     * @return
     */
-    T* WritePointer(size_t id, size_t number)
+    virtual T* WritePointer(size_t id, size_t number)
     {
-        size_t newSize=id+number;
+      size_t newSize=id+number;
       if ( newSize > this->Size )
-        {
+      {
         if (this->ResizeAndExtend(newSize)==0)
-          {
-          return 0;
-          }
-        }
-      if ( (--newSize) > this->MaxId )
         {
-        this->MaxId = newSize-1;
+          return 0;
         }
+      }
+      if ( (--newSize) > this->MaxId )
+      {
+        this->MaxId = newSize-1;
+      }
 
       return this->Array + id;
     }
@@ -282,13 +313,13 @@ class DataArray : public IDataArray
       this->Size = 0;
       this->_ownsData = true;
       this->MaxId = 0;
-   //   this->_dims[0] = _nElements;
+      //   this->_dims[0] = _nElements;
     }
 
     /**
      * @brief Sets all the values to value.
      */
-    void initializeWithValues(T value)
+    virtual void initializeWithValues(T value)
     {
       for (size_t i = 0; i < this->Size; i++)
       {
@@ -305,7 +336,7 @@ class DataArray : public IDataArray
       ::memset(this->Array, 0, this->Size * typeSize);
     }
 
-  /**
+    /**
      * @brief Removes Tuples from the Array
      * @param idxs The indices to remove
      * @return
@@ -415,8 +446,8 @@ class DataArray : public IDataArray
     {
       size_t max =  ((this->MaxId + 1)/this->NumberOfComponents);
       if (currentPos >= max
-        || newPos >= max )
-        {return -1;}
+          || newPos >= max )
+      {return -1;}
       T* src = this->Array + (currentPos * NumberOfComponents);
       T* dest = this->Array + (newPos * NumberOfComponents);
       size_t bytes = sizeof(T) * NumberOfComponents;
@@ -436,6 +467,7 @@ class DataArray : public IDataArray
       return sizeof(T);
     }
 
+
     /**
      * @brief Returns the number of elements in the internal array.
      */
@@ -453,12 +485,12 @@ class DataArray : public IDataArray
     // Description:
     // Set/Get the dimension (n) of the components. Must be >= 1. Make sure that
     // this is set before allocation.
-    void SetNumberOfComponents(int nc)
+    virtual void SetNumberOfComponents(int nc)
     {
       if(nc > 0) this->NumberOfComponents = nc;
     }
 
-    int GetNumberOfComponents()
+    virtual int GetNumberOfComponents()
     {
       return this->NumberOfComponents;
     }
@@ -583,15 +615,16 @@ class DataArray : public IDataArray
 
     virtual void printTuple(std::ostream &out, size_t i, char delimiter = ',')
     {
-        for(int j = 0; j < NumberOfComponents; ++j)
-        {
-          if (j != 0) { out << delimiter; }
-          out << Array[i*NumberOfComponents + j];
-        }
+      for(int j = 0; j < NumberOfComponents; ++j)
+      {
+        if (j != 0) { out << delimiter; }
+        out << Array[i*NumberOfComponents + j];
+      }
     }
+
     virtual void printComponent(std::ostream &out, size_t i, int j)
     {
-        out << Array[i*NumberOfComponents + j];
+      out << Array[i*NumberOfComponents + j];
     }
 
     /**
@@ -602,65 +635,77 @@ class DataArray : public IDataArray
      */
     std::string getFullNameOfClass()
     {
+      std::string theType = getTypeAsString();
+      theType = "DataArray<" + theType + ">";
+      return theType;
+    }
+
+    /**
+     * @brief getTypeAsString
+     * @return
+     */
+    std::string getTypeAsString()
+    {
       T value = static_cast<T>(0);
-      if (typeid(value) == typeid(float)) return "DataArray<float>";
-      if (typeid(value) == typeid(double)) return "DataArray<double>";
+      if (typeid(value) == typeid(float)) return "float";
+      if (typeid(value) == typeid(double)) return "double";
 
-      if (typeid(value) == typeid(int8_t)) return "DataArray<int8_t>";
-      if (typeid(value) == typeid(uint8_t)) return "DataArray<uint8_t>";
-    # if CMP_TYPE_CHAR_IS_SIGNED
-      if (typeid(value) == typeid(char)) return "DataArray<char>";
-    #else
-      if (typeid(value) == typeid(char)) return "DataArray<char>";
-    #endif
-      if (typeid(value) == typeid(signed char)) return "DataArray<signed char>";
-      if (typeid(value) == typeid(unsigned char)) return "DataArray<unsigned char>";
-
-
-      if (typeid(value) == typeid(int16_t)) return "DataArray<int16_t>";
-      if (typeid(value) == typeid(short)) return "DataArray<short>";
-      if (typeid(value) == typeid(signed short)) return "DataArray<signed short>";
-      if (typeid(value) == typeid(uint16_t)) return "DataArray<uint16_t>";
-      if (typeid(value) == typeid(unsigned short)) return "DataArray<unsigned short>";
+      if (typeid(value) == typeid(int8_t)) return "int8_t";
+      if (typeid(value) == typeid(uint8_t)) return "uint8_t";
+# if CMP_TYPE_CHAR_IS_SIGNED
+      if (typeid(value) == typeid(char)) return "char";
+#else
+      if (typeid(value) == typeid(char)) return "char";
+#endif
+      if (typeid(value) == typeid(signed char)) return "signed char";
+      if (typeid(value) == typeid(unsigned char)) return "unsigned char";
 
 
-      if (typeid(value) == typeid(int32_t)) return "DataArray<int32_t>";
-      if (typeid(value) == typeid(uint32_t)) return "DataArray<uint32_t>";
-    #if (CMP_SIZEOF_INT == 4)
-      if (typeid(value) == typeid(int)) return "DataArray<int>";
-      if (typeid(value) == typeid(signed int)) return "DataArray<signed int>";
-      if (typeid(value) == typeid(unsigned int)) return "DataArray<unsigned int>";
-    #endif
+      if (typeid(value) == typeid(int16_t)) return "int16_t";
+      if (typeid(value) == typeid(short)) return "short";
+      if (typeid(value) == typeid(signed short)) return "signed short";
+      if (typeid(value) == typeid(uint16_t)) return "uint16_t";
+      if (typeid(value) == typeid(unsigned short)) return "unsigned short";
 
 
-    #if (CMP_SIZEOF_LONG == 4)
-      if (typeid(value) == typeid(long int)) return "DataArray<long int>";
-      if (typeid(value) == typeid(signed long int)) return "DataArray<signed long int>";
-      if (typeid(value) == typeid(unsigned long int)) return "DataArray<unsigned long int>";
-    #elif (CMP_SIZEOF_LONG == 8)
-      if (typeid(value) == typeid(long int)) return "DataArray<long int>";
-      if (typeid(value) == typeid(signed long int)) return "DataArray<signed long int>";
-      if (typeid(value) == typeid(unsigned long int)) return "DataArray<unsigned long int>";
-    #endif
+      if (typeid(value) == typeid(int32_t)) return "int32_t";
+      if (typeid(value) == typeid(uint32_t)) return "uint32_t";
+#if (CMP_SIZEOF_INT == 4)
+      if (typeid(value) == typeid(int)) return "int";
+      if (typeid(value) == typeid(signed int)) return "signed int";
+      if (typeid(value) == typeid(unsigned int)) return "unsigned int";
+#endif
 
 
-    #if (CMP_SIZEOF_LONG_LONG == 8)
-      if (typeid(value) == typeid(long long int)) return "DataArray<long long int>";
-      if (typeid(value) == typeid(signed long long int)) return "DataArray<signed long long int>";
-      if (typeid(value) == typeid(unsigned long long int)) return "DataArray<unsigned long long int>";
-    #endif
-      if (typeid(value) == typeid(int64_t)) return "DataArray<int64_t>";
-      if (typeid(value) == typeid(uint64_t)) return "DataArray<uint64_t>";
+#if (CMP_SIZEOF_LONG == 4)
+      if (typeid(value) == typeid(long int)) return "long int";
+      if (typeid(value) == typeid(signed long int)) return "signed long int";
+      if (typeid(value) == typeid(unsigned long int)) return "unsigned long int";
+#elif (CMP_SIZEOF_LONG == 8)
+      if (typeid(value) == typeid(long int)) return "long int";
+      if (typeid(value) == typeid(signed long int)) return "signed long int";
+      if (typeid(value) == typeid(unsigned long int)) return "unsigned long int";
+#endif
 
-      if (typeid(value) == typeid(bool)) return "DataArray<bool>";
 
-     // std::cout  << "Error: HDFTypeForPrimitive - Unknown Type: " << (typeid(value).name()) << std::endl;
+#if (CMP_SIZEOF_LONG_LONG == 8)
+      if (typeid(value) == typeid(long long int)) return "long long int";
+      if (typeid(value) == typeid(signed long long int)) return "signed long long int";
+      if (typeid(value) == typeid(unsigned long long int)) return "unsigned long long int";
+#endif
+      if (typeid(value) == typeid(int64_t)) return "int64_t";
+      if (typeid(value) == typeid(uint64_t)) return "uint64_t";
+
+      if (typeid(value) == typeid(bool)) return "bool";
+
+      // std::cout  << "Error: HDFTypeForPrimitive - Unknown Type: " << (typeid(value).name()) << std::endl;
       const char* name = typeid(value).name();
       if (NULL != name && name[0] == 'l' ) {
         std::cout << "You are using 'long int' as a type which is not 32/64 bit safe. Suggest you use one of the H5SupportTypes defined in <Common/H5SupportTypes.h> such as int32_t or uint32_t." << std::endl;
       }
-      return "DataArray<UnknownType>";
+      return "UnknownType";
     }
+
 
     /**
      *
@@ -695,7 +740,6 @@ class DataArray : public IDataArray
 
       return err;
     }
-
 
     /**
      * @brief
@@ -743,7 +787,7 @@ class DataArray : public IDataArray
     {
       NumberOfComponents = 1;
       MaxId = (Size > 0) ? Size - 1: Size;
-    //  MUD_FLAP_0 = MUD_FLAP_1 = MUD_FLAP_2 = MUD_FLAP_3 = MUD_FLAP_4 = MUD_FLAP_5 = 0xABABABABABABABABul;
+      //  MUD_FLAP_0 = MUD_FLAP_1 = MUD_FLAP_2 = MUD_FLAP_3 = MUD_FLAP_4 = MUD_FLAP_5 = 0xABABABABABABABABul;
     }
 
     /**
@@ -759,7 +803,7 @@ class DataArray : public IDataArray
       NumberOfComponents = numComponents;
       Size = numTuples * numComponents;
       MaxId = (Size > 0) ? Size - 1: Size;
-    //  MUD_FLAP_0 = MUD_FLAP_1 = MUD_FLAP_2 = MUD_FLAP_3 = MUD_FLAP_4 = MUD_FLAP_5 = 0xABABABABABABABABul;
+      //  MUD_FLAP_0 = MUD_FLAP_1 = MUD_FLAP_2 = MUD_FLAP_3 = MUD_FLAP_4 = MUD_FLAP_5 = 0xABABABABABABABABul;
     }
     /**
      * @brief deallocates the memory block
@@ -774,11 +818,11 @@ class DataArray : public IDataArray
       if (sizeof(T) >= 8 && Size > 0) { cptr[4] = 0xAB; cptr[5] = 0xAB; cptr[6] = 0xAB; cptr[7] = 0xAB;}
 #if 0
       if (MUD_FLAP_0 != 0xABABABABABABABABul
-        || MUD_FLAP_1 != 0xABABABABABABABABul
-        || MUD_FLAP_2 != 0xABABABABABABABABul
-        || MUD_FLAP_3 != 0xABABABABABABABABul
-        || MUD_FLAP_4 != 0xABABABABABABABABul
-        || MUD_FLAP_5 != 0xABABABABABABABABul)
+          || MUD_FLAP_1 != 0xABABABABABABABABul
+          || MUD_FLAP_2 != 0xABABABABABABABABul
+          || MUD_FLAP_3 != 0xABABABABABABABABul
+          || MUD_FLAP_4 != 0xABABABABABABABABul
+          || MUD_FLAP_5 != 0xABABABABABABABABul)
       {
         assert(false);
       }
@@ -825,9 +869,9 @@ class DataArray : public IDataArray
       // is a very serious problem and causes huge amount of memory to be
       // wasted. Do not use realloc on the Mac.
       bool dontUseRealloc=false;
-      #if defined __APPLE__
+#if defined __APPLE__
       dontUseRealloc=true;
-      #endif
+#endif
 
       // Allocate a new array if we DO NOT own the current array
       if ((NULL != this->Array) && (false == this->_ownsData))
@@ -885,17 +929,17 @@ class DataArray : public IDataArray
 
   private:
 
-  //  unsigned long long int MUD_FLAP_0;
+    //  unsigned long long int MUD_FLAP_0;
     T* Array;
-  //  unsigned long long int MUD_FLAP_1;
+    //  unsigned long long int MUD_FLAP_1;
     size_t Size;
-  //  unsigned long long int MUD_FLAP_4;
+    //  unsigned long long int MUD_FLAP_4;
     bool _ownsData;
-  //  unsigned long long int MUD_FLAP_2;
+    //  unsigned long long int MUD_FLAP_2;
     size_t MaxId;
- //   unsigned long long int MUD_FLAP_3;
+    //   unsigned long long int MUD_FLAP_3;
     std::string m_Name;
-  //  unsigned long long int MUD_FLAP_5;
+    //  unsigned long long int MUD_FLAP_5;
 
     DataArray(const DataArray&); //Not Implemented
     void operator=(const DataArray&); //Not Implemented

@@ -71,14 +71,14 @@
  * target to destination. This is NOT just a simple pointer copy.
  */
 #define DEEP_COPY_SHARED_VECTOR(sharedPtr, obj, VType, m_msgType)\
-if (NULL != sharedPtr.get())\
+  if (NULL != sharedPtr.get())\
 {\
   sharedPtr = VType(static_cast<std::vector<m_msgType>*>(NULL));\
-}\
-if (NULL != obj->sharedPtr.get())\
+  }\
+  if (NULL != obj->sharedPtr.get())\
 {\
   sharedPtr = VType(new std::vector<m_msgType>(*(obj->sharedPtr.get())));\
-}
+  }
 
 
 // -----------------------------------------------------------------------------
@@ -96,8 +96,9 @@ namespace DREAM3D
     const std::string SamplingFilters("Sampling");
     const std::string StatisticsFilters("Statistics");
     const std::string CustomFilters("Custom");
-    const std::string SyntheticBuilderFilters("SyntheticBuilder");
-    const std::string SurfaceMeshingFilters("SurfaceMesh");
+    const std::string SyntheticBuildingFilters("SyntheticBuilding");
+    const std::string SurfaceMeshingFilters("SurfaceMeshing");
+    const std::string SolidMeshingFilters("SolidMeshing");
   }
 
   namespace CellData
@@ -105,39 +106,40 @@ namespace DREAM3D
     const std::string GrainIds("GrainIds");
     const std::string ParentIds("ParentIds");
     const std::string Phases("Phases");
+    const std::string CellPhases("Phases");
     const std::string BandContrast("BandContrast");
     const std::string EulerAngles("EulerAngles");
+    const std::string CellEulerAngles("CellEulerAngles");
     const std::string SurfaceVoxels("SurfaceVoxels");
     const std::string Quats("Quats");
     const std::string GoodVoxels("GoodVoxels");
     const std::string NearestNeighbors("NearestNeighbors");
-    const std::string NearestNeighborDistances("NearestNeighborDistances");
+    const std::string GBEuclideanDistances("GBEuclideanDistances");
+    const std::string TJEuclideanDistances("TJEuclideanDistances");
+    const std::string QPEuclideanDistances("QPEuclideanDistances");
     const std::string GrainReferenceMisorientations("GrainReferenceMisorientations");
     const std::string GrainReferenceRotations("GrainReferenceRotations");
     const std::string GrainReferenceCAxisMisorientations("GrainReferenceCAxisMisorientations");
-    const std::string GrainReferenceCAxisRotations("GrainReferenceCAxisRotations");
     const std::string KernelAverageMisorientations("KernelAverageMisorientations");
+    const std::string ImageQualityNoSpace("ImageQuality");
     const std::string ImageQuality("Image Quality");
+    const std::string ConfidenceIndexNoSpace("ConfidenceIndex");
+    const std::string ConfidenceIndex("Confidence Index");
     const std::string IPFColor("IPFColor");
+    const std::string GlobAlpha("GlobAlpha");
+    const std::string BC("BandContrasts");
 
-    const std::string SurfaceMeshNodes("SurfaceMeshNodes");
-    const std::string SurfaceMeshNodeType("SurfaceMeshNodeType");
-    const std::string SurfaceMeshTriangles("SurfaceMeshTriangles");
-    const std::string SurfaceMeshVoxels("SurfaceMeshVoxels");
-    const std::string SurfaceMeshVoxelCoords("SurfaceMeshVoxelCoords");
-    const std::string SurfaceMeshNeighbors("SurfaceMeshNeighbors");
-    const std::string SurfaceMeshFaces("SurfaceMeshFaces");
-    const std::string SurfaceMeshEdges("SurfaceMeshEdges");
-    const std::string SurfaceMeshUniqueEdges("SurfaceMeshUniqueEdges");
-    const std::string SurfaceMeshInternalEdges("SurfaceMeshInternalEdges");
-    const std::string SurfaceMeshTriangleEdges("SurfaceMeshTriangleEdges");
+    const std::string SolidMeshNodes("SolidMeshNodes");
+    const std::string SolidMeshTetrahedrons("SolidMeshTetrahedrons");
   }
 
   namespace FieldData
   {
     const std::string Active("Active");
     const std::string Phases("Phases");
+    const std::string FieldPhases("Phases");
     const std::string EulerAngles("EulerAngles");
+    const std::string FieldEulerAngles("EulerAngles");
     const std::string AxisEulerAngles("AxisEulerAngles");
     const std::string SurfaceFields("SurfaceFields");
     const std::string BiasedFields("BiasedFields");
@@ -157,7 +159,7 @@ namespace DREAM3D
     const std::string Poles("Poles");
     const std::string Neighborhoods("Neighborhoods");
     const std::string GrainAvgMisorientations("GrainAvgMisorientations");
-	const std::string GrainAvgCAxisMisorientations("GrainAvgCAxisMisorientations");
+    const std::string GrainAvgCAxisMisorientations("GrainAvgCAxisMisorientations");
     const std::string KernelAvgMisorientations("KernelAvgMisorientations");
     const std::string NeighborList("NeighborList");
     const std::string SharedSurfaceAreaList("SharedSurfaceAreaList");
@@ -178,23 +180,71 @@ namespace DREAM3D
     const std::string MaterialName("MaterialName");
   }
 
+
+  namespace PointData
+  {
+    const std::string SurfaceMeshNodes("SurfaceMeshNodes");
+    const std::string SurfaceMeshNodeType("SurfaceMeshNodeType");
+    //  const std::string SurfaceMeshVoxelCoords("SurfaceMeshVoxelCoords");
+    //   const std::string SurfaceMeshNeighbors("SurfaceMeshNeighbors");
+    const std::string SurfaceMeshNodeNormals("SurfaceMeshNodeNormals");
+    const std::string SurfaceMeshNodeTriangles("SurfaceMeshNodeTriangles");
+  }
+
+  namespace FaceData
+  {
+    const std::string SurfaceMeshFaces("SurfaceMeshFaces");
+    const std::string SurfaceMeshTriangles("SurfaceMeshTriangles");
+    const std::string SurfaceMeshTriangleLabels("SurfaceMeshTriangleLabels");
+    const std::string SurfaceMeshVoxels("SurfaceMeshVoxels");
+    const std::string SurfaceMeshTriangleCentroids("SurfaceMeshTriangleCentroids");
+    const std::string SurfaceMeshTriangleNormals("SurfaceMeshTriangleNormals");
+    const std::string SurfaceMeshGrainFaceId("SurfaceMeshGrainFaceId");
+    const std::string SurfaceMeshGaussianCurvatures("SurfaceMeshGaussianCurvatures");
+    const std::string SurfaceMeshMeanCurvatures("SurfaceMeshMeanCurvatures");
+    const std::string SurfaceMeshPrincipalCurvature1("PrincipalCurvature1");
+    const std::string SurfaceMeshPrincipalCurvature2("PrincipalCurvature2");
+    const std::string SurfaceMeshPrincipalDirection1("PrincipalDirection1");
+    const std::string SurfaceMeshPrincipalDirection2("PrincipalDirection2");
+  }
+
+  namespace EdgeData
+  {
+    const std::string SurfaceMeshEdges("SurfaceMeshEdges");
+    const std::string SurfaceMeshUniqueEdges("SurfaceMeshUniqueEdges");
+    const std::string SurfaceMeshInternalEdges("SurfaceMeshInternalEdges");
+    const std::string SurfaceMeshTriangleEdges("SurfaceMeshTriangleEdges");
+    const std::string SurfaceMeshEdgeTriangles("SurfaceMeshEdgeTriangles");
+  }
+
+
   namespace HDF5
   {
-
+    const std::string FileVersionName("FileVersion");
+    const std::string FileVersion("4.0");
     const std::string DataContainerName("DataContainer");
+    const std::string VoxelDataContainerName("VoxelDataContainer");
+    const std::string SurfaceMeshDataContainerName("SurfaceMeshDataContainer");
+    const std::string SolidMeshDataContainerName("SolidMeshDataContainer");
     const std::string VoxelDataName("VoxelData");
     const std::string PipelineGroupName("Pipeline");
     const std::string ObjectType("ObjectType");
     const std::string NumComponents("NumComponents");
 
-  //  const std::string Grain_ID("Grain_ID");
-   // const std::string SchmidFactor ("SchmidFactor");
+    const std::string VerticesName("Vertices");
+    const std::string FacesName("Faces");
+    const std::string EdgesName("Edges");
+    const std::string MeshVertLinksName("MeshVertLinks");
+    const std::string MeshTriangleNeighborLists("MeshTriangleNeighborLists");
+
+    //  const std::string Grain_ID("Grain_ID");
+    // const std::string SchmidFactor ("SchmidFactor");
     const std::string Neighbor_Grain_ID_List( "Neighbor_Grain_ID_List");
     const std::string KernelAvgDisorientation( "KernelAvgDisorientation");
     const std::string GrainAvgDisorientation ("GrainAvgDisorientation");
-  //  const std::string ImageQuality( "ImageQuality");
+    //  const std::string ImageQuality( "ImageQuality");
 
-   // const std::string Phase("Phase");
+    // const std::string Phase("Phase");
 
     const std::string Statistics("Statistics");
     const std::string AxisOrientation("AxisOrientation");
@@ -403,7 +453,7 @@ namespace DREAM3D
   {
     namespace NodeType
     {
-      const int8_t Unused = -1;
+      const int8_t Unused = 0;
       const int8_t Default = 2;
       const int8_t TriplePoint = 3;
       const int8_t QuadPoint = 4;
@@ -411,36 +461,60 @@ namespace DREAM3D
       const int8_t SurfaceTriplePoint = 13;
       const int8_t SurfaceQuadPoint = 14;
     }
+    namespace NodeId
+    {
+      const int8_t Unused = -1;
+    }
   }
 
-  namespace VolumeMeshing {
-    /* Volume Meshing Related */
-    const std::string MeshFile("volumetric_mesh_v5_1.vtk");
-    const std::string MeshFile2("volumetric_mesh_v5_2.vtk");
+  namespace SolidMeshing {
+    /* Solid Meshing Related */
+    const std::string MeshFile("solid_mesh_v5_1.vtk");
+    const std::string MeshFile2("solid_mesh_v5_2.vtk");
     const std::string ElementQualityFile("element_quality_measures_v5.txt");
     const std::string VoxelsFile("voxels_v5.txt");
   }
+
+  namespace Comparison
+  {
+    namespace Strings
+    {
+      const std::string LessThan("<");
+      const std::string GreaterThan(">");
+      const std::string Equal("=");
+    }
+    enum Enumeration
+    {
+      Operator_LessThan = 0,
+      Operator_GreaterThan,
+      Operator_Equal,
+      Operator_Unknown
+    };
+
+  }
+
+
 }
 
 
 #if 0
-  const double Textures[15][3] =
-  {
-    { 0.610865,0.785398,0.0},
-    { 1.029744,0.645772,1.099557},
-    { 1.570796,0.610865,0.785398},
-    { 1.029744,0.506145,1.099557},
-    { 0.820305,0.645772,1.099557},
-    { 0.0,0.610865,0.785398},
-    { 0.0,0.785398,0.0},
-    { 0.0,0.0,0.0},
-    { 0.0,0.349066,0.0},
-    { 0.0,0.610865,0.0},
-    { 0.349066,0.0,0.0},
-    { 0.610865,0.0,0.0},
-    { 1.22173,0.785398,0.0},
-    { 0.959931,0.349066,0.0},
-    { 0.959931,1.308997,0.436332}};
+const double Textures[15][3] =
+{
+  { 0.610865,0.785398,0.0},
+  { 1.029744,0.645772,1.099557},
+  { 1.570796,0.610865,0.785398},
+  { 1.029744,0.506145,1.099557},
+  { 0.820305,0.645772,1.099557},
+  { 0.0,0.610865,0.785398},
+  { 0.0,0.785398,0.0},
+  { 0.0,0.0,0.0},
+  { 0.0,0.349066,0.0},
+  { 0.0,0.610865,0.0},
+  { 0.349066,0.0,0.0},
+  { 0.610865,0.0,0.0},
+  { 1.22173,0.785398,0.0},
+  { 0.959931,0.349066,0.0},
+  { 0.959931,1.308997,0.436332}};
 
 
 

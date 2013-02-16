@@ -67,6 +67,24 @@ class NeighborList : public IDataArray
 
     virtual ~NeighborList() {}
 
+    /**
+     * @brief GetTypeName Returns a string representation of the type of data that is stored by this class. This
+     * can be a primitive like char, float, int or the name of a class.
+     * @return
+     */
+    void GetXdmfTypeAndSize(std::string &xdmfTypeName, int &precision)
+    {
+      xdmfTypeName = getNameOfClass();
+      precision = 0;
+    }
+
+
+    /**
+     * @brief getTypeAsString
+     * @return
+     */
+    virtual std::string getTypeAsString() { return "NeighborList<T>";}
+
     void SetName(const std::string &name) { m_Name = name; }
     std::string GetName() { return m_Name; }
 

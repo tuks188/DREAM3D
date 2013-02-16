@@ -134,33 +134,13 @@ void SegmentGrains::execute()
   size_t size = 0;
   size_t initialVoxelsListSize = 1000;
   std::vector<int> voxelslist(initialVoxelsListSize, -1);
-  int neighborhood[26];
-  neighborhood[0] = -(dims[0]*dims[1])-dims[0]-1;
-  neighborhood[1] = -(dims[0]*dims[1])-dims[0];
-  neighborhood[2] = -(dims[0]*dims[1])-dims[0]+1;
-  neighborhood[3] = -(dims[0]*dims[1])-1;
-  neighborhood[4] = -(dims[0]*dims[1]);
-  neighborhood[5] = -(dims[0]*dims[1])+1;
-  neighborhood[6] = -(dims[0]*dims[1])+dims[0]-1;
-  neighborhood[7] = -(dims[0]*dims[1])+dims[0];
-  neighborhood[8] = -(dims[0]*dims[1])+dims[0]+1;
-  neighborhood[9] = -dims[0]-1;
-  neighborhood[10] = -dims[0];
-  neighborhood[11] = -dims[0]+1;
-  neighborhood[12] = -1;
-  neighborhood[13] = 1;
-  neighborhood[14] = dims[0]-1;
-  neighborhood[15] = dims[0];
-  neighborhood[16] = dims[0]+1;
-  neighborhood[17] = (dims[0]*dims[1])-dims[0]-1;
-  neighborhood[18] = (dims[0]*dims[1])-dims[0];
-  neighborhood[19] = (dims[0]*dims[1])-dims[0]+1;
-  neighborhood[20] = (dims[0]*dims[1])-1;
-  neighborhood[21] = (dims[0]*dims[1]);
-  neighborhood[22] = (dims[0]*dims[1])+1;
-  neighborhood[23] = (dims[0]*dims[1])+dims[0]-1;
-  neighborhood[24] = (dims[0]*dims[1])+dims[0];
-  neighborhood[25] = (dims[0]*dims[1])+dims[0]+1;
+  DimType neighpoints[6];
+  neighpoints[0] = -(dims[0] * dims[1]);
+  neighpoints[1] = -dims[0];
+  neighpoints[2] = -1;
+  neighpoints[3] = 1;
+  neighpoints[4] = dims[0];
+  neighpoints[5] = (dims[0] * dims[1]);
 
   // Burn volume with tight orientation tolerance to simulate simultaneous growth/aglomeration
   while (seed >= 0)
@@ -177,17 +157,17 @@ void SegmentGrains::execute()
         col = currentpoint % dims[0];
         row = (currentpoint / dims[0]) % dims[1];
         plane = currentpoint / (dims[0] * dims[1]);
-        for (int i = 0; i < 26; i++)
+        for (int i = 0; i < 6; i++)
         {
           good = true;
-          neighbor = currentpoint + neighborhood[i];
+          neighbor = currentpoint + neighpoints[i];
 
-          if(i < 9 && plane == 0) good = 0;
-          if(i > 16 && plane == (dims[2]-1)) good = 0;
-          if((i == 0 || i == 1 || i == 2 || i == 9 || i == 10 || i == 11 || i == 17 || i == 18 || i == 19) && row == 0) good = 0;
-          if((i == 6 || i == 7 || i == 8 || i == 14 || i == 15 || i == 16 || i == 23 || i == 24 || i == 25) && row == (dims[1]-1)) good = 0;
-          if((i == 0 || i == 3 || i == 6 || i == 9 || i == 12 || i == 14 || i == 17 || i == 20 || i == 23) && col == 0) good = 0;
-          if((i == 2 || i == 5 || i == 8 || i == 11 || i == 13 || i == 16 || i == 19 || i == 22 || i == 25) && col == (dims[0]-1)) good = 0;
+          if(i == 0 && plane == 0) good = false;
+          if(i == 5 && plane == (dims[2] - 1)) good = false;
+          if(i == 1 && row == 0) good = false;
+          if(i == 4 && row == (dims[1] - 1)) good = false;
+          if(i == 2 && col == 0) good = false;
+          if(i == 3 && col == (dims[0] - 1)) good = false;
           if(good == true)
           {
             if(determineGrouping(currentpoint, neighbor, gnum) == true)
@@ -209,7 +189,7 @@ void SegmentGrains::execute()
   }
 
   // If there is an error set this to something negative and also set a message
- notifyStatusMessage("SegmentGrains Completed");
+ notifyStatusMessage("Completed");
 }
 
 // -----------------------------------------------------------------------------
