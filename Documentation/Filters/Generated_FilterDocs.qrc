@@ -7,6 +7,10 @@
     <file>catalog.css</file>
     <file>index.html</file>
 
+    <!-- ***** CustomFilters ***** -->
+    <file>CustomFilters/CropVolumePipeline.html</file>
+    <file>CustomFilters/MergeTwinsForStats.html</file>
+
     <!-- ***** GenericFilters ***** -->
     <file>GenericFilters/FindNeighbors.html</file>
     <file>GenericFilters/FindGrainPhases.html</file>

@@ -338,10 +338,10 @@ for (DimType i = 2; i < NUM_OF_CROPS+1; i++)
 
       DataContainerReader::Pointer reader = DataContainerReader::New();
       std::string main_dream_3d_file = "D:/IN100_run1/DREAM3D_files/RVE/full_volume_for_RVE_calc.dream3d";
-      reader->setInputFile(main_dream_3d_file); 
-      reader->setReadCellData(true);
-      reader->setReadFieldData(true); 
-      reader->setReadEnsembleData(true); 
+      reader->setInputFile(main_dream_3d_file);
+//      reader->setReadCellData(true);
+//      reader->setReadFieldData(true);
+//      reader->setReadEnsembleData(true);
       reader->setVoxelDataContainer(m);
       pipeline->pushBack(reader);
       reader->execute();
@@ -370,31 +370,31 @@ for (DimType i = 2; i < NUM_OF_CROPS+1; i++)
 
 
      // AlignSectionsMisorientation::Pointer align_sections = AlignSectionsMisorientation::New();
-     // align_sections->setMisorientationTolerance(m_AlignMisorientationTolerance); 
+     // align_sections->setMisorientationTolerance(m_AlignMisorientationTolerance);
      // align_sections->setVoxelDataContainer(m);
-     // align_sections->execute();     
+     // align_sections->execute();
      // pipeline->pushBack(align_sections);
 
-      CropVolume::Pointer crop_volume = CropVolume::New(); 
+      CropVolume::Pointer crop_volume = CropVolume::New();
       crop_volume->setXMin(m_Xmin[i]);
       crop_volume->setYMin(m_Ymin[i]);
       crop_volume->setZMin(m_Zmin[i]);
       crop_volume->setXMax(m_Xmax[i]);
       crop_volume->setYMax(m_Ymax[i]);
-      crop_volume->setZMax(m_Zmax[i]); 
-      crop_volume->setRenumberGrains(false); 
+      crop_volume->setZMax(m_Zmax[i]);
+      crop_volume->setRenumberGrains(false);
       crop_volume->setVoxelDataContainer(m);
       crop_volume->execute();
       pipeline->pushBack(crop_volume);
 
-      //RegularizeZSpacing::Pointer regularize_z = RegularizeZSpacing::New(); 
-      //regularize_z->setInputFile(getZ_spacingfile()); 
-      //regularize_z->setZRes(m_Zres); 
+      //RegularizeZSpacing::Pointer regularize_z = RegularizeZSpacing::New();
+      //regularize_z->setInputFile(getZ_spacingfile());
+      //regularize_z->setZRes(m_Zres);
       //regularize_z->setVoxelDataContainer(m);
       //regularize_z->execute();
       //pipeline->pushBack(regularize_z);
 
-      
+
 
       EBSDSegmentGrains::Pointer ebsdsegment_grains = EBSDSegmentGrains::New();
       ebsdsegment_grains->setMisorientationTolerance(m_MisorientationTolerance);
@@ -402,23 +402,23 @@ for (DimType i = 2; i < NUM_OF_CROPS+1; i++)
       ebsdsegment_grains->execute();
       pipeline->pushBack(ebsdsegment_grains);
 
-      MergeTwinsForStats::Pointer mergetwinsstats = MergeTwinsForStats::New(); 
+      MergeTwinsForStats::Pointer mergetwinsstats = MergeTwinsForStats::New();
       mergetwinsstats->setVoxelDataContainer(m);
-      mergetwinsstats->setAngleTolerance(2); 
-      mergetwinsstats->setAxisTolerance(2); 
+      mergetwinsstats->setAngleTolerance(2);
+      mergetwinsstats->setAxisTolerance(2);
       mergetwinsstats->execute();
-      pipeline->pushBack(mergetwinsstats) ; 
-      
+      pipeline->pushBack(mergetwinsstats) ;
 
-      //OpenCloseBadData::Pointer erode_dilate = OpenCloseBadData::New(); 
-      //erode_dilate->setDirection(1); // 1 is erode.  
-      //erode_dilate->setNumIterations(m_NumIterations_Erode); 
+
+      //OpenCloseBadData::Pointer erode_dilate = OpenCloseBadData::New();
+      //erode_dilate->setDirection(1); // 1 is erode.
+      //erode_dilate->setNumIterations(m_NumIterations_Erode);
       //erode_dilate->setDataContainer(m);
       //erode_dilate->execute();
       //pipeline->pushBack(erode_dilate);
 
 
-    
+
       FindNeighbors::Pointer find_neighbors = FindNeighbors::New();
       find_neighbors->setVoxelDataContainer(m);
       find_neighbors->execute();
@@ -437,13 +437,13 @@ for (DimType i = 2; i < NUM_OF_CROPS+1; i++)
       min_neighbors->execute();
       pipeline->pushBack(min_neighbors);
 
-      FindGrainPhases::Pointer find_phases = FindGrainPhases::New(); 
+      FindGrainPhases::Pointer find_phases = FindGrainPhases::New();
       //find_sizes->setDistributionType(DREAM3D::DistributionType::Beta);
       find_phases->setVoxelDataContainer(m);
       find_phases->execute();
       pipeline->pushBack(find_phases);
 
-      FindSurfaceGrains::Pointer find_surface = FindSurfaceGrains::New(); 
+      FindSurfaceGrains::Pointer find_surface = FindSurfaceGrains::New();
       //find_sizes->setDistributionType(DREAM3D::DistributionType::Beta);
       find_surface->setVoxelDataContainer(m);
       find_surface->execute();
@@ -464,22 +464,22 @@ for (DimType i = 2; i < NUM_OF_CROPS+1; i++)
       pipeline->pushBack(find_shapes);
 
 
-      FindBoundingBoxGrains::Pointer findboundbox = FindBoundingBoxGrains::New(); 
-      findboundbox->setVoxelDataContainer(m); 
-      findboundbox->execute(); 
-      pipeline->pushBack(findboundbox); 
+      FindBoundingBoxGrains::Pointer findboundbox = FindBoundingBoxGrains::New();
+      findboundbox->setVoxelDataContainer(m);
+      findboundbox->execute();
+      pipeline->pushBack(findboundbox);
 
-      FindGrainCentroids::Pointer findcentroids = FindGrainCentroids::New(); 
-      findcentroids->setVoxelDataContainer(m); 
-      findcentroids->execute(); 
-      pipeline->pushBack(findcentroids); 
+      FindGrainCentroids::Pointer findcentroids = FindGrainCentroids::New();
+      findcentroids->setVoxelDataContainer(m);
+      findcentroids->execute();
+      pipeline->pushBack(findcentroids);
 
 
-      FieldDataCSVWriter::Pointer field_data_write_csv = FieldDataCSVWriter::New(); 
+      FieldDataCSVWriter::Pointer field_data_write_csv = FieldDataCSVWriter::New();
       std::string field_csv =  "D:/IN100_run1/DREAM3D_files/RVE/box_slicing/slice"+ convertIntToString(i) +".csv";
-      field_data_write_csv->setFieldDataFile(field_csv); 
+      field_data_write_csv->setFieldDataFile(field_csv);
       field_data_write_csv->setVoxelDataContainer(m);
-      field_data_write_csv->execute(); 
+      field_data_write_csv->execute();
 
       pipeline->pushBack(field_data_write_csv);
 
