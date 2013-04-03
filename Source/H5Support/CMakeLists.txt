@@ -25,10 +25,10 @@ IF (BUILD_SHARED_LIBS)
 ENDIF (BUILD_SHARED_LIBS)
 
 set(PROJECT_CODE_DIR ${PROJECT_SOURCE_DIR}/Source)
-if (NOT PROJECT_RESOURCES_DIR)
+if(NOT PROJECT_RESOURCES_DIR)
 set(PROJECT_RESOURCES_DIR ${H5Support_SOURCE_DIR}/Resources)
 endif()
-if (NOT DEFINED CMP_SOURCE_DIR)
+if(NOT DEFINED CMP_SOURCE_DIR)
 set(CMP_SOURCE_DIR ${H5Support_SOURCE_DIR}/Support/cmp)
 endif()
 
@@ -53,11 +53,13 @@ INCLUDE (${CMP_SOURCE_DIR}/cmpProject.cmake)
 set(H5Support_SRCS
     ${H5Support_SOURCE_DIR}/H5Lite.cpp
     ${H5Support_SOURCE_DIR}/H5Utilities.cpp
+    ${H5Support_SOURCE_DIR}/HDF5ScopedFileSentinel.cpp
  )
 
 set(H5Support_HDRS
     ${H5Support_SOURCE_DIR}/H5Lite.h
     ${H5Support_SOURCE_DIR}/H5Utilities.h
+    ${H5Support_SOURCE_DIR}/HDF5ScopedFileSentinel.h
 )
 cmp_IDE_SOURCE_PROPERTIES( "H5Support" "${H5Support_HDRS}" "${H5Support_SRCS}" ${PROJECT_INSTALL_HEADERS})
 
@@ -98,13 +100,13 @@ LibraryProperties( ${PROJECT_NAME}  ${EXE_DEBUG_EXTENSION} )
 
 set(install_dir "tools")
 set(lib_install_dir "lib")
-if (WIN32)
+if(WIN32)
     set(install_dir ".")
     set(lib_install_dir "")
 endif()
 
 
-if (BUILD_SHARED_LIBS AND NOT APPLE)
+if(BUILD_SHARED_LIBS AND NOT APPLE)
     INSTALL(TARGETS ${PROJECT_NAME}
         COMPONENT Applications
         RUNTIME DESTINATION ${install_dir}

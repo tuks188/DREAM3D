@@ -51,9 +51,9 @@ using namespace H5Support_NAMESPACE;
 //
 // -----------------------------------------------------------------------------
 H5AngReader::H5AngReader() :
-AngReader()
+  AngReader(),
+  m_ReadAllArrays(true)
 {
-
 }
 
 // -----------------------------------------------------------------------------
@@ -61,7 +61,7 @@ AngReader()
 // -----------------------------------------------------------------------------
 H5AngReader::~H5AngReader()
 {
- deletePointers();
+  deletePointers();
 }
 
 // -----------------------------------------------------------------------------
@@ -92,20 +92,13 @@ int H5AngReader::readFile()
   }
 
   // Read all the header information
- // std::cout << "H5AngReader:: reading Header .. " << std::endl;
   err = readHeader(gid);
 
   // Read and transform data
- // std::cout << "H5AngReader:: Reading Data .. " << std::endl;
   err = readData(gid);
 
   err = H5Gclose(gid);
   err = H5Utilities::closeFile(fileId);
-
-  if(getRotateSlice() == true || getReorderArray() == true || getAlignEulers() == true)
-  {
-	  transformData();
-  }
 
   return err;
 }
@@ -138,7 +131,7 @@ int H5AngReader::readHeaderOnly()
   }
 
   // Read all the header information
- // std::cout << "H5AngReader:: reading Header .. " << std::endl;
+  // std::cout << "H5AngReader:: reading Header .. " << std::endl;
   err = readHeader(gid);
   err = H5Utilities::closeFile(fileId);
   return err;
@@ -173,7 +166,7 @@ int H5AngReader::readHeader(hid_t parId)
   READ_EBSD_HEADER_STRING_DATA("H5AngReader", AngStringHeaderEntry, std::string, SampleID, Ebsd::Ang::SampleId)
   READ_EBSD_HEADER_STRING_DATA("H5AngReader", AngStringHeaderEntry, std::string, ScanID, Ebsd::Ang::ScanId)
 
-  hid_t phasesGid = H5Gopen(gid, Ebsd::H5::Phases.c_str(), H5P_DEFAULT);
+      hid_t phasesGid = H5Gopen(gid, Ebsd::H5::Phases.c_str(), H5P_DEFAULT);
   if (phasesGid < 0)
   {
     std::cout << "H5AngReader Error: Could not open Header/Phases HDF Group. Is this an older file?" << std::endl;
@@ -203,10 +196,11 @@ int H5AngReader::readHeader(hid_t parId)
     READ_PHASE_HEADER_ARRAY("H5AngReader", pid, std::vector<float>, Ebsd::Ang::LatticeConstants, LatticeConstants, m_CurrentPhase)
     READ_PHASE_HEADER_DATA("H5AngReader", pid, int, Ebsd::Ang::NumberFamilies, NumberFamilies, m_CurrentPhase)
 
-    if (m_CurrentPhase->getNumberFamilies() > 0) {
+    if (m_CurrentPhase->getNumberFamilies() > 0)
+    {
       hid_t hklGid = H5Gopen(pid, Ebsd::Ang::HKLFamilies.c_str(), H5P_DEFAULT);
-    // Only read the HKL Families if they are there. Trying to open the group will tell us if there
-    // are any families to read
+      // Only read the HKL Families if they are there. Trying to open the group will tell us if there
+      // are any families to read
 
       err = readHKLFamilies(hklGid, m_CurrentPhase);
       err = H5Gclose(hklGid);
@@ -229,7 +223,7 @@ int H5AngReader::readHeader(hid_t parId)
 // -----------------------------------------------------------------------------
 int H5AngReader::readHKLFamilies(hid_t hklGid, AngPhase::Pointer phase)
 {
-//  herr_t err = 0;
+  //  herr_t err = 0;
   hid_t dataset, memtype;
   herr_t status = 1;
   HKLFamily_t data;
@@ -255,7 +249,7 @@ int H5AngReader::readHKLFamilies(hid_t hklGid, AngPhase::Pointer phase)
       break;
     }
     status = H5Dclose(dataset); // Close the data set
-    
+
     HKLFamily::Pointer f = HKLFamily::New();
     f->copyFromStruct(&data);
     families.push_back(f);
@@ -263,6 +257,17 @@ int H5AngReader::readHKLFamilies(hid_t hklGid, AngPhase::Pointer phase)
   phase->setHKLFamilies(families);
   return status;
 }
+
+
+#define ANG_READER_ALLOCATE_AND_READ(name, type)\
+  if (m_ReadAllArrays == true || m_ArrayNames.find(Ebsd::Ang::name) != m_ArrayNames.end()) {\
+  type* _##name = allocateArray<type>(totalDataRows);\
+  if (NULL != _##name) {\
+  ::memset(_##name, 0, numBytes);\
+  err = H5Lite::readPointerDataset(gid, Ebsd::Ang::name, _##name);\
+  }\
+  set##name##Pointer(_##name);\
+  }
 
 // -----------------------------------------------------------------------------
 //
@@ -312,15 +317,6 @@ int H5AngReader::readData(hid_t parId)
     return -300;
   }
 
-  initPointers(totalDataRows);
-  if (NULL == getPhi1Pointer() || NULL == getPhiPointer() || NULL == getPhi2Pointer()
-      || NULL == getImageQualityPointer()  || NULL == getConfidenceIndexPointer()
-      || NULL == getPhasePointer() || getXPosPointer() == NULL || getYPosPointer() == NULL
-      || NULL == getSEMSignalPointer() || NULL == getFitPointer())
-  {
-    return -1;
-  }
-
 
   hid_t gid = H5Gopen(parId, Ebsd::H5::Data.c_str(), H5P_DEFAULT);
   if (gid < 0)
@@ -329,21 +325,27 @@ int H5AngReader::readData(hid_t parId)
     return -1;
   }
 
-  err = H5Lite::readPointerDataset(gid, Ebsd::Ang::Phi1, getPhi1Pointer());
-  err = H5Lite::readPointerDataset(gid, Ebsd::Ang::Phi, getPhiPointer());
-  err = H5Lite::readPointerDataset(gid, Ebsd::Ang::Phi2, getPhi2Pointer());
-  err = H5Lite::readPointerDataset(gid, Ebsd::Ang::ImageQuality, getImageQualityPointer());
-  err = H5Lite::readPointerDataset(gid, Ebsd::Ang::ConfidenceIndex, getConfidenceIndexPointer());
-  err = H5Lite::readPointerDataset(gid, Ebsd::Ang::PhaseData, getPhasePointer());
-  err = H5Lite::readPointerDataset(gid, Ebsd::Ang::XPosition, getXPosPointer());
-  err = H5Lite::readPointerDataset(gid, Ebsd::Ang::YPosition, getYPosPointer());
+  setNumberOfElements(totalDataRows);
+  size_t numBytes = totalDataRows * sizeof(float);
 
-  err = H5Lite::readPointerDataset(gid, Ebsd::Ang::Fit, getFitPointer());
+  ANG_READER_ALLOCATE_AND_READ(Phi1, float);
+  ANG_READER_ALLOCATE_AND_READ(Phi, float);
+  ANG_READER_ALLOCATE_AND_READ(Phi2, float);
+  ANG_READER_ALLOCATE_AND_READ(ImageQuality, float);
+  ANG_READER_ALLOCATE_AND_READ(ConfidenceIndex, float);
+
+  ANG_READER_ALLOCATE_AND_READ(PhaseData, int);
+
+  ANG_READER_ALLOCATE_AND_READ(XPosition, float);
+  ANG_READER_ALLOCATE_AND_READ(YPosition, float);
+
+  ANG_READER_ALLOCATE_AND_READ(Fit, float);
   if (err < 0)
   {
     setNumFields(9);
   }
-  err = H5Lite::readPointerDataset(gid, Ebsd::Ang::SEMSignal, getSEMSignalPointer());
+
+  ANG_READER_ALLOCATE_AND_READ(SEMSignal, float);
   if (err < 0)
   {
     setNumFields(8);
@@ -354,3 +356,19 @@ int H5AngReader::readData(hid_t parId)
   return err;
 }
 
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void H5AngReader::setArraysToRead(std::set<std::string> names)
+{
+  m_ArrayNames = names;
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void H5AngReader::readAllArrays(bool b)
+{
+  m_ReadAllArrays = b;
+}

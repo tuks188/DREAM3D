@@ -80,34 +80,37 @@ class DREAM3DLib_EXPORT InsertPrecipitatePhases : public AbstractFilter
 
     virtual ~InsertPrecipitatePhases();
 
-	//------ Required Cell Data
-	DREAM3D_INSTANCE_STRING_PROPERTY(GrainIdsArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(CellPhasesArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(SurfaceVoxelsArrayName)
-	//------ Created Field Data
-	DREAM3D_INSTANCE_STRING_PROPERTY(ActiveArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(AxisEulerAnglesArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(AxisLengthsArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(CentroidsArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(EquivalentDiametersArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(NeighborhoodsArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(NumCellsArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(Omega3sArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(FieldPhasesArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(VolumesArrayName)
-	//------ Required Ensemble Data
-	DREAM3D_INSTANCE_STRING_PROPERTY(PhaseTypesArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(ShapeTypesArrayName)
-	//------ Created Ensemble Data
-	DREAM3D_INSTANCE_STRING_PROPERTY(NumFieldsArrayName)
+    //------ Required Cell Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(GrainIdsArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(CellPhasesArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(SurfaceVoxelsArrayName)
+    //------ Created Field Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(ActiveArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(AxisEulerAnglesArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(AxisLengthsArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(CentroidsArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(EquivalentDiametersArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(NeighborhoodsArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(NumCellsArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(Omega3sArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(FieldPhasesArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(VolumesArrayName)
+    //------ Required Ensemble Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(PhaseTypesArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(ShapeTypesArrayName)
+    //------ Created Ensemble Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(NumFieldsArrayName)
 
+    DREAM3D_INSTANCE_STRING_PROPERTY(CsvOutputFile)
     DREAM3D_INSTANCE_PROPERTY(bool, PeriodicBoundaries)
+    DREAM3D_INSTANCE_PROPERTY(bool, WriteGoalAttributes)
 
     virtual const std::string getGroupName() { return DREAM3D::FilterGroups::SyntheticBuildingFilters; }
+  virtual const std::string getSubGroupName() { return DREAM3D::FilterSubGroups::PackingFilters; }
     virtual const std::string getHumanLabel() { return "Insert Precipitate Phases"; }
 
     virtual void setupFilterParameters();
-	virtual void writeFilterParameters(AbstractFilterParametersWriter* writer);
+    virtual void writeFilterParameters(AbstractFilterParametersWriter* writer);
 
     /**
      * @brief Reimplemented from @see AbstractFilter class
@@ -119,10 +122,10 @@ class DREAM3DLib_EXPORT InsertPrecipitatePhases : public AbstractFilter
   protected:
     InsertPrecipitatePhases();
 
-    void place_precipitates();
-    void initialize_packinggrid();
+    Int32ArrayType::Pointer initialize_packinggrid();
 
-	void generate_precipitate(int phase, int Seed, Precip* precip, unsigned int shapeclass, OrientationMath::Pointer OrthoOps);
+    void place_precipitates(Int32ArrayType::Pointer grainOwnersPtr);
+    void generate_precipitate(int phase, int Seed, Precip* precip, unsigned int shapeclass, OrientationMath::Pointer OrthoOps);
 
     void transfer_attributes(int gnum, Precip* precip);
     void insert_precipitate(size_t grainNum);
@@ -133,16 +136,17 @@ class DREAM3DLib_EXPORT InsertPrecipitatePhases : public AbstractFilter
     void determine_neighbors(size_t grainNum, int add);
     float check_neighborhooderror(int gadd, int gremove);
 
-    float check_fillingerror(int gadd, int gremove);
+    float check_fillingerror(int gadd, int gremove, Int32ArrayType::Pointer grainOwnersPtr);
     void assign_voxels();
     void assign_gaps();
     void cleanup_grains();
+	void write_goal_attributes();
 
-	float find_xcoord(long long int index);
-	float find_ycoord(long long int index);
-	float find_zcoord(long long int index);
+    float find_xcoord(long long int index);
+    float find_ycoord(long long int index);
+    float find_zcoord(long long int index);
 
-	void compare_1Ddistributions(std::vector<float>, std::vector<float>, float &sqrerror);
+    void compare_1Ddistributions(std::vector<float>, std::vector<float>, float &sqrerror);
     void compare_2Ddistributions(std::vector<std::vector<float> >, std::vector<std::vector<float> >, float &sqrerror);
 
     void compare_3Ddistributions(std::vector<std::vector<std::vector<float> > >, std::vector<std::vector<std::vector<float> > >, float &sqrerror);
@@ -152,14 +156,14 @@ class DREAM3DLib_EXPORT InsertPrecipitatePhases : public AbstractFilter
 
   private:
 
-	int firstPrecipitateField;
+    int firstPrecipitateField;
     unsigned long long int Seed;
     float sizex;
     float sizey;
     float sizez;
     float totalvol;
 
-	std::map<unsigned int, ShapeOps*> m_ShapeOps;
+    std::map<unsigned int, ShapeOps*> m_ShapeOps;
     ShapeOps::Pointer m_UnknownShapeOps;
     ShapeOps::Pointer m_CubicOctohedronOps;
     ShapeOps::Pointer m_CylinderOps;
@@ -183,8 +187,8 @@ class DREAM3DLib_EXPORT InsertPrecipitatePhases : public AbstractFilter
 
     unsigned int* m_PhaseTypes;
     unsigned int* m_ShapeTypes;
-	int32_t* m_NumFields;
-	StatsDataArray* m_StatsDataArray;
+    int32_t* m_NumFields;
+    StatsDataArray* m_StatsDataArray;
 
     std::vector<OrientationMath*> m_OrientationOps;
     OrientationMath::Pointer m_CubicOps;
@@ -195,15 +199,12 @@ class DREAM3DLib_EXPORT InsertPrecipitatePhases : public AbstractFilter
     std::vector<std::vector<int> > rowlist;
     std::vector<std::vector<int> > planelist;
 
-    float packingresx;
-    float packingresy;
-    float packingresz;
-    int packingxpoints;
-    int packingypoints;
-    int packingzpoints;
-    int packingtotalpoints;
+    float m_HalfPackingRes[3];
+    float m_OneOverHalfPackingRes[3];
 
-	std::vector<std::vector<std::vector<int> > > grainowners;
+    float m_PackingRes[3];
+    int m_PackingPoints[3];
+    int m_TotalPackingPoints;
 
     std::vector<std::vector<float> > grainsizedist;
     std::vector<std::vector<float> > simgrainsizedist;

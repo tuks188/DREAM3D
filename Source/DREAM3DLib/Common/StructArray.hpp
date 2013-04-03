@@ -452,7 +452,7 @@ class StructArray : public IDataArray
     virtual T* GetPointer(size_t i)
     {
 #ifndef NDEBUG
-      if (Size > 0) { assert(i < Size);}
+      if (Size > 0) { BOOST_ASSERT(i < Size);}
 #endif
       return (T*)(&(Array[i]));
     }
@@ -465,9 +465,9 @@ class StructArray : public IDataArray
     void InitializeTuple(size_t i, double p)
     {
 #ifndef NDEBUG
-      if (Size > 0) { assert(i < Size);}
+      if (Size > 0) { BOOST_ASSERT(i < Size);}
 #endif
-      assert(false);
+      BOOST_ASSERT(false);
       //T c = static_cast<T>(p);
       //for (int j = 0; j < this->NumberOfComponents; ++j)
       {
@@ -500,7 +500,7 @@ class StructArray : public IDataArray
 
     virtual void printTuple(std::ostream &out, size_t i, char delimiter = ',')
     {
-      assert(false);
+      BOOST_ASSERT(false);
       //        for(int j = 0; j < NumberOfComponents; ++j)
       //        {
       //          if (j != 0) { out << delimiter; }
@@ -509,7 +509,7 @@ class StructArray : public IDataArray
     }
     virtual void printComponent(std::ostream &out, size_t i, int j)
     {
-      assert(false);
+      BOOST_ASSERT(false);
       //        out << Array[i + j];
     }
 
@@ -521,7 +521,7 @@ class StructArray : public IDataArray
      */
     virtual int writeH5Data(hid_t parentId)
     {
-      assert(false);
+      BOOST_ASSERT(false);
       return -1;
     }
 
@@ -532,7 +532,7 @@ class StructArray : public IDataArray
      */
     virtual int readH5Data(hid_t parentId)
     {
-      assert(false);
+      BOOST_ASSERT(false);
       int err = -1;
 
       return err;
@@ -545,7 +545,7 @@ class StructArray : public IDataArray
      */
     inline T& operator[](size_t i)
     {
-      assert(i < Size);
+      BOOST_ASSERT(i < Size);
       return Array[i];
     }
 
@@ -584,7 +584,7 @@ class StructArray : public IDataArray
           || MUD_FLAP_4 != 0xABABABABABABABABul
           || MUD_FLAP_5 != 0xABABABABABABABABul)
       {
-        assert(false);
+        BOOST_ASSERT(false);
       }
 #endif
 

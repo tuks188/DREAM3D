@@ -87,6 +87,21 @@ class DataArray : public IDataArray
 
     typedef std::vector<Pointer>   ContainterType;
 
+  enum NumType {
+    Int8 = 0,
+    UInt8,
+    Int16,
+    UInt16,
+    Int32,
+    UInt32,
+    Int64,
+    UInt64,
+    Float,
+    Double,
+  Bool,
+    UnknownNumType
+  };
+
     /**
      * @brief GetTypeName Returns a string representation of the type of data that is stored by this class. This
      * can be a primitive like char, float, int or the name of a class.
@@ -115,7 +130,37 @@ class DataArray : public IDataArray
       if (typeid(value) == typeid(bool)) { xdmfTypeName = "uchar"; precision = 1;}
     }
 
+
     /**
+     * @brief GetTypeName Returns a string representation of the type of data that is stored by this class. This
+     * can be a primitive like char, float, int or the name of a class.
+     * @return
+     */
+
+    NumType GetType()
+    {
+      T value = 0x00;
+      if (typeid(value) == typeid(int8_t)) { return Int8;}
+      if (typeid(value) == typeid(uint8_t)) { return UInt8;}
+
+      if (typeid(value) == typeid(int16_t)) { return Int16;}
+      if (typeid(value) == typeid(uint16_t)) { return UInt16;}
+
+      if (typeid(value) == typeid(int32_t)) { return Int32;}
+      if (typeid(value) == typeid(uint32_t)) { return UInt32;}
+
+      if (typeid(value) == typeid(int64_t)) { return Int64;}
+      if (typeid(value) == typeid(uint64_t)) { return UInt64;}
+
+      if (typeid(value) == typeid(float)) { return Float;}
+      if (typeid(value) == typeid(double)) { return Double;}
+
+      if (typeid(value) == typeid(bool)) { return Bool;}
+
+    return UnknownNumType;
+    }
+
+  /**
      * @brief Static constructor
      * @param numElements The number of elements in the internal array.
      * @param name The name of the array
@@ -520,7 +565,7 @@ class DataArray : public IDataArray
     virtual T* GetPointer(size_t i)
     {
 #ifndef NDEBUG
-      if (Size > 0) { assert(i < Size);}
+      if (Size > 0) { BOOST_ASSERT(i < Size);}
 #endif
       return (T*)(&(Array[i]));
     }
@@ -533,7 +578,7 @@ class DataArray : public IDataArray
     virtual T GetValue(size_t i)
     {
 #ifndef NDEBUG
-      if (Size > 0) { assert(i < Size);}
+      if (Size > 0) { BOOST_ASSERT(i < Size);}
 #endif
       return this->Array[i];
     }
@@ -546,7 +591,7 @@ class DataArray : public IDataArray
     void SetValue(size_t i, T value)
     {
 #ifndef NDEBUG
-      if (Size > 0) { assert(i < Size);}
+      if (Size > 0) { BOOST_ASSERT(i < Size);}
 #endif
       this->Array[i] = value;
     }
@@ -556,7 +601,7 @@ class DataArray : public IDataArray
     T GetComponent(size_t i, int j)
     {
 #ifndef NDEBUG
-      if (Size > 0) { assert(i*NumberOfComponents+j < Size);}
+      if (Size > 0) { BOOST_ASSERT(i*NumberOfComponents+j < Size);}
 #endif
       return Array[i*this->NumberOfComponents + j];
     }
@@ -570,7 +615,7 @@ class DataArray : public IDataArray
     void SetComponent(size_t i, int j, T c)
     {
 #ifndef NDEBUG
-      if (Size > 0) { assert(i*NumberOfComponents+j < Size);}
+      if (Size > 0) { BOOST_ASSERT(i*NumberOfComponents+j < Size);}
 #endif
       Array[i*this->NumberOfComponents + j] = c;
     }
@@ -583,7 +628,7 @@ class DataArray : public IDataArray
     void InitializeTuple(size_t i, double p)
     {
 #ifndef NDEBUG
-      if (Size > 0) { assert(i*NumberOfComponents < Size);}
+      if (Size > 0) { BOOST_ASSERT(i*NumberOfComponents < Size);}
 #endif
       T c = static_cast<T>(p);
       for (int j = 0; j < this->NumberOfComponents; ++j) {
@@ -824,7 +869,7 @@ class DataArray : public IDataArray
           || MUD_FLAP_4 != 0xABABABABABABABABul
           || MUD_FLAP_5 != 0xABABABABABABABABul)
       {
-        assert(false);
+        BOOST_ASSERT(false);
       }
 #endif
 
@@ -953,6 +998,8 @@ class DataArray : public IDataArray
 
 typedef DataArray<bool> BoolArrayType;
 
+typedef DataArray<unsigned char> UCharArrayType;
+
 typedef DataArray<int8_t>  Int8ArrayType;
 typedef DataArray<uint8_t>  UInt8ArrayType;
 
@@ -969,4 +1016,3 @@ typedef DataArray<float>  FloatArrayType;
 typedef DataArray<double>  DoubleArrayType;
 
 #endif //_DataArray_h_
-

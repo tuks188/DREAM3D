@@ -70,12 +70,13 @@ class DREAM3DLib_EXPORT MergeTwins : public AbstractFilter
     //------ Required Cell Data
     DREAM3D_INSTANCE_STRING_PROPERTY(GrainIdsArrayName)
     //------ Created Cell Data
-    DREAM3D_INSTANCE_STRING_PROPERTY(ParentIdsArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(CellParentIdsArrayName)
     //------ Required Field Data
     DREAM3D_INSTANCE_STRING_PROPERTY(AvgQuatsArrayName)
     DREAM3D_INSTANCE_STRING_PROPERTY(FieldPhasesArrayName)
     //------ Created Field Data
     DREAM3D_INSTANCE_STRING_PROPERTY(ActiveArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(FieldParentIdsArrayName)
     //------ Required Ensemble Data
     DREAM3D_INSTANCE_STRING_PROPERTY(CrystalStructuresArrayName)
 
@@ -84,6 +85,7 @@ class DREAM3DLib_EXPORT MergeTwins : public AbstractFilter
     DREAM3D_INSTANCE_PROPERTY(bool, RandomizeParentIds)
 
     virtual const std::string getGroupName() { return DREAM3D::FilterGroups::ReconstructionFilters; }
+	virtual const std::string getSubGroupName() {return DREAM3D::FilterSubGroups::GroupingFilters;}
     virtual const std::string getHumanLabel() { return "Merge Twins"; }
 
     virtual void setupFilterParameters();
@@ -104,7 +106,8 @@ class DREAM3DLib_EXPORT MergeTwins : public AbstractFilter
 
   private:
     int32_t* m_GrainIds;
-    int32_t* m_ParentIds;
+    int32_t* m_CellParentIds;
+    int32_t* m_FieldParentIds;
     float* m_AvgQuats;
     bool* m_Active;
     int32_t* m_FieldPhases;

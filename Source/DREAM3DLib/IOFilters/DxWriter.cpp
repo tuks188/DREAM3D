@@ -70,7 +70,7 @@ void DxWriter::setupFilterParameters()
     option->setHumanLabel("Output File");
     option->setPropertyName("OutputFile");
     option->setWidgetType(FilterParameter::OutputFileWidget);
-    option->setFileExtension("dx");
+    option->setFileExtension("*.dx");
     option->setFileType("Open DX Visualization");
     option->setValueType("string");
     parameters.push_back(option);
@@ -103,12 +103,24 @@ void DxWriter::dataCheck(bool preflight, size_t voxels, size_t fields, size_t en
   std::stringstream ss;
   VoxelDataContainer* m = getVoxelDataContainer();
 
-  if(getOutputFile().empty() == true)
+  if (getOutputFile().empty() == true)
   {
-    std::stringstream ss;
-    ss << ClassName() << " needs the Output File Set and it was not.";
+    ss <<  ": The output file must be set before executing this filter.";
     addErrorMessage(getHumanLabel(), ss.str(), -1);
-    setErrorCondition(-387);
+    setErrorCondition(-1);
+  }
+
+  std::string parentPath = MXAFileInfo::parentPath(getOutputFile());
+  if (MXADir::exists(parentPath) == false)
+  {
+    ss.str("");
+    ss <<  "The directory path for the output file does not exist.";
+    addWarningMessage(getHumanLabel(), ss.str(), -1);
+  }
+
+  if (MXAFileInfo::extension(getOutputFile()).compare("") == 0)
+  {
+    setOutputFile(getOutputFile().append(".dx"));
   }
 
   GET_PREREQ_DATA(m, DREAM3D, CellData, GrainIds, ss, -300, int32_t, Int32ArrayType, voxels, 1)

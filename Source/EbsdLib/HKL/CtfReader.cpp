@@ -208,7 +208,7 @@ Ebsd::NumType CtfReader::getPointerType(const std::string &fieldName)
   if (fieldName.compare(Ebsd::Ctf::GrainRandomColourR) == 0) { return Ebsd::Int32;}
   if (fieldName.compare(Ebsd::Ctf::GrainRandomColourG) == 0) { return Ebsd::Int32;}
   if (fieldName.compare(Ebsd::Ctf::GrainRandomColourB) == 0) { return Ebsd::Int32;}
-  std::cout << "THIS IS NOT GOOD. Fieldname: " << fieldName << " was not found in the list" << std::endl;
+ // std::cout << "THIS IS NOT GOOD. Fieldname: " << fieldName << " was not found in the list" << std::endl;
   return Ebsd::UnknownNumType;
 }
 
@@ -317,11 +317,6 @@ int CtfReader::readFile()
   err = readData(in);
   if (err < 0) { return err;}
 
-  if(getRotateSlice() == true || getReorderArray() == true || getAlignEulers() == true)
-  {
-      transformData();
-  }
-
   return err;
 }
 
@@ -340,7 +335,7 @@ int CtfReader::readData(std::ifstream &in)
 {
   // Delete any currently existing pointers
   deletePointers();
-
+  std::stringstream ss;
   // Initialize new pointers
   size_t yCells = getYCells();
   size_t xCells = getXCells();
@@ -359,9 +354,9 @@ int CtfReader::readData(std::ifstream &in)
   ::memset(buf, 0, kBufferSize);
   in.getline(buf, kBufferSize);
   // over write the newline at the end of the line with a NULL character
-  int i = 0;
-  while (buf[i] != 0 && i < kBufferSize) { ++i; }
-  if(buf[i - 1] < 32) { buf[i - 1] = 0; }
+  int idx = 0;
+  while (buf[idx] != 0 && idx < kBufferSize) { ++idx; }
+  if(buf[idx - 1] < 32) { buf[idx - 1] = 0; }
 
   std::vector<std::string> tokens = tokenize(buf, '\t');
 
@@ -385,7 +380,11 @@ int CtfReader::readData(std::ifstream &in)
     }
     else
     {
-      assert(0);
+      ss.str("");
+      ss << "Column Header '" << tokens[i] << "' is not a recognized column for CTF Files. Please recheck your .ctf file and report this error to the DREAM3D developers.";
+      setErrorMessage(ss.str());
+      deletePointers();
+      return -1;
     }
 
     if(m_ColumnData[i] == NULL)
@@ -409,9 +408,9 @@ int CtfReader::readData(std::ifstream &in)
 
         if ( (m_SingleSliceRead < 0) || (m_SingleSliceRead >= 0 && slice == m_SingleSliceRead) )
         {
-          i = 0;
-          while (buf[i] != 0 && i < kBufferSize) { ++i; }
-          if(buf[i - 1] < 32) { buf[i - 1] = 0; }
+          idx = 0;
+          while (buf[idx] != 0 && idx < kBufferSize) { ++idx; }
+          if(buf[idx - 1] < 32) { buf[idx - 1] = 0; }
           if(in.eof() == true) {
             break;
           }
@@ -561,7 +560,7 @@ void CtfReader::parseDataLine(const std::string &line, size_t row, size_t col, s
   }
 
   std::vector<std::string> tokens = tokenize( &(cLine.front()), '\t');
-  assert(tokens.size() == m_DataParsers.size());
+  BOOST_ASSERT(tokens.size() == m_DataParsers.size());
 
   for (unsigned int i = 0; i < m_DataParsers.size(); ++i)
   {
@@ -712,83 +711,6 @@ void CtfReader::setYDimension(int ydim)
   /* Copy the values back into the array over writing the original values*/\
   ::memcpy(var, tempPtr, numRows * sizeof(m_msgType));
 
-
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void CtfReader::transformData()
-{
-  float* p1 = getEuler1Pointer();
-  size_t offset = 0;
-  size_t yCells = getYCells();
-  size_t xCells = getXCells();
-  int zCells = getZCells();
-  if (zCells < 0 || m_SingleSliceRead >= 0)
-  {
-    zCells = 1;
-  }
-  size_t rowsPerSlice = yCells * xCells;
-
-  std::vector<size_t> shuffleTable(rowsPerSlice, 0);
-
-  size_t i = 0;
-  size_t adjustedcol, adjustedrow;
-
-  int* intPtr = allocateArray<int>(rowsPerSlice);
-  float* floatPtr = allocateArray<float>(rowsPerSlice);
-
-  for (int slice = 0; slice < zCells; ++slice)
-  {
-    for (size_t row = 0; row < yCells; ++row)
-    {
-      for (size_t col = 0; col < xCells; ++col)
-      {
-        adjustedcol = col;
-        adjustedrow = row;
-        if(getRotateSlice() == true) adjustedcol = (xCells - 1) - adjustedcol, adjustedrow = (yCells - 1) - adjustedrow;
-        if(getReorderArray() == true) adjustedrow = (yCells - 1) - adjustedrow;
-        offset = (slice*xCells*yCells) + (adjustedrow * xCells) + (adjustedcol);
-        if(getAlignEulers() == true)
-        {
-          p1[i] = p1[i];
-        }
-        shuffleTable[(row * xCells) + col] = offset;
-        ++i;
-      }
-    }
-
-    Ebsd::NumType numType = Ebsd::UnknownNumType;
-    std::string colName;
-    for (std::map<std::string, int>::iterator iter = m_NameIndexMap.begin(); iter != m_NameIndexMap.end(); ++iter )
-    {
-      colName = (*iter).first;
-      numType = getPointerType(colName);
-      if(numType == Ebsd::Int32)
-      {
-        int32_t* ptr = static_cast<int32_t*>(getPointerByName(colName));
-        if (NULL == ptr) { assert(false); } // We are going to crash here. I would rather crash than have bad data
-        ptr = ptr + (slice * xCells * yCells); // Put the pointer at the proper offset into the larger array
-        CTF_SHUFFLE_ARRAY(intPtr, ptr, int, rowsPerSlice);
-      }
-      else if (numType == Ebsd::Float)
-      {
-        float* ptr = static_cast<float*>(getPointerByName(colName));
-        if (NULL == ptr) { assert(false); } // We are going to crash here. I would rather crash than have bad data
-        ptr = ptr + (slice * xCells * yCells); // Put the pointer at the proper offset into the larger array
-        CTF_SHUFFLE_ARRAY(floatPtr, ptr, float, rowsPerSlice);
-      }
-      else
-      {
-        assert(false); // We are going to crash here because I would rather crash than have bad data
-      }
-    }
-
-  } // End slice loop
-
-  delete [] intPtr;
-  delete [] floatPtr;
-}
 
 // -----------------------------------------------------------------------------
 //

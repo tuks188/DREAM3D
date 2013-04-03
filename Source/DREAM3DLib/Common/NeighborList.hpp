@@ -131,7 +131,7 @@ class NeighborList : public IDataArray
      */
     void InitializeTuple(size_t i, double p)
     {
-      assert(false);
+      BOOST_ASSERT(false);
     }
 
 
@@ -170,11 +170,18 @@ class NeighborList : public IDataArray
     //FIXME: These need to be implemented
     virtual void printTuple(std::ostream &out, size_t i, char delimiter = ',')
     {
-        assert(false);
+		SharedVectorType sharedVec = _data[i];
+		VectorType* vec = sharedVec.get();
+		size_t size = vec->size();
+		out << size;
+		for(size_t i=0;i<size;i++)
+		{
+			out << delimiter << vec->at(i);
+		}
     }
     virtual void printComponent(std::ostream &out, size_t i, int j)
     {
-      assert(false);
+      BOOST_ASSERT(false);
     }
 
     /**
@@ -397,7 +404,7 @@ class NeighborList : public IDataArray
     T getValue(int grainId, int index, bool &ok)
     {
 #ifndef NDEBUG
-      if (_data.size() > 0u) { assert(grainId < static_cast<int>(_data.size()));}
+      if (_data.size() > 0u) { BOOST_ASSERT(grainId < static_cast<int>(_data.size()));}
 #endif
       SharedVectorType vec = _data[grainId];
       if(index < 0 || static_cast<size_t>(index) >= vec->size())
@@ -422,7 +429,7 @@ class NeighborList : public IDataArray
     int getListSize(int grainId)
     {
 #ifndef NDEBUG
-      if (_data.size() > 0u) { assert(grainId < static_cast<int>(_data.size()));}
+      if (_data.size() > 0u) { BOOST_ASSERT(grainId < static_cast<int>(_data.size()));}
 #endif
       return static_cast<int>(_data[grainId]->size());
     }
@@ -434,7 +441,7 @@ class NeighborList : public IDataArray
     SharedVectorType getList(int grainId)
     {
 #ifndef NDEBUG
-      if (_data.size() > 0u) { assert(grainId < static_cast<int>(_data.size()));}
+      if (_data.size() > 0u) { BOOST_ASSERT(grainId < static_cast<int>(_data.size()));}
 #endif
       return _data[grainId];
     }
@@ -445,7 +452,7 @@ class NeighborList : public IDataArray
     VectorType copyOfList(int grainId)
     {
 #ifndef NDEBUG
-      if (_data.size() > 0u) { assert(grainId < static_cast<int>(_data.size()));}
+      if (_data.size() > 0u) { BOOST_ASSERT(grainId < static_cast<int>(_data.size()));}
 #endif
 
       VectorType copy(*(_data[grainId]));
@@ -455,7 +462,7 @@ class NeighborList : public IDataArray
     VectorType& operator[](int grainId)
     {
 #ifndef NDEBUG
-      if (_data.size() > 0u) { assert(grainId < static_cast<int>(_data.size()));}
+      if (_data.size() > 0u) { BOOST_ASSERT(grainId < static_cast<int>(_data.size()));}
 #endif
       return *(_data[grainId]);
     }
@@ -463,7 +470,7 @@ class NeighborList : public IDataArray
     VectorType& operator[](size_t grainId)
     {
 #ifndef NDEBUG
-      if (_data.size() > 0ul) { assert(grainId < _data.size());}
+      if (_data.size() > 0ul) { BOOST_ASSERT(grainId < _data.size());}
 #endif
       return *(_data[grainId]);
 

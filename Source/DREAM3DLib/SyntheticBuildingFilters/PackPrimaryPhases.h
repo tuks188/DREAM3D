@@ -81,39 +81,41 @@ class DREAM3DLib_EXPORT PackPrimaryPhases : public AbstractFilter
 
     virtual ~PackPrimaryPhases();
 
-	//------ Required Cell Data
-	DREAM3D_INSTANCE_STRING_PROPERTY(GrainIdsArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(CellPhasesArrayName)
-	//------ Created Field Data
-	DREAM3D_INSTANCE_STRING_PROPERTY(ActiveArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(AxisEulerAnglesArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(AxisLengthsArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(CentroidsArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(EquivalentDiametersArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(NeighborhoodsArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(Omega3sArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(FieldPhasesArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(VolumesArrayName)
-	//------ Required Ensemble Data
-	DREAM3D_INSTANCE_STRING_PROPERTY(PhaseTypesArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(ShapeTypesArrayName)
+    //------ Required Cell Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(GrainIdsArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(CellPhasesArrayName)
+    //------ Created Field Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(ActiveArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(AxisEulerAnglesArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(AxisLengthsArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(CentroidsArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(EquivalentDiametersArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(NeighborhoodsArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(Omega3sArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(FieldPhasesArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(VolumesArrayName)
+    //------ Required Ensemble Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(PhaseTypesArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(ShapeTypesArrayName)
 
     typedef boost::shared_array<float> SharedFloatArray;
     typedef boost::shared_array<int> SharedIntArray;
 
     virtual const std::string getGroupName() { return DREAM3D::FilterGroups::SyntheticBuildingFilters; }
+    virtual const std::string getSubGroupName() { return DREAM3D::FilterSubGroups::PackingFilters; }
     virtual const std::string getHumanLabel() { return "Pack Primary Phases"; }
 
     DREAM3D_INSTANCE_STRING_PROPERTY(ErrorOutputFile)
     DREAM3D_INSTANCE_STRING_PROPERTY(VtkOutputFile)
+    DREAM3D_INSTANCE_STRING_PROPERTY(CsvOutputFile)
     DREAM3D_INSTANCE_PROPERTY(bool, PeriodicBoundaries)
-    DREAM3D_INSTANCE_PROPERTY(float, NeighborhoodErrorWeight)
+    DREAM3D_INSTANCE_PROPERTY(bool, WriteGoalAttributes)
 
 
     virtual void setupFilterParameters();
-	virtual void writeFilterParameters(AbstractFilterParametersWriter* writer);
+    virtual void writeFilterParameters(AbstractFilterParametersWriter* writer);
 
-	virtual void preflight();
+    virtual void preflight();
 
     /**
      * @brief Reimplemented from @see AbstractFilter class
@@ -126,7 +128,7 @@ class DREAM3DLib_EXPORT PackPrimaryPhases : public AbstractFilter
 
     void initialize_packinggrid();
 
-	void generate_grain(int phase, int Seed, Field* grain, unsigned int shapeclass, OrientationMath::Pointer OrthoOps);
+    void generate_grain(int phase, int Seed, Field* grain, unsigned int shapeclass, OrientationMath::Pointer OrthoOps);
 
     void transfer_attributes(int gnum, Field* field);
     void insert_grain(size_t grainNum);
@@ -137,18 +139,23 @@ class DREAM3DLib_EXPORT PackPrimaryPhases : public AbstractFilter
     void determine_neighbors(size_t grainNum, int add);
     float check_neighborhooderror(int gadd, int gremove);
 
-    float check_fillingerror(int gadd, int gremove);
+	float check_fillingerror(int gadd, int gremove, Int32ArrayType::Pointer grainOwnersPtr, BoolArrayType::Pointer exclusionZonesPtr);
     void assign_voxels();
-    void assign_gaps();
+    void assign_gaps_only();
     void cleanup_grains();
+	void write_goal_attributes();
 
     void compare_1Ddistributions(std::vector<float>, std::vector<float>, float &sqrerror);
     void compare_2Ddistributions(std::vector<std::vector<float> >, std::vector<std::vector<float> >, float &sqrerror);
     void compare_3Ddistributions(std::vector<std::vector<std::vector<float> > >, std::vector<std::vector<std::vector<float> > >, float &sqrerror);
 
-    int writeVtkFile();
+    int writeVtkFile(int32_t* grainOwners, bool* exclusionZonesPtr);
+    int estimate_numgrains(int xpoints, int ypoints, int zpoints, float xres, float yres, float zres);
+
 
   private:
+    int32_t* m_Neighbors;
+
     // Cell Data - make sure these are all initialized to NULL in the constructor
     int32_t* m_GrainIds;
     int32_t* m_CellPhases;
@@ -186,6 +193,7 @@ class DREAM3DLib_EXPORT PackPrimaryPhases : public AbstractFilter
     std::vector<std::vector<int> > columnlist;
     std::vector<std::vector<int> > rowlist;
     std::vector<std::vector<int> > planelist;
+    std::vector<std::vector<float> > ellipfunclist;
 
     unsigned long long int Seed;
 
@@ -196,15 +204,13 @@ class DREAM3DLib_EXPORT PackPrimaryPhases : public AbstractFilter
     float sizez;
     float totalvol;
 
-    float packingresx;
-    float packingresy;
-    float packingresz;
-    int packingxpoints;
-    int packingypoints;
-    int packingzpoints;
-    int packingtotalpoints;
+    float m_HalfPackingRes[3];
+    float m_OneOverPackingRes[3];
+    float m_OneOverHalfPackingRes[3];
 
-    std::vector<std::vector<std::vector<int> > > grainowners;
+    float m_PackingRes[3];
+    int m_PackingPoints[3];
+    int m_TotalPackingPoints;
 
     std::vector<std::vector<float> > grainsizedist;
     std::vector<std::vector<float> > simgrainsizedist;

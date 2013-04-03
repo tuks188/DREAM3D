@@ -38,11 +38,14 @@
 #include <iostream>
 #include <fstream>
 
+#include "MXA/Utilities/MXAFileInfo.h"
+
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
 DxReader::DxReader() :
 FileReader(),
+m_InputFile(""),
 m_XRes(1.0f),
 m_YRes(1.0f),
 m_ZRes(1.0f),
@@ -70,6 +73,7 @@ void DxReader::setupFilterParameters()
     option->setHumanLabel("Input File");
     option->setPropertyName("InputFile");
     option->setWidgetType(FilterParameter::InputFileWidget);
+    option->setFileExtension("*.dx");
     option->setValueType("string");
     parameters.push_back(option);
   }
@@ -121,9 +125,14 @@ void DxReader::dataCheck(bool preflight, size_t voxels, size_t fields, size_t en
 
   if (getInputFile().empty() == true)
   {
-    std::stringstream ss;
     ss << ClassName() << " needs the Input File Set and it was not.";
     setErrorCondition(-387);
+    addErrorMessage(getHumanLabel(), ss.str(), getErrorCondition());
+  }
+  else if (MXAFileInfo::exists(getInputFile()) == false)
+  {
+    ss << "The input file does not exist.";
+    setErrorCondition(-388);
     addErrorMessage(getHumanLabel(), ss.str(), getErrorCondition());
   }
   CREATE_NON_PREREQ_DATA(m, DREAM3D, CellData, GrainIds, ss, int32_t, Int32ArrayType, 0, voxels, 1)
@@ -161,18 +170,11 @@ int DxReader::readFile()
     return -1;
   }
 
-  preflight();
-  if (getErrorCondition() < 0)
-  {
-    return getErrorCondition();
-  }
   std::string line;
   std::string delimeters(", ;\t"); /* delimeters to split the data */
   std::vector<std::string> tokens; /* vector to store the split data */
-  //std::vector<int> data; /* vector to store the data */
 
   int error, spin; /* dummy variables */
-  //int nx, ny, nz;
 
   std::ifstream inFile;
   inFile.open(getInputFile().c_str(), std::ios_base::binary);
@@ -292,11 +294,15 @@ int DxReader::readFile()
 
   bool finished_header, finished_data;
   finished_header = true;
-  //  finished_header = false;
   finished_data = false;
   size_t index = 0;
 
   size_t totalPoints = nx * ny * nz;
+  // Remove the array that we are about to create first as a 'datacheck()' was called from the super class's 'execute'
+  // method which is performed before this function. This will cause an error -501 because the array with the name
+  // m_GrainIdsArrayName already exists but of size 1, not the size we are going to read. So we get rid of the array
+  m->removeCellData(m_GrainIdsArrayName);
+  // Rerun the data check in order to allocate the array to store the data from the .dx file.
   dataCheck(false, totalPoints, m->getNumFieldTuples(), m->getNumEnsembleTuples());
   if (getErrorCondition() < 0)
   {

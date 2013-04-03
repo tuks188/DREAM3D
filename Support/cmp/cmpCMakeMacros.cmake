@@ -24,7 +24,7 @@ ENDMACRO (cmp_IDE_GENERATED_PROPERTIES SOURCE_PATH HEADERS SOURCES)
 #-------------------------------------------------------------------------------
 
 MACRO (cmp_IDE_SOURCE_PROPERTIES SOURCE_PATH HEADERS SOURCES INSTALL_FILES)
-    if (${INSTALL_FILES} EQUAL "1")
+    if(${INSTALL_FILES} EQUAL "1")
         INSTALL (FILES ${HEADERS}
                  DESTINATION include/${SOURCE_PATH}
                  COMPONENT Headers
@@ -53,7 +53,7 @@ ENDMACRO (cmp_IDE_SOURCE_PROPERTIES NAME HEADERS SOURCES INSTALL_FILES)
 #-------------------------------------------------------------------------------
 macro(ConfigureMacOSXBundlePlist TARGET_NAME DEBUG_EXTENSION ICON_FILE_PATH VERSION_STRING)
   # message(STATUS "ConfigureMacOSXBundlePlist for ${PROJECT_NAME} ")
-  IF(CMAKE_BUILD_TYPE MATCHES "Release")
+  if(CMAKE_BUILD_TYPE MATCHES "Release")
     SET(DBG_EXTENSION "")
   else()
     set(DBG_EXTENSION ${DEBUG_EXTENSION})
@@ -110,11 +110,11 @@ function(BuildQtAppBundle)
     set(GUI_TYPE "")
 
     #-- Configure the OS X Bundle Plist
-    if (APPLE)
+    if(APPLE)
         SET(GUI_TYPE MACOSX_BUNDLE)
         #-- Make sure the qt_menu.nib is copied if we are using Qt Cocoa by setting the
         # source files properties of the qt_menu.nib package
-        IF(QT_MAC_USE_COCOA)
+        if(QT_MAC_USE_COCOA)
             GET_FILENAME_COMPONENT(qt_menu_nib
               "${QT_QTGUI_LIBRARY_RELEASE}/Resources/qt_menu.nib"
               REALPATH)
@@ -130,7 +130,7 @@ function(BuildQtAppBundle)
             )
         ELSE(QT_MAC_USE_COCOA)
             set(qt_menu_nib_sources)
-        ENDIF(QT_MAC_USE_COCOA)
+        ENDif(QT_MAC_USE_COCOA)
 
 #-- Write out a qt.conf file to place in our App bundle
 #        set(qt_conf_file ${${QAB_TARGET}_BINARY_DIR}/qt.conf)
@@ -160,7 +160,7 @@ function(BuildQtAppBundle)
                         ${QAB_LINK_LIBRARIES} )
 
 #-- Make sure we have a proper bundle icon. This must occur AFTER the ADD_EXECUTABLE command
-    if (APPLE)
+    if(APPLE)
         ConfigureMacOSXBundlePlist( ${QAB_TARGET} ${QAB_DEBUG_EXTENSION} ${QAB_ICON_FILE}
                                 "${QAB_VERSION_MAJOR}.${QAB_VERSION_MINOR}.${QAB_VERSION_PATCH}" )
     endif(APPLE)
@@ -175,7 +175,7 @@ function(BuildQtAppBundle)
 #-- Create install rules for any Qt Plugins that are needed
     set(pi_dest ${QAB_INSTALL_DEST}/plugins)
     # if we are on OS X then we set the plugin installation location to inside the App bundle
-    if (APPLE)
+    if(APPLE)
         set(pi_dest ${QAB_TARGET}.app/Contents/plugins)
         set(osx_app_name ${QAB_TARGET})
         if(CMAKE_BUILD_TYPE MATCHES "Debug")
@@ -187,7 +187,7 @@ function(BuildQtAppBundle)
 
     set(app_plugin_list "")
     set(lib_search_dirs "")
-
+    set(write_qt_plugins_in_qtconf "")
 #-- It is important as you build up the list to modify the path to the Qt Plugin
 #-- to point to the plugin that will appear in the Application bundle and NOT
 #-- the path to your Qt installation. If you do NOT do this step properly AND you
@@ -196,13 +196,14 @@ function(BuildQtAppBundle)
 #-- list it is important to have Absolute Paths to these plugins otherwise
 #-- fixup_bundle() can not find the libraries.
     foreach(pi ${QAB_QT_PLUGINS})
+        set(write_qt_plugins_in_qtconf "1")
         get_filename_component(qt_plugin_name "${pi}" NAME)
         get_filename_component(qt_plugin_type_path "${pi}" PATH)
         get_filename_component(qt_plugin_type "${qt_plugin_type_path}" NAME)
-        install(PROGRAMS ${pi}
-                DESTINATION "${pi_dest}/${qt_plugin_type}"
-                COMPONENT ${QAB_COMPONENT}
-        )
+        #install(PROGRAMS ${pi}
+        #        DESTINATION "${pi_dest}/${qt_plugin_type}"
+        #        COMPONENT ${QAB_COMPONENT}
+        #)
         list(APPEND app_plugin_list "\${CMAKE_INSTALL_PREFIX}/${pi_dest}/${qt_plugin_type}/${qt_plugin_name}")
     endforeach()
     list(REMOVE_DUPLICATES lib_search_dirs)
@@ -211,7 +212,7 @@ function(BuildQtAppBundle)
 #-- Create install rules for our own plugins that are targets in the build system which
 #-- is only needed on Apple systems to make sure we get them installed into the bundle.
 #-- On other platforms the standard installation rules are used instead.
-    if (APPLE)
+    if(APPLE)
         foreach(pi ${QAB_OTHER_PLUGINS})
             get_filename_component(plugin_name "${pi}" NAME)
             install(PROGRAMS ${pi}
@@ -233,7 +234,7 @@ function(BuildQtAppBundle)
 
 #-- Create last install rule that will run fixup_bundle() on OS X Machines. Other platforms we
 #-- are going to create the install rules elsewhere
-    if (APPLE)
+    if(APPLE)
         list(APPEND lib_search_dirs "${QAB_LIB_SEARCH_DIRS}")
 
         set(OSX_MAKE_STANDALONE_BUNDLE_CMAKE_SCRIPT
@@ -261,7 +262,25 @@ function(BuildQtAppBundle)
                 "${LINUX_MAKE_STANDALONE_LAUNCH_SCRIPT}" @ONLY IMMEDIATE)
         install(PROGRAMS "${LINUX_MAKE_STANDALONE_LAUNCH_SCRIPT}"
                 DESTINATION "bin"
-                COMPONENT ${QAB_COMPONENT} )
+                COMPONENT ${QAB_COMPONENT})
+        set(lib_suffix "")
+        set(build_type "@CMAKE_BUILD_TYPE@")
+        if("${build_type}" STREQUAL "Debug")
+            set(lib_suffix "_debug")
+        endif()
+
+	    set(LINUX_INSTALL_LIBS_CMAKE_SCRIPT
+                "${QAB_BINARY_DIR}/LINUX_Scripts/${QAB_TARGET}_CompleteBundle.cmake")
+        set(OPTIMIZE_BUNDLE_SHELL_SCRIPT
+                "${QAB_BINARY_DIR}/LINUX_Scripts/${QAB_TARGET}_InstallLibraries.sh")
+
+	    CONFIGURE_FILE("${CMP_LINUX_TOOLS_SOURCE_DIR}/CompleteBundle.cmake.in"
+			"${LINUX_INSTALL_LIBS_CMAKE_SCRIPT}" @ONLY IMMEDIATE)
+        set(PROJECT_INSTALL_DIR ${linux_app_name}.app)
+        CONFIGURE_FILE("${CMP_LINUX_TOOLS_SOURCE_DIR}/InstallLibraries.sh.in"
+                "${OPTIMIZE_BUNDLE_SHELL_SCRIPT}" @ONLY IMMEDIATE)
+
+        install(SCRIPT "${LINUX_INSTALL_LIBS_CMAKE_SCRIPT}" COMPONENT ${QAB_COMPONENT})
     endif()
 
 
@@ -300,7 +319,7 @@ function(BuildToolBundle)
     # Default GUI type is blank
     set(GUI_TYPE "")
 
-    if (APPLE)
+    if(APPLE)
         set(osx_app_name ${QAB_TARGET})
         if(CMAKE_BUILD_TYPE MATCHES "Debug")
             set(osx_app_name ${QAB_TARGET}${QAB_DEBUG_EXTENSION})
@@ -355,7 +374,7 @@ endfunction()
 # --------------------------------------------------------------------
 macro(cmp_ToolInstallationSupport_old EXE_NAME EXE_DEBUG_EXTENSION EXE_BINARY_DIR installFiles
                                   comp dest lib_search_dirs)
-if (0)
+if(0)
     message(STATUS "EXE_NAME: ${EXE_NAME}")
     message(STATUS "EXE_DEBUG_EXTENSION: ${EXE_DEBUG_EXTENSION}")
     message(STATUS "EXE_BINARY_DIR: ${EXE_BINARY_DIR}")
@@ -371,7 +390,7 @@ endif()
         DEBUG_OUTPUT_NAME ${EXE_NAME}${EXE_DEBUG_EXTENSION}
         RELEASE_OUTPUT_NAME ${EXE_NAME}
     )
-    IF (${installFiles} EQUAL 1)
+    if(${installFiles} EQUAL 1)
         INSTALL(TARGETS ${EXE_NAME}
             COMPONENT ${comp}
             RUNTIME DESTINATION ${dest}
@@ -381,14 +400,14 @@ endif()
         )
 
         #   message(STATUS "Creating Install CMake file for tool application ${EXE_NAME}")
-        if (APPLE)
+        if(APPLE)
             if(CMAKE_BUILD_TYPE MATCHES "Debug")
                 MakeOSXTool( "${EXE_NAME}${EXE_DEBUG_EXTENSION}"
                             ${EXE_BINARY_DIR}
                             ${CMP_OSX_TOOLS_SOURCE_DIR}
                             "${dest}"
                             "${lib_search_dirs}")
-            else (CMAKE_BUILD_TYPE MATCHES "Debug")
+            else(CMAKE_BUILD_TYPE MATCHES "Debug")
                 MakeOSXTool(${EXE_NAME}
                              ${EXE_BINARY_DIR}
                              ${CMP_OSX_TOOLS_SOURCE_DIR}
@@ -402,7 +421,7 @@ endmacro()
 # --------------------------------------------------------------------
 
 macro(LibraryProperties targetName DEBUG_EXTENSION)
-    if ( NOT BUILD_SHARED_LIBS AND MSVC)
+    if( NOT BUILD_SHARED_LIBS AND MSVC)
       SET_TARGET_PROPERTIES( ${targetName}
         PROPERTIES
         DEBUG_OUTPUT_NAME lib${targetName}
@@ -414,39 +433,39 @@ macro(LibraryProperties targetName DEBUG_EXTENSION)
         PROPERTIES
         DEBUG_POSTFIX ${DEBUG_EXTENSION} )
 
-    IF (BUILD_SHARED_LIBS)
-      if (APPLE)
+    if(BUILD_SHARED_LIBS)
+      if(APPLE)
           OPTION (CMP_BUILD_WITH_INSTALL_NAME "Build Libraries with the install_name set to the installation prefix. This is good if you are going to run from the installation location" OFF)
-          IF(CMP_BUILD_WITH_INSTALL_NAME)
+          if(CMP_BUILD_WITH_INSTALL_NAME)
               SET_TARGET_PROPERTIES(${targetName}
                  PROPERTIES
                  LINK_FLAGS "-current_version ${${CMP_PROJECT_NAME}_VERSION} -compatibility_version ${${CMP_PROJECT_NAME}_VERSION}"
                  INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib"
                  BUILD_WITH_INSTALL_RPATH ${CMP_BUILD_WITH_INSTALL_NAME}
               )
-         ENDIF(CMP_BUILD_WITH_INSTALL_NAME)
+         ENDif(CMP_BUILD_WITH_INSTALL_NAME)
      endif(APPLE)
 
-   ENDIF( BUILD_SHARED_LIBS)
+   ENDif( BUILD_SHARED_LIBS)
 
 endmacro(LibraryProperties DEBUG_EXTENSION)
 
 # --------------------------------------------------------------------
 macro(StaticLibraryProperties targetName )
-    if (WIN32 AND NOT MINGW)
+    if(WIN32 AND NOT MINGW)
         set(DEBUG_EXTENSION "_d")
     else()
         set(DEBUG_EXTENSION "_debug")
     endif()
 
 
-    IF (WIN32 AND NOT MINGW)
+    if(WIN32 AND NOT MINGW)
         SET(LIBRARY_RELEASE_NAME "lib${targetName}" CACHE INTERNAL "" FORCE)
         SET(LIBRARY_DEBUG_NAME "lib${targetName}${DEBUG_EXTENSION}" CACHE INTERNAL "" FORCE)
-    ELSE (WIN32 AND NOT MINGW)
+    else(WIN32 AND NOT MINGW)
         SET(LIBRARY_RELEASE_NAME "${targetName}" CACHE INTERNAL "" FORCE)
         SET(LIBRARY_DEBUG_NAME "${targetName}${DEBUG_EXTENSION}" CACHE INTERNAL "" FORCE)
-    ENDIF(WIN32 AND NOT MINGW)
+    ENDif(WIN32 AND NOT MINGW)
 
 
     #-- Set the Debug and Release names for the libraries
@@ -462,7 +481,7 @@ endmacro(StaticLibraryProperties)
 # This is used if you are creating a plugin that needs to be installed
 #-------------------------------------------------------------------------------
 macro(PluginProperties targetName DEBUG_EXTENSION projectVersion binaryDir pluginfile)
-    if ( NOT BUILD_SHARED_LIBS AND MSVC)
+    if( NOT BUILD_SHARED_LIBS AND MSVC)
       SET_TARGET_PROPERTIES( ${targetName}
         PROPERTIES
         DEBUG_OUTPUT_NAME lib${targetName}
@@ -476,13 +495,13 @@ macro(PluginProperties targetName DEBUG_EXTENSION projectVersion binaryDir plugi
         SUFFIX ".plugin" )
 
     # Add the plugin to our list of plugins that will need to be installed
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT MSVC)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT MSVC)
         file(APPEND ${pluginfile} "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib${targetName}${DEBUG_EXTENSION}.plugin;")
     else()
         file(APPEND ${pluginfile} "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib${targetName}.plugin;")
     endif()
 
-    if (NOT APPLE)
+    if(NOT APPLE)
         set(BUILD_TYPES "Debug;Release")
         foreach(btype ${BUILD_TYPES})
             INSTALL(TARGETS ${targetName}
@@ -500,7 +519,7 @@ endmacro()
 macro (FindQt4Plugins pluginlist pluginfile libdirsearchfile plugintype)
   set(qt_plugin_list ${pluginlist})
   set(qt_plugin_types "Debug;Release")
-  if (WIN32)
+  if(WIN32)
     set(qt_plugin_prefix "")
     set(qt_plugin_DEBUG_suffix "d4")
     set(qt_plugin_RELEASE_suffix "4")
@@ -520,14 +539,14 @@ macro (FindQt4Plugins pluginlist pluginfile libdirsearchfile plugintype)
     string(TOUPPER ${build_type} BTYPE)
       foreach(plugin ${qt_plugin_list})
         STRING(TOUPPER ${plugin} PLUGIN)
-        # message(STATUS "|-- Looking for ${plugin}${qt_plugin_${BTYPE}_suffix}")
+        #message(STATUS "|-- Looking for ${plugin}${qt_plugin_${BTYPE}_suffix}")
         FIND_LIBRARY( QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}
                       NAMES ${plugin}${qt_plugin_${BTYPE}_suffix}
                       PATHS ${QT_PLUGINS_DIR}/${plugintype}
                       DOC "Library Path for ${plugin}"
                       NO_DEFAULT_PATH NO_CMAKE_PATH NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
 
-        if (MSVC)
+        if(MSVC)
             #  message(STATUS "QT_PLUGINS_DIR: ${QT_PLUGINS_DIR}")
             #  message(STATUS " QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}: ${QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}}")
             get_filename_component(lib_path ${QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}} PATH)
@@ -535,7 +554,7 @@ macro (FindQt4Plugins pluginlist pluginfile libdirsearchfile plugintype)
             #  message(STATUS "lib_path: ${lib_path}")
             #  message(STATUS "lib_name: ${lib_name}")
             set(QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE} ${lib_path}/${lib_name}.dll CACHE PATH "" FORCE)
-            if ( ${QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}} STREQUAL  "QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}-NOTFOUND")
+            if( ${QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}} STREQUAL  "QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}-NOTFOUND")
               message(STATUS "A Companion DLL for ${upperlib}_LIBRARY_${TYPE} was NOT found which usually means"
                                 " that the library was NOT built as a DLL. I looked in the "
                                 " following locations:  ${lib_path}\n  ${lib_path}/..\n  ${lib_path}/../bin")
@@ -548,8 +567,7 @@ macro (FindQt4Plugins pluginlist pluginfile libdirsearchfile plugintype)
                     CONFIGURATIONS ${BTYPE}
                     COMPONENT Applications)
             endif()
-        elseif (UNIX AND NOT APPLE)
-message(STATUS "Creating Install Rule for Qt Plugin ${PLUGIN}")
+        elseif(UNIX AND NOT APPLE)
             INSTALL(FILES ${QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}}
                 DESTINATION ./plugins/${plugintype}
                 CONFIGURATIONS ${BTYPE}
@@ -557,15 +575,15 @@ message(STATUS "Creating Install Rule for Qt Plugin ${PLUGIN}")
         endif()
 
         mark_as_advanced(QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE})
-        # message(STATUS "|--  QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}: ${QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}}")
+        #message(STATUS "|--  QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}: ${QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}}")
         LIST(APPEND QTPLUGINS_${BTYPE} ${QT_IMAGEFORMAT_PLUGIN_${PLUGIN}_${BTYPE}})
       endforeach()
     endforeach()
 
     # Assign either the debug or release plugin list to the QTPLUGINS variable on NON msvc platforms.
-    if (NOT MSVC)
-      if ( NOT DEFINED CMAKE_BUILD_TYPE )
-        if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    if(NOT MSVC)
+      if( NOT DEFINED CMAKE_BUILD_TYPE )
+        if( ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
             set(QTPLUGINS ${QTPLUGINS_DEBUG})
         else()
             set(QTPLUGINS ${QTPLUGINS_RELEASE})
@@ -590,15 +608,15 @@ endmacro(FindQt4Plugins pluginlist)
 #-- one can debug an application or library that depends on Qt4 libraries.
 macro (CMP_COPY_QT4_RUNTIME_LIBRARIES QTLIBLIST)
     #message(STATUS "CMP_COPY_QT4_RUNTIME_LIBRARIES")
-    if (MSVC)
+    if(MSVC)
 
-        if (DEFINED QT_QMAKE_EXECUTABLE)
+        if(DEFINED QT_QMAKE_EXECUTABLE)
             set(TYPE "d")
             FOREACH(qtlib ${QTLIBLIST})
                 GET_FILENAME_COMPONENT(QT_DLL_PATH_tmp ${QT_QMAKE_EXECUTABLE} PATH)
 
                 if( ${CMAKE_BUILD_TOOL} STREQUAL "nmake")
-                  if (NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+                  if(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
                     set(TYPE "")
                   endif()
                   add_custom_target(ZZ_${qtlib}-Debug-Copy ALL
@@ -619,10 +637,10 @@ macro (CMP_COPY_QT4_RUNTIME_LIBRARIES QTLIBLIST)
             ENDFOREACH(qtlib)
         endif(DEFINED QT_QMAKE_EXECUTABLE)
     endif()
-    if (MINGW)
-        if (DEFINED QT_QMAKE_EXECUTABLE)
+    if(MINGW)
+        if(DEFINED QT_QMAKE_EXECUTABLE)
             set(TYPE "")
-            if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+            if( ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
                 set(TYPE "d")
             endif()
             FOREACH(qtlib ${QTLIBLIST})
@@ -643,8 +661,8 @@ endmacro()
 #
 macro (CMP_QT_LIBRARIES_INSTALL_RULES QTLIBLIST destination)
    # message(STATUS "CMP_COPY_QT4_RUNTIME_LIBRARIES")
-    if (MSVC)
-        if (DEFINED QT_QMAKE_EXECUTABLE)
+    if(MSVC)
+        if(DEFINED QT_QMAKE_EXECUTABLE)
             set(TYPE "d")
             FOREACH(qtlib ${QTLIBLIST})
 
@@ -665,8 +683,8 @@ macro (CMP_QT_LIBRARIES_INSTALL_RULES QTLIBLIST destination)
 
 #-- This will create install rules for the dylibs on linux hopefully creating
 #-- a stand alone .zip or .tgz file
-    if (UNIX AND NOT APPLE)
-        if (DEFINED QT_QMAKE_EXECUTABLE)
+    if(UNIX AND NOT APPLE)
+        if(DEFINED QT_QMAKE_EXECUTABLE)
             GET_FILENAME_COMPONENT(QT_LIB_PATH ${QT_QMAKE_EXECUTABLE} PATH)
             GET_FILENAME_COMPONENT(QT_LIB_PATH ${QT_LIB_PATH} PATH)
             set(QT_LIB_PATH ${QT_LIB_PATH}/lib)
@@ -736,9 +754,9 @@ MACRO (CMP_COPY_DEPENDENT_LIBRARIES _libraryList)
                       COMMENT "  Copy: ${${upperlib}_LIBRARY_DLL_${TYPE}}\n    To: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BTYPE}/")
 
         ENDFOREACH(BTYPE ${TYPES})
-      ENDIF(${upperlib}_IS_SHARED)
+      ENDif(${upperlib}_IS_SHARED)
     ENDFOREACH(lib ${_libraryList})
-  ENDIF(MSVC)
+  ENDif(MSVC)
 endmacro()
 
 # --------------------------------------------------------------------
@@ -750,7 +768,7 @@ MACRO (CMP_LIBRARIES_INSTALL_RULES _libraryList destination)
 #  message(STATUS "CMP_LIBRARIES_INSTALL_RULES")
   set(_libraryList ${_libraryList})
   set(TYPES Debug Release)
-  if (MSVC)
+  if(MSVC)
 
     FOREACH(lib ${_libraryList})
         STRING(TOUPPER ${lib} upperlib)
@@ -766,7 +784,7 @@ MACRO (CMP_LIBRARIES_INSTALL_RULES _libraryList destination)
                         NO_DEFAULT_PATH )
          # message(STATUS "${upperlib}_LIBRARY_DLL_${TYPE}: ${${upperlib}_LIBRARY_DLL_${TYPE}}")
           mark_as_advanced(${upperlib}_LIBRARY_DLL_${TYPE})
-          if ( ${${upperlib}_LIBRARY_DLL_${TYPE}} STREQUAL  "${upperlib}_LIBRARY_DLL_${TYPE}-NOTFOUND")
+          if( ${${upperlib}_LIBRARY_DLL_${TYPE}} STREQUAL  "${upperlib}_LIBRARY_DLL_${TYPE}-NOTFOUND")
              message(STATUS "A Companion DLL for ${upperlib}_LIBRARY_${TYPE} was NOT found which usually means\n"
                                 " that the library was NOT built as a DLL. I looked in the \n"
                                 " following locations:\n  ${lib_path}\n  ${lib_path}/..\n  ${lib_path}/../bin\n  ${${upperlib}_BIN_DIR}")
@@ -782,11 +800,11 @@ MACRO (CMP_LIBRARIES_INSTALL_RULES _libraryList destination)
 
         ENDFOREACH(BTYPE ${TYPES})
     ENDFOREACH(lib ${_libraryList})
-  ENDIF(MSVC)
+  ENDif(MSVC)
 
 #-- This will create install rules for the dylibs on linux hopefully creating
 #-- a stand alone .zip or .tgz file
-    if (UNIX AND NOT APPLE)
+    if(UNIX AND NOT APPLE)
       FOREACH(lib ${_libraryList})
         STRING(TOUPPER ${lib} upperlib)
 
@@ -801,7 +819,7 @@ MACRO (CMP_LIBRARIES_INSTALL_RULES _libraryList destination)
                         NO_DEFAULT_PATH )
          # message(STATUS "${upperlib}_LIBRARY_SO_${TYPE}: ${${upperlib}_LIBRARY_SO_${TYPE}}")
           mark_as_advanced(${upperlib}_LIBRARY_SO_${TYPE})
-          if ( "${${upperlib}_LIBRARY_SO_${TYPE}}" STREQUAL  "${upperlib}_LIBRARY_SO_${TYPE}-NOTFOUND")
+          if( "${${upperlib}_LIBRARY_SO_${TYPE}}" STREQUAL  "${upperlib}_LIBRARY_SO_${TYPE}-NOTFOUND")
              message(STATUS "A shared library for ${upperlib}_LIBRARY_${TYPE} was NOT found which usually means\n"
                                 " that the library was NOT built as a .so. I looked in the \n"
                                 " following locations:\n  ${lib_path}\n  ${lib_path}/..\n  ${lib_path}/../bin\n  ${${upperlib}_BIN_DIR}")
@@ -834,15 +852,15 @@ ENDMACRO()
 macro(cmpGenerateVersionString GENERATED_HEADER_PATH GENERATED_SOURCE_PATH NAMESPACE cmpProjectName)
     INCLUDE (${CMAKE_ROOT}/Modules/CheckSymbolExists.cmake)
 
-    if ( CMP_HAVE_TIME_GETTIMEOFDAY )
+    if( CMP_HAVE_TIME_GETTIMEOFDAY )
       set( VERSION_COMPILE_FLAGS "-DHAVE_TIME_GETTIMEOFDAY")
     endif()
 
-    if ( CMP_HAVE_SYS_TIME_GETTIMEOFDAY )
+    if( CMP_HAVE_SYS_TIME_GETTIMEOFDAY )
         set( VERSION_COMPILE_FLAGS "-DHAVE_SYS_TIME_GETTIMEOFDAY")
     endif()
 
-    if (NOT CMP_HAVE_TIME_GETTIMEOFDAY AND NOT CMP_HAVE_SYS_TIME_GETTIMEOFDAY)
+    if(NOT CMP_HAVE_TIME_GETTIMEOFDAY AND NOT CMP_HAVE_SYS_TIME_GETTIMEOFDAY)
       set(VERSION_GEN_VER_MAJOR "0")
       set(VERSION_GEN_VER_MINOR "0")
       set(VERSION_GEN_VER_PATCH "1")
@@ -863,7 +881,7 @@ macro(cmpGenerateVersionString GENERATED_HEADER_PATH GENERATED_SOURCE_PATH NAMES
       set(VERSION_RUN_RESULT "1" CACHE INTERNAL "")
 
 
-      if (NOT VERSION_RUN_OUTPUT)
+      if(NOT VERSION_RUN_OUTPUT)
           message(STATUS "VERSION_COMPILE_OUTPUT: ${VERSION_COMPILE_OUTPUT}")
           message(STATUS "VERSION_RUN_OUTPUT: ${VERSION_RUN_OUTPUT}")
           FILE(APPEND ${CMAKE_BINARY_DIR}/CMakeFiles/CMakeError.log
@@ -920,7 +938,7 @@ function(cmpVersionStringsFromGit)
     # Find Git executable
     Find_package(Git)
     # Run 'git describe' to get our tag offset
-    if (GIT_FOUND)
+    if(GIT_FOUND)
         execute_process(COMMAND ${GIT_EXECUTABLE} describe
         OUTPUT_VARIABLE DVERS
         RESULT_VARIABLE did_run
@@ -931,7 +949,7 @@ function(cmpVersionStringsFromGit)
         # message(STATUS "DVERS: ${DVERS}")
 
         #-- Make sure that actually worked and if not just generate some dummy values
-        if (DVERS STREQUAL "")
+        if(DVERS STREQUAL "")
             cmpGenerateVersionString( ${GVS_GENERATED_HEADER_FILE_PATH} ${GVS_GENERATED_SOURCE_FILE_PATH} ${GVS_NAMESPACE} ${GVS_cmpProjectName} )
         else()
             string(STRIP ${DVERS} DVERS)
@@ -982,7 +1000,7 @@ function(COMPILE_TOOL)
     set(multiValueArgs SOURCES LINK_LIBRARIES)
     cmake_parse_arguments(D3DTOOL "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
 
-    if ( ${D3DTOOL_DEFINITION} )
+    if( ${D3DTOOL_DEFINITION} )
     add_definitions(-D${DEFINITION})
     endif()
 

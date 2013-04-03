@@ -7,17 +7,17 @@
 #///////////////////////////////////////////////////////////////////////////////
 
 
-# ------------------------------------------------------------------------------ 
+# ------------------------------------------------------------------------------
 # This CMake code sets up for CPack to be used to generate native installers
 # ------------------------------------------------------------------------------
-if (MSVC)
+if(MSVC)
     # Skip the install rules, we only want to gather a list of the system libraries
     SET(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP 1)
     #SET(CMAKE_INSTALL_DEBUG_LIBRARIES OFF)
 
     # Gather the list of system level runtime libraries
     INCLUDE (InstallRequiredSystemLibraries)
-    
+
     # Our own Install rule for Release builds of the MSVC runtime libs
     IF (CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
       INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
@@ -28,7 +28,7 @@ if (MSVC)
     ENDIF (CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
 endif()
 
-if (UNIX AND NOT APPLE)
+if(UNIX AND NOT APPLE)
     SET(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP 0)
     IF (CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
       INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
@@ -40,7 +40,7 @@ if (UNIX AND NOT APPLE)
 endif()
 
 # Add a short ReadMe file for OS X that warns of moving the applications
-if (APPLE)
+if(APPLE)
     install(FILES ${PROJECT_RESOURCES_DIR}/CPack/OS_X_ReadMe.txt DESTINATION .)
 endif()
 
@@ -77,7 +77,7 @@ IF (APPLE)
     # anything else then you need to update this.
     set(UPLOAD_FILE_NAME ${CPACK_PACKAGE_FILE_NAME}.tar.gz)
 elseif(WIN32)
-    if ( "${CMAKE_SIZEOF_VOID_P}" EQUAL "8" )
+    if( "${CMAKE_SIZEOF_VOID_P}" EQUAL "8" )
             set(CPACK_PACKAGE_FILE_NAME "DREAM3D-${DREAM3D_VERSION_SHORT}-Win64")
             set(UPLOAD_FILE_NAME ${CPACK_PACKAGE_FILE_NAME}.zip)
     elseif( "${CMAKE_SIZEOF_VOID_P}" EQUAL "4" )
@@ -88,12 +88,12 @@ elseif(WIN32)
         set(UPLOAD_FILE_NAME ${CPACK_PACKAGE_FILE_NAME}.zip)
     endif()
 else()
-    if ( "${CMAKE_SIZEOF_VOID_P}" EQUAL "8" )
+    if( "${CMAKE_SIZEOF_VOID_P}" EQUAL "8" )
             set(CPACK_PACKAGE_FILE_NAME "DREAM3D-${DREAM3D_VERSION_SHORT}-${DREAM3D_LINUX_SYSTEM}-x86_64")
-            set (UPLOAD_FILE_NAME ${CPACK_PACKAGE_FILE_NAME}.tar.gz)
+            set(UPLOAD_FILE_NAME ${CPACK_PACKAGE_FILE_NAME}.tar.gz)
     elseif( "${CMAKE_SIZEOF_VOID_P}" EQUAL "4" )
             set(CPACK_PACKAGE_FILE_NAME "DREAM3D-${DREAM3D_VERSION_SHORT}-${DREAM3D_LINUX_SYSTEM}-i386")
-            set (UPLOAD_FILE_NAME ${CPACK_PACKAGE_FILE_NAME}.tar.gz)
+            set(UPLOAD_FILE_NAME ${CPACK_PACKAGE_FILE_NAME}.tar.gz)
     else()
         set(CPACK_PACKAGE_FILE_NAME "DREAM3D-${DREAM3D_VERSION_SHORT}-${CMAKE_SYSTEM_NAME}")
         set(UPLOAD_FILE_NAME ${CPACK_PACKAGE_FILE_NAME}.tar.gz)
@@ -103,10 +103,10 @@ endif()
 
 set(DREAM3D_WEBSITE_SERVER "dream3d.bluequartz.net")
 set(DREAM3D_WEBSITE_SERVER_PATH "/var/www/dream3d.bluequartz.net/binaries/.")
-set(DREAM3D_WEBSITE_SCP_USERNAME "mjackson") 
+set(DREAM3D_WEBSITE_SCP_USERNAME "mjackson")
 #-- Create a bash script file that will upload the latest version to the web server
-configure_file(${PROJECT_RESOURCES_DIR}/upload.sh.in 
-            ${PROJECT_BINARY_DIR}/upload.sh)  
+configure_file(${PROJECT_RESOURCES_DIR}/upload.sh.in
+            ${PROJECT_BINARY_DIR}/upload.sh)
 
 # Create an NSIS based installer for Windows Systems
 IF(WIN32 AND NOT UNIX)
@@ -124,7 +124,7 @@ ELSE(WIN32 AND NOT UNIX)
     SET(CPACK_BINARY_BUNDLE "OFF")
     SET(CPACK_BINARY_CYGWIN "OFF")
     SET(CPACK_BINARY_DEB "OFF")
-    if (NOT APPLE)
+    if(NOT APPLE)
         SET(CPACK_INCLUDE_TOPLEVEL_DIRECTORY 1)
     else()
         SET(CPACK_INCLUDE_TOPLEVEL_DIRECTORY 0)
@@ -142,7 +142,7 @@ ELSE(WIN32 AND NOT UNIX)
 ENDIF(WIN32 AND NOT UNIX)
 
 
-               
+
 SET(CPACK_SOURCE_GENERATOR "TGZ")
 SET(CPACK_SOURCE_PACKAGE_FILE_NAME "DREAM3D-${DREAM3D_VERSION_SHORT}-Source")
 

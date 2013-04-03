@@ -592,6 +592,11 @@ void HexagonalOps::getSchmidFactorAndSS(float loadx, float loady, float loadz, f
 
 void HexagonalOps::getmPrime(float q1[5], float q2[5], float LD[3], float &mPrime)
 {
+  BOOST_ASSERT(false);
+  #if 0
+  /* I am asserting here because this code will simply give junk results and if someone uses it
+   * they could unknowningly get really bad results
+   */
   float g1[3][3];
   float g2[3][3];
   float h1, k1, l1, u1, v1, w1;
@@ -615,15 +620,22 @@ void HexagonalOps::getmPrime(float q1[5], float q2[5], float LD[3], float &mPrim
   u2 = CubicSlipSystems[ss2][3]*g2[0][0]+CubicSlipSystems[ss2][4]*g2[1][0]+CubicSlipSystems[ss2][5]*g2[2][0];
   v2 = CubicSlipSystems[ss2][3]*g2[0][1]+CubicSlipSystems[ss2][4]*g2[1][1]+CubicSlipSystems[ss2][5]*g2[2][1];
   w2 = CubicSlipSystems[ss2][3]*g2[0][2]+CubicSlipSystems[ss2][4]*g2[1][2]+CubicSlipSystems[ss2][5]*g2[2][2];
-*/  denomhkl2 = sqrtf((h2*h2+k2*k2+l2*l2));
+*/
+  denomhkl2 = sqrtf((h2*h2+k2*k2+l2*l2));
   denomuvw2 = sqrtf((u2*u2+v2*v2+w2*w2));
   planemisalignment = fabs((h1*h2+k1*k2+l1*l2)/(denomhkl1*denomhkl2));
   directionmisalignment = fabs((u1*u2+v1*v2+w1*w2)/(denomuvw1*denomuvw2));
   mPrime = planemisalignment*directionmisalignment;
+  #endif
 }
 
 void HexagonalOps::getF1(float q1[5], float q2[5], float LD[3], bool maxSF, float &F1)
 {
+  BOOST_ASSERT(false);
+  #if 0
+  /* I am asserting here because this code will simply give junk results and if someone uses it
+   * they could unknowningly get really bad results
+   */
   float g1[3][3];
   float g2[3][3];
 //  float hkl1[3], uvw1[3];
@@ -730,9 +742,12 @@ void HexagonalOps::getF1(float q1[5], float q2[5], float LD[3], bool maxSF, floa
       }
     }
   }*/
+  #endif
 }
 void HexagonalOps::getF1spt(float q1[5], float q2[5], float LD[3], bool maxSF, float &F1spt)
 {
+  BOOST_ASSERT(false);
+  #if 0
   float g1[3][3];
   float g2[3][3];
 //  float hkl1[3], uvw1[3];
@@ -847,10 +862,13 @@ void HexagonalOps::getF1spt(float q1[5], float q2[5], float LD[3], bool maxSF, f
       }
     }
   }*/
+  #endif
 }
 
 void HexagonalOps::getF7(float q1[5], float q2[5], float LD[3], bool maxSF, float &F7)
 {
+  BOOST_ASSERT(false);
+  #if 0
   float g1[3][3];
   float g2[3][3];
 //  float hkl1[3], uvw1[3];
@@ -955,4 +973,5 @@ void HexagonalOps::getF7(float q1[5], float q2[5], float LD[3], bool maxSF, floa
       }
     }
   }*/
+  #endif
 }

@@ -396,7 +396,7 @@ void M3CSliceBySlice::dataCheck(bool preflight, size_t voxels, size_t fields, si
     int8_t* m_SurfaceMeshNodeType;
     CREATE_NON_PREREQ_DATA(sm, DREAM3D, PointData, SurfaceMeshNodeType, ss, int8_t, Int8ArrayType, 0, 1, 1)
 
-    DataArray<int32_t>::Pointer labels = DataArray<int32_t>::CreateArray(1, DREAM3D::FaceData::SurfaceMeshTriangleLabels);
+    DataArray<int32_t>::Pointer labels = DataArray<int32_t>::CreateArray(1, 2, DREAM3D::FaceData::SurfaceMeshTriangleLabels);
     sm->addFaceData(labels->GetName(), labels);
     sm->setVertices(vertices);
     sm->setFaces(triangles);
@@ -2957,7 +2957,7 @@ void M3CSliceBySlice::analyzeWinding()
     if (NULL == t.get() )
     {
       std::cout << "Could not find a triangle with the winding set. This should NOT happen" << std::endl;
-      assert(1 == 0);
+      BOOST_ASSERT(1 == 0);
     }
 
     std::set<int> localVisited; // Keep track of which triangles have been visited

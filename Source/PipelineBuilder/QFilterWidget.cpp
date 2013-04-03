@@ -133,6 +133,14 @@ QString QFilterWidget::getFilterGroup()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
+QString QFilterWidget::getFilterSubGroup()
+{
+	return QString::fromStdString(DREAM3D::FilterSubGroups::MiscFilters);
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
 //QFilterWidget* QFilterWidget::createDeepCopy()
 //{
 //  QFilterWidget* widget = new QFilterWidget();
@@ -965,12 +973,17 @@ void QFilterWidget::updateQLineEditDoubleValue()
 // -----------------------------------------------------------------------------
 void QFilterWidget::selectInputFile()
 {
-  QObject* whoSent = sender();
+    QObject* whoSent = sender();
+  // for QButtons we prepended "btn_" to the end of the property name so strip that off
+  QString propName = whoSent->objectName();
+  propName = propName.remove(0, 4);
 
-  QString file = QFileDialog::getOpenFileName(this,
-                                              tr("Select Input File"),
-                                              m_OpenDialogLastDirectory,
-                                              tr("ALL Files (*.*)"));
+  QString Ftype = getFileType(propName.toStdString());
+  QString ext = getFileExtension(propName.toStdString());
+  QString s = Ftype + QString(" Files (") + ext + QString(");;All Files(*.*)");
+  QString defaultName = m_OpenDialogLastDirectory + QDir::separator() + "Untitled";
+  QString file = QFileDialog::getOpenFileName(this, tr("Select Input File"), defaultName, s);
+
   if(true == file.isEmpty())
   {
     return;
@@ -980,10 +993,6 @@ void QFilterWidget::selectInputFile()
   // Store the last used directory into the private instance variable
   QFileInfo fi(file);
   m_OpenDialogLastDirectory = fi.path();
-
-  // for QButtons we prepended "btn_" to the end of the property name so strip that off
-  QString propName = whoSent->objectName();
-  propName = propName.remove(0, 4);
 
   ok = setProperty(propName.toStdString().c_str(), file);
   if (true == ok) { }
@@ -1067,7 +1076,7 @@ void QFilterWidget::selectOutputFile()
 
   QString Ftype = getFileType(propName.toStdString());
   QString ext = getFileExtension(propName.toStdString());
-  QString s = Ftype + QString(" Files (*.") + ext + QString(");;All Files(*.*)");
+  QString s = Ftype + QString(" Files (") + ext + QString(");;All Files(*.*)");
   QString defaultName = m_OpenDialogLastDirectory + QDir::separator() + "Untitled";
   QString file = QFileDialog::getSaveFileName(this, tr("Save File As"), defaultName, s);
   if(true == file.isEmpty())
@@ -1226,7 +1235,7 @@ void QFilterWidget::updateQLineEditStringValue(const QString &v)
 // -----------------------------------------------------------------------------
 void QFilterWidget::updateQSpinBoxValue(int v)
 {
-  assert(false);
+  BOOST_ASSERT(false);
 }
 
 
@@ -1235,7 +1244,7 @@ void QFilterWidget::updateQSpinBoxValue(int v)
 // -----------------------------------------------------------------------------
 void QFilterWidget::updateQDoubleSpinBoxValue(double v)
 {
-  assert(false);
+  BOOST_ASSERT(false);
 }
 
 // -----------------------------------------------------------------------------
@@ -1261,7 +1270,7 @@ void QFilterWidget::updateLineEdit(const QString &v)
   QObject* whoSent = sender();
   std::cout << "Filter: " << title().toStdString() << "->Property: " << whoSent->objectName().toStdString()
             << " via QLineEdit." <<  std::endl;
-  assert(false);
+  BOOST_ASSERT(false);
 }
 
 // -----------------------------------------------------------------------------

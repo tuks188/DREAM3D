@@ -42,12 +42,14 @@
 #include <QtCore/QVariant>
 #include <QtCore/QStringList>
 
+#include "PipelineBuilder/PipelineBuilderDLLExport.h"
+
 class QAbstractItemDelegate;
 
 /*
  *
  */
-class ComparisonSelectionTableModel : public QAbstractTableModel
+class PipelineBuilderLib_EXPORT ComparisonSelectionTableModel : public QAbstractTableModel
 {
     Q_OBJECT
 
@@ -57,7 +59,6 @@ class ComparisonSelectionTableModel : public QAbstractTableModel
       FieldName = 0,
       FieldOperator,
       FieldValue,
-      FieldPhaseValue,
       ColumnCount
     };
 

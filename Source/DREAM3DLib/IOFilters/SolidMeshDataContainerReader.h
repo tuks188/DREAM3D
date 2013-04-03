@@ -65,6 +65,7 @@ class DREAM3DLib_EXPORT SolidMeshDataContainerReader : public AbstractFilter
     DREAM3D_INSTANCE_PROPERTY(std::set<std::string>, CellArraysToRead)
     DREAM3D_INSTANCE_PROPERTY(std::set<std::string>, FieldArraysToRead)
     DREAM3D_INSTANCE_PROPERTY(std::set<std::string>, EnsembleArraysToRead)
+    DREAM3D_INSTANCE_PROPERTY(bool, ReadAllArrays)
 
 
     /**
@@ -73,6 +74,7 @@ class DREAM3DLib_EXPORT SolidMeshDataContainerReader : public AbstractFilter
     * in the GUI for the filter
     */
     virtual const std::string getGroupName() { return DREAM3D::FilterGroups::IOFilters; }
+	virtual const std::string getSubGroupName() { return DREAM3D::FilterSubGroups::InputFilters; }
 
     /**
     * @brief This returns a string that is displayed in the GUI. It should be readable

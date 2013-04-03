@@ -101,6 +101,35 @@ namespace DREAM3D
     const std::string SolidMeshingFilters("SolidMeshing");
   }
 
+  namespace FilterSubGroups
+  {
+    const std::string EnsembleStatsFilters("Ensemble");
+    const std::string MemoryManagementFilters("Memory/Management");
+    const std::string SpatialFilters("Spatial");
+    const std::string OutputFilters("Output");
+    const std::string InputFilters("Input");
+    const std::string ImageFilters("Image");
+    const std::string CleanupFilters("Cleanup");
+    const std::string ThresholdFilters("Threshold");
+    const std::string RegularizationFilters("Regularization");
+    const std::string ConversionFilters("Conversion");
+    const std::string AlignmentFilters("Alignment");
+    const std::string SegmentationFilters("Segmentation");
+    const std::string GroupingFilters("Grouping");
+    const std::string CropCutFilters("Croping/Cutting");
+    const std::string RotationTransformationFilters("Rotating/Transforming");
+    const std::string ResolutionFilters("Resolution");
+    const std::string MorphologicalFilters("Morphological");
+    const std::string CrystallographicFilters("Crystallographic");
+    const std::string PackingFilters("Packing");
+    const std::string CrystallographyFilters("Crystallography");
+    const std::string GenerationFilters("Generation");
+    const std::string SmoothingFilters("Smoothing");
+    const std::string CurvatureFilters("Curvature");
+    const std::string ConnectivityArrangementFilters("Connectivity/Arrangement");
+    const std::string MiscFilters("Misc");
+  }
+
   namespace CellData
   {
     const std::string GrainIds("GrainIds");
@@ -128,6 +157,8 @@ namespace DREAM3D
     const std::string IPFColor("IPFColor");
     const std::string GlobAlpha("GlobAlpha");
     const std::string BC("BandContrasts");
+    const std::string ImageData("ImageData");
+    const std::string FlatImageData("FlatImageData");
 
     const std::string SolidMeshNodes("SolidMeshNodes");
     const std::string SolidMeshTetrahedrons("SolidMeshTetrahedrons");
@@ -136,8 +167,13 @@ namespace DREAM3D
   namespace FieldData
   {
     const std::string Active("Active");
+    const std::string GoodFields("GoodFields");
     const std::string Phases("Phases");
     const std::string FieldPhases("Phases");
+    const std::string F1("F1");
+    const std::string F1spt("F1spt");
+    const std::string F7("F7");
+    const std::string mPrime("mPrime");
     const std::string EulerAngles("EulerAngles");
     const std::string FieldEulerAngles("EulerAngles");
     const std::string AxisEulerAngles("AxisEulerAngles");
@@ -147,6 +183,7 @@ namespace DREAM3D
     const std::string RGBs("RGBs");
     const std::string Centroids("Centroids");
     const std::string NumCells("NumCells");
+    const std::string ParentIds("ParentIds");
     const std::string Volumes("Volumes");
     const std::string EquivalentDiameters("EquivalentDiameters");
     const std::string Schmids("Schmids");
@@ -162,6 +199,7 @@ namespace DREAM3D
     const std::string GrainAvgCAxisMisorientations("GrainAvgCAxisMisorientations");
     const std::string KernelAvgMisorientations("KernelAvgMisorientations");
     const std::string NeighborList("NeighborList");
+    const std::string MisorientationList("MisorientationList");
     const std::string SharedSurfaceAreaList("SharedSurfaceAreaList");
     const std::string LMG("LMG");
   }
@@ -195,6 +233,9 @@ namespace DREAM3D
   {
     const std::string SurfaceMeshFaces("SurfaceMeshFaces");
     const std::string SurfaceMeshTriangles("SurfaceMeshTriangles");
+    const std::string SurfaceMeshTriangleIPFColors("SurfaceMeshTriangleIPFColors");
+    const std::string SurfaceMeshTriangleIPFColorsGrain1("SurfaceMeshTriangleIPFColorsGrain1");
+    const std::string SurfaceMeshTriangleIPFColorsGrain2("SurfaceMeshTriangleIPFColorsGrain2");
     const std::string SurfaceMeshTriangleLabels("SurfaceMeshTriangleLabels");
     const std::string SurfaceMeshVoxels("SurfaceMeshVoxels");
     const std::string SurfaceMeshTriangleCentroids("SurfaceMeshTriangleCentroids");
@@ -317,6 +358,12 @@ namespace DREAM3D
     const unsigned int MatrixPhase = 3;              //!<
     const unsigned int BoundaryPhase = 4;              //!<
     const unsigned int UnknownPhaseType = 999;    //!<
+
+    const std::string Primary("Primary");
+    const std::string Precipitate("Precipitate");
+    const std::string Transformation("Transformation");
+    const std::string Matrix("Matrix");
+    const std::string Boundary("Boundary");
   }
 
   namespace AlignmentMethod
@@ -350,6 +397,13 @@ namespace DREAM3D
   {
     const unsigned int DegreesToRadians = 0; //!<
     const unsigned int RadiansToDegrees = 1; //!<
+  }
+
+  namespace FlattenImageMethod
+  {
+    const unsigned int Lightness = 0; //!<
+    const unsigned int Average = 1; //!<
+    const unsigned int Luminosity = 2; //!<
   }
 
   namespace EulerFrameRotationAxis

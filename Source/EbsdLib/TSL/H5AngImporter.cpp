@@ -67,7 +67,8 @@ EbsdImporter(),
 xDim(0),
 yDim(0),
 xRes(0),
-yRes(0)
+yRes(0),
+m_FileVersion(Ebsd::H5::FileVersion)
 {
 }
 
@@ -188,10 +189,28 @@ int H5AngImporter::importFile(hid_t fileId, int64_t z, const std::string &angFil
       ss << "H5AngImporter Error: Unknown error.";
     }
     setPipelineMessage(ss.str());
-    
+
     setErrorCondition(err);
     progressMessage(ss.str(), 100);
     return -1;
+  }
+
+  // Write the file Version number to the file
+  {
+    std::vector<hsize_t> dims;
+    H5T_class_t type_class;
+    size_t type_size = 0;
+    hid_t attr_type = -1;
+    err = H5Lite::getAttributeInfo(fileId, "/", Ebsd::H5::FileVersionStr, dims, type_class, type_size, attr_type);
+    if (attr_type < 0) // The attr_type variable was never set which means the attribute was NOT there
+    {
+      // The file version does not exist so write it to the file
+      err = H5Lite::writeScalarAttribute(fileId, "/", Ebsd::H5::FileVersionStr, m_FileVersion);
+    }
+    else
+    {
+      H5Aclose(attr_type);
+    }
   }
 
   // Start creating the HDF5 group structures for this file
@@ -270,11 +289,11 @@ int H5AngImporter::importFile(hid_t fileId, int64_t z, const std::string &angFil
   WRITE_ANG_DATA_ARRAY(reader, float, gid, Phi1, Ebsd::Ang::Phi1);
   WRITE_ANG_DATA_ARRAY(reader, float, gid, Phi, Ebsd::Ang::Phi);
   WRITE_ANG_DATA_ARRAY(reader, float, gid, Phi2, Ebsd::Ang::Phi2);
-  WRITE_ANG_DATA_ARRAY(reader, float, gid, XPos, Ebsd::Ang::XPosition);
-  WRITE_ANG_DATA_ARRAY(reader, float, gid, YPos, Ebsd::Ang::YPosition);
+  WRITE_ANG_DATA_ARRAY(reader, float, gid, XPosition, Ebsd::Ang::XPosition);
+  WRITE_ANG_DATA_ARRAY(reader, float, gid, YPosition, Ebsd::Ang::YPosition);
   WRITE_ANG_DATA_ARRAY(reader, float, gid, ImageQuality, Ebsd::Ang::ImageQuality);
   WRITE_ANG_DATA_ARRAY(reader, float, gid, ConfidenceIndex, Ebsd::Ang::ConfidenceIndex);
-  WRITE_ANG_DATA_ARRAY(reader, int, gid, Phase, Ebsd::Ang::PhaseData);
+  WRITE_ANG_DATA_ARRAY(reader, int, gid, PhaseData, Ebsd::Ang::PhaseData);
   WRITE_ANG_DATA_ARRAY(reader, float, gid, SEMSignal, Ebsd::Ang::SEMSignal);
   WRITE_ANG_DATA_ARRAY(reader, float, gid, Fit, Ebsd::Ang::Fit);
   // Close the "Data" group
@@ -420,5 +439,14 @@ int H5AngImporter::writeHKLFamilies(AngPhase* p, hid_t hklGid)
     status = H5Dclose (dset);
   }
   return status;
+}
+
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void H5AngImporter::setFileVersion(uint32_t version)
+{
+  m_FileVersion = version;
 }
 

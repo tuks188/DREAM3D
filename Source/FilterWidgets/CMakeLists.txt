@@ -37,7 +37,7 @@ file(REMOVE ${CodeGeneratorFile})
 # classes from information stored in the Filters themselves.
 set(FILTER_HEADERS "#include \"DREAM3DLib/DREAM3DFilters.h\"")
 set(FILTER_WIDGETS_TEMP_DIR ${FilterWidgetsLib_BINARY_DIR}/Temp)
-set(FILTER_WIDGETS_BINARY_DIR ${FilterWidgetsLib_BINARY_DIR})
+set(FILTER_WIDGETS_BINARY_DIR ${FilterWidgetsLib_BINARY_DIR}/DREAM3DLib)
 set(FILTER_WIDGETS_SOURCE_DIR ${FilterWidgetsLib_SOURCE_DIR})
 set(FILTER_WIDGETS_DOCS_DIR ${DREAM3DProj_SOURCE_DIR}/Documentation/Filters)
 set(FILTER_INCLUDE_PREFIX "DREAM3DLib")
@@ -68,47 +68,53 @@ include_directories(${FilterWidgetsLib_BINARY_DIR})
 include_directories(${DREAM3DProj_SOURCE_DIR}/Source/QtSupport)
 include_directories(${DREAM3DProj_SOURCE_DIR}/Source/PipelineBuilder)
 include_directories(${DREAM3DProj_BINARY_DIR}/PipelineBuilder)
+include_directories(${DREAM3DProj_BINARY_DIR}/QtSupport)
 
 # --------------------------------------------------------------------
 # Add in ONLY those headers and sources that need to have various Qt related
 # utilities run against them
 set(IOFILTER_WIDGET_HDRS
-    #${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QReadH5EbsdWidget.h
-    #${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QualityMetricTableModel.h
-    #${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QualityMetricItemDelegate.h
-    ${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QEbsdToH5EbsdWidget.h
-    ${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QEbsdReferenceFrameDialog.h
-    ${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QDataContainerReaderWidget.h
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/IOFiltersWidgets/QReadH5EbsdWidget.h
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/IOFiltersWidgets/QEbsdToH5EbsdWidget.h
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/IOFiltersWidgets/QEbsdReferenceFrameDialog.h
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/IOFiltersWidgets/QDataContainerReaderWidget.h
 )
 set(IOFILTER_WIDGET_SRCS
-    #${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QReadH5EbsdWidget.cpp
-    #${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QualityMetricTableModel.cpp
-    ${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QEbsdToH5EbsdWidget.cpp
-    ${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QEbsdReferenceFrameDialog.cpp
-    ${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QDataContainerReaderWidget.cpp
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/IOFiltersWidgets/QReadH5EbsdWidget.cpp
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/IOFiltersWidgets/QEbsdToH5EbsdWidget.cpp
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/IOFiltersWidgets/QEbsdReferenceFrameDialog.cpp
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/IOFiltersWidgets/QDataContainerReaderWidget.cpp
 )
 cmp_IDE_SOURCE_PROPERTIES( "FilterWidgets/IOFiltersWidgets" "${IOFILTER_WIDGET_HDRS}" "${IOFILTER_WIDGET_SRCS}" "0")
 set(SYNTHETIC_WIDGET_HDRS
-    ${FilterWidgetsLib_SOURCE_DIR}/SyntheticBuildingFiltersWidgets/QInitializeSyntheticVolumeWidget.h
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/SyntheticBuildingFiltersWidgets/QInitializeSyntheticVolumeWidget.h
 )
 set(SYNTHETIC_WIDGET_SRCS
-    ${FilterWidgetsLib_SOURCE_DIR}/SyntheticBuildingFiltersWidgets/QInitializeSyntheticVolumeWidget.cpp
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/SyntheticBuildingFiltersWidgets/QInitializeSyntheticVolumeWidget.cpp
 )
 cmp_IDE_SOURCE_PROPERTIES( "FilterWidgets/SyntheticBuildingFiltersWidgets" "${SYNTHETIC_WIDGET_HDRS}" "${SYNTHETIC_WIDGET_SRCS}" "0")
 set(SAMPLING_WIDGET_HDRS
-    ${FilterWidgetsLib_SOURCE_DIR}/SamplingFiltersWidgets/QHex2SqrConverterWidget.h
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/SamplingFiltersWidgets/QHex2SqrConverterWidget.h
 )
 set(SAMPLING_WIDGET_SRCS
-    ${FilterWidgetsLib_SOURCE_DIR}/SamplingFiltersWidgets/QHex2SqrConverterWidget.cpp
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/SamplingFiltersWidgets/QHex2SqrConverterWidget.cpp
 )
 cmp_IDE_SOURCE_PROPERTIES( "FilterWidgets/SamplingFiltersWidgets" "${SAMPLING_WIDGET_HDRS}" "${SAMPLING_WIDGET_SRCS}" "0")
 
+set(STATISTICS_WIDGET_HDRS
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/StatisticsFiltersWidgets/QGenerateEnsembleStatisticsWidget.h
+)
+set(STATISTICS_WIDGET_SRCS
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/StatisticsFiltersWidgets/QGenerateEnsembleStatisticsWidget.cpp
+)
+cmp_IDE_SOURCE_PROPERTIES( "FilterWidgets/StatisticsFiltersWidgets" "${STATISTICS_WIDGET_HDRS}" "${STATISTICS_WIDGET_SRCS}" "0")
+
 set(QFilterWidget_HDRS
-    ${IOFILTER_WIDGET_HDRS} ${SYNTHETIC_WIDGET_HDRS} ${SAMPLING_WIDGET_HDRS}
+    ${IOFILTER_WIDGET_HDRS} ${SYNTHETIC_WIDGET_HDRS} ${SAMPLING_WIDGET_HDRS} ${STATISTICS_WIDGET_HDRS}
 )
 
 set(QFilterWidget_SRCS
-    ${IOFILTER_WIDGET_SRCS} ${SYNTHETIC_WIDGET_SRCS} ${SAMPLING_WIDGET_SRCS}
+    ${IOFILTER_WIDGET_SRCS} ${SYNTHETIC_WIDGET_SRCS} ${SAMPLING_WIDGET_SRCS} ${STATISTICS_WIDGET_SRCS}
 )
 
 
@@ -122,17 +128,18 @@ set_source_files_properties( ${FilterWidgetsLib_Generated_MOC_SRCS} PROPERTIES H
 set_source_files_properties( ${FilterWidgetsLib_MOC_SRCS} PROPERTIES HEADER_FILE_ONLY TRUE)
 
 # -- Run MOC and UIC on the necessary files
-QT4_ADD_RESOURCES( FilterWidgetsLib_Generated_RC_SRCS "${DREAM3DProj_SOURCE_DIR}/Documentation/Filters/Generated_FilterDocs.qrc"  )
+# QT4_ADD_RESOURCES( FilterWidgetsLib_Generated_RC_SRCS "${DREAM3DProj_SOURCE_DIR}/Documentation/Filters/Generated_FilterDocs.qrc"  )
 
 # --------------------------------------------------------------------
 # Continue on with our Qt4 section
 QT4_WRAP_UI( FilterWidgetsLib_Generated_UI_HDRS
-    ${FilterWidgetsLib_SOURCE_DIR}/SyntheticBuildingFiltersWidgets/QInitializeSyntheticVolumeWidget.ui
-    ${FilterWidgetsLib_SOURCE_DIR}/SamplingFiltersWidgets/QHex2SqrConverterWidget.ui
-    #${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QReadH5EbsdWidget.ui
-    ${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QEbsdToH5EbsdWidget.ui
-    ${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QEbsdReferenceFrameDialog.ui
-    ${FilterWidgetsLib_SOURCE_DIR}/IOFiltersWidgets/QDataContainerReaderWidget.ui
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/SyntheticBuildingFiltersWidgets/QInitializeSyntheticVolumeWidget.ui
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/SamplingFiltersWidgets/QHex2SqrConverterWidget.ui
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/IOFiltersWidgets/QReadH5EbsdWidget.ui
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/IOFiltersWidgets/QEbsdToH5EbsdWidget.ui
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/IOFiltersWidgets/QEbsdReferenceFrameDialog.ui
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/IOFiltersWidgets/QDataContainerReaderWidget.ui
+    ${FilterWidgetsLib_SOURCE_DIR}/DREAM3DLib/StatisticsFiltersWidgets/QGenerateEnsembleStatisticsWidget.ui
 )
 
 # --------------------------------------------------------------------
@@ -172,7 +179,7 @@ set(Project_SRCS
 
 
 
-if (UNIX AND NOT APPLE)
+if(UNIX AND NOT APPLE)
     set_source_files_properties(${Project_SRCS} PROPERTIES COMPILE_FLAGS -fPIC)
 endif()
 

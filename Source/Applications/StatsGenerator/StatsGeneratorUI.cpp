@@ -94,7 +94,7 @@ StatsGeneratorUI::StatsGeneratorUI(QWidget *parent) :
   m_HelpDialog(NULL)
 {
   m_OpenDialogLastDirectory = QDir::homePath();
-  m_FilePath = m_OpenDialogLastDirectory + QDir::separator() + "Untitled.h5stats";
+  m_FilePath = m_OpenDialogLastDirectory + QDir::separator() + "Untitled.dream3d";
   setupUi(this);
   setupGui();
 
@@ -178,7 +178,7 @@ void StatsGeneratorUI::setupGui()
   ppw->setTotalPhaseFraction(1.0);
   phaseTabs->addTab(ppw, "Primary Phase");
 
-  setWindowTitle("[*] - Untitled.h5stats");
+  setWindowTitle("[*] - Untitled.dream3d");
   setWindowModified(true);
 
   m_HelpDialog = new HelpDialog(this);
@@ -191,8 +191,6 @@ void StatsGeneratorUI::setupGui()
 // -----------------------------------------------------------------------------
 void StatsGeneratorUI::on_addPhase_clicked()
 {
- // std::cout << "on_addPhase_clicked" << std::endl;
-
   // Ensure the Current SGWidget has generated its data first:
   SGWidget* sgwidget = qobject_cast<SGWidget*>(phaseTabs->currentWidget());
   if (false == sgwidget->getDataHasBeenGenerated())
@@ -295,6 +293,11 @@ void StatsGeneratorUI::on_addPhase_clicked()
       bpw->setObjectName(cName);
       setWindowModified(true);
     }
+
+    // Make sure the new tab is the active tab
+    phaseTabs->setCurrentIndex(phaseTabs->count() - 1);
+
+
   }
 }
 
@@ -575,9 +578,9 @@ void StatsGeneratorUI::openRecentFile()
 void StatsGeneratorUI::on_actionSaveAs_triggered()
 {
   QString proposedFile = m_OpenDialogLastDirectory + QDir::separator() + "Untitled.h5";
-  QString h5file = QFileDialog::getSaveFileName(this, tr("Save HDF5 Statistics File"),
+  QString h5file = QFileDialog::getSaveFileName(this, tr("Save DREAM3D File"),
     proposedFile,
-    tr("HDF5 Files (*.h5)") );
+    tr("DREAM3D Files (*.dream3d)") );
   if ( true == h5file.isEmpty() ){ return;  }
   m_FilePath = h5file;
   QFileInfo fi (m_FilePath);
@@ -597,9 +600,9 @@ void StatsGeneratorUI::on_actionSave_triggered()
   if (m_FileSelected == false)
   {
     //QString proposedFile = m_OpenDialogLastDirectory + QDir::separator() + m_FileName;
-    QString h5file = QFileDialog::getSaveFileName(this, tr("Save HDF5 Statistics File"),
+    QString h5file = QFileDialog::getSaveFileName(this, tr("Save DREAM3D File"),
                                                   m_FilePath,
-                                                   tr("HDF5 Files (*.h5stats)") );
+                                                   tr("DREAM3D Files (*.dream3d)") );
     if ( true == h5file.isEmpty() ){ return;  }
     m_FilePath = h5file;
     QFileInfo fi (m_FilePath);
@@ -711,8 +714,11 @@ void StatsGeneratorUI::on_actionNew_triggered()
 // -----------------------------------------------------------------------------
 void StatsGeneratorUI::on_actionOpen_triggered()
 {
-  QString proposedFile = m_OpenDialogLastDirectory + QDir::separator() + "Untitled.h5stats";
-  QString h5file = QFileDialog::getOpenFileName(this, tr("Open HDF5 Statistics File"), proposedFile, tr("HDF5 Files (*.h5stats *.h5 )"));
+  QString proposedFile = m_OpenDialogLastDirectory + QDir::separator() + "Untitled.dream3d";
+  QString h5file = QFileDialog::getOpenFileName(this,
+                  tr("Open Statistics File"),
+                  proposedFile,
+                  tr("DREAM3D Files (*.dream3d);;H5Stats Files(*.h5stats);;HDF5 Files(*.h5 *.hdf5);;All Files(*.*)"));
   if(true == h5file.isEmpty())
   {
     return;
@@ -790,6 +796,7 @@ void StatsGeneratorUI::openFile(QString h5file)
     reader->setReadCellData(false);
     reader->setReadFieldData(false);
     reader->setReadEnsembleData(true);
+    reader->setReadAllArrays(true);
     reader->execute();
     err = reader->getErrorCondition();
     if (err < 0)

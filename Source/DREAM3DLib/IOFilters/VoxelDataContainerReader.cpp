@@ -53,7 +53,8 @@ VoxelDataContainerReader::VoxelDataContainerReader() :
   m_HdfFileId(-1),
   m_ReadCellData(true),
   m_ReadFieldData(true),
-  m_ReadEnsembleData(true)
+  m_ReadEnsembleData(true),
+  m_ReadAllArrays(false)
 {
   setupFilterParameters();
 }
@@ -173,6 +174,10 @@ int VoxelDataContainerReader::getSizeResolutionOrigin(hid_t fileId, int64_t volD
   std::stringstream ss;
 
   hid_t dcGid = H5Gopen(fileId, DREAM3D::HDF5::VoxelDataContainerName.c_str(), 0);
+  if (dcGid < 0) // Check to see if this was a Version 3 or earlier file
+  {
+    dcGid = H5Gopen(fileId, DREAM3D::HDF5::DataContainerName.c_str(), 0);
+  }
   if(dcGid < 0)
   {
     err = H5Utilities::closeFile(fileId);
@@ -356,7 +361,7 @@ int VoxelDataContainerReader::readGroupsData(hid_t dcGid, const std::string &gro
   for (NameListType::iterator iter = names.begin(); iter != names.end(); ++iter)
   {
     std::set<std::string>::iterator contains = namesToRead.find(*iter);
-    if (contains == namesToRead.end() && false == preflight) { continue; } // Do not read this item if it is NOT in the set of arrays to read
+    if (contains == namesToRead.end() && false == preflight && m_ReadAllArrays == false) { continue; } // Do not read this item if it is NOT in the set of arrays to read
     namesRead.push_back(*iter);
     classType.clear();
     H5Lite::readStringAttribute(gid, *iter, DREAM3D::HDF5::ObjectType, classType);

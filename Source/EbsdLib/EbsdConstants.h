@@ -62,9 +62,10 @@ namespace Ebsd
     const std::string ZEndIndex("ZEndIndex");
     const std::string ZResolution("Z Resolution");
     const std::string StackingOrder("Stacking Order");
-    const std::string RotateSlice("RotateSlice");
-    const std::string ReorderArray("ReorderArray");
-    const std::string AlignEulers("AlignEulers");
+    const std::string SampleTransformationAngle("SampleTransformationAngle");
+    const std::string SampleTransformationAxis("SampleTransformationAxis");
+    const std::string EulerTransformationAngle("EulerTransformationAngle");
+    const std::string EulerTransformationAxis("EulerTransformationAxis");
 
     const std::string Manufacturer("Manufacturer");
     const std::string OriginalFile("OriginalFile");
@@ -83,6 +84,9 @@ namespace Ebsd
     // allows us to store slices that have different XY voxel dimensions.
     const std::string XPoints("Max X Points");
     const std::string YPoints("Max Y Points");
+
+    const std::string FileVersionStr("FileVersion");
+    const unsigned int FileVersion = 4;
   }
 
   /** @brief Constants defined for the 5 orientation options */
@@ -97,11 +101,10 @@ namespace Ebsd
 
   enum EbsdToSampleCoordinateMapping
   {
-    UpperLeftOrigin = 0,
-    UpperRightOrigin = 1,
-    LowerRightOrigin = 2,
-    LowerLeftOrigin = 3,
-    UnknownCoordinateMapping
+    TSLdefault = 0,
+    HKLdefault = 1,
+    HEDMdefault = 2,
+    UnknownCoordinateMapping = 3
   };
 
   namespace StackingOrder {

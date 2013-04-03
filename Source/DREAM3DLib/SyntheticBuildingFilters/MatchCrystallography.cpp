@@ -46,7 +46,7 @@
 #include "DREAM3DLib/OrientationOps/HexagonalOps.h"
 #include "DREAM3DLib/OrientationOps/OrthoRhombicOps.h"
 
-#include "DREAM3DLib/GenericFilters/FindNeighbors.h"
+#include "DREAM3DLib/StatisticsFilters/FindNeighbors.h"
 #include "DREAM3DLib/GenericFilters/FindSurfaceGrains.h"
 #include "DREAM3DLib/GenericFilters/FindGrainPhases.h"
 #include "DREAM3DLib/StatisticsFilters/FindNumFields.h"
@@ -70,7 +70,6 @@ m_VolumesArrayName(DREAM3D::FieldData::Volumes),
 m_CrystalStructuresArrayName(DREAM3D::EnsembleData::CrystalStructures),
 m_PhaseTypesArrayName(DREAM3D::EnsembleData::PhaseTypes),
 m_NumFieldsArrayName(DREAM3D::EnsembleData::NumFields),
-m_TotalSurfaceAreasArrayName(DREAM3D::EnsembleData::TotalSurfaceAreas),
 m_MaxIterations(1),
 m_GrainIds(NULL),
 m_CellEulerAngles(NULL),
@@ -81,7 +80,6 @@ m_FieldEulerAngles(NULL),
 m_AvgQuats(NULL),
 m_NeighborList(NULL),
 m_SharedSurfaceAreaList(NULL),
-m_TotalSurfaceAreas(NULL),
 m_CrystalStructures(NULL),
 m_PhaseTypes(NULL),
 m_NumFields(NULL)
@@ -123,7 +121,7 @@ void MatchCrystallography::setupFilterParameters()
 // -----------------------------------------------------------------------------
 void MatchCrystallography::writeFilterParameters(AbstractFilterParametersWriter* writer)
 {
-	writer->writeValue("MaxIterations", getMaxIterations() );
+  writer->writeValue("MaxIterations", getMaxIterations() );
 }
 // -----------------------------------------------------------------------------
 //
@@ -148,7 +146,10 @@ void MatchCrystallography::dataCheck(bool preflight, size_t voxels, size_t field
     find_surfacefields->setVoxelDataContainer(getVoxelDataContainer());
     find_surfacefields->setMessagePrefix(this->getMessagePrefix());
     if(preflight == true) find_surfacefields->preflight();
-    if(preflight == false) find_surfacefields->execute();
+    if(preflight == false) {
+      notifyStatusMessage("Finding Surface Fields");
+      find_surfacefields->execute();
+    }
   }
   GET_PREREQ_DATA(m, DREAM3D, FieldData, SurfaceFields, ss, -302, bool, BoolArrayType, fields, 1)
 
@@ -161,7 +162,10 @@ void MatchCrystallography::dataCheck(bool preflight, size_t voxels, size_t field
     find_grainphases->setVoxelDataContainer(getVoxelDataContainer());
     find_grainphases->setMessagePrefix(getMessagePrefix());
     if(preflight == true) find_grainphases->preflight();
-    if(preflight == false) find_grainphases->execute();
+    if(preflight == false) {
+      notifyStatusMessage("Finding Grain Phases");
+      find_grainphases->execute();
+     }
   }
   GET_PREREQ_DATA(m, DREAM3D, FieldData, FieldPhases, ss, -303, int32_t, Int32ArrayType, fields, 1)
 
@@ -180,7 +184,10 @@ void MatchCrystallography::dataCheck(bool preflight, size_t voxels, size_t field
     find_neighbors->setVoxelDataContainer(getVoxelDataContainer());
     find_neighbors->setMessagePrefix(getMessagePrefix());
     if(preflight == true) find_neighbors->preflight();
-    if(preflight == false) find_neighbors->execute();
+    if(preflight == false) {
+      notifyStatusMessage("Finding Neighbors");
+      find_neighbors->execute();
+    }
     m_NeighborList = NeighborList<int>::SafeObjectDownCast<IDataArray*, NeighborList<int>*>(m->getFieldData(DREAM3D::FieldData::NeighborList).get());
     if(m_NeighborList == NULL)
     {
@@ -214,12 +221,14 @@ void MatchCrystallography::dataCheck(bool preflight, size_t voxels, size_t field
     find_numfields->setVoxelDataContainer(getVoxelDataContainer());
     find_numfields->setMessagePrefix(getMessagePrefix());
     if(preflight == true) find_numfields->preflight();
-    if(preflight == false) find_numfields->execute();
+    if(preflight == false)
+    {
+      notifyStatusMessage("Finding Number of Fields");
+      find_numfields->execute();
+    }
   }
   GET_PREREQ_DATA(m, DREAM3D, EnsembleData, NumFields, ss, -308, int32_t, Int32ArrayType, ensembles, 1)
 
-
-  GET_PREREQ_DATA(m, DREAM3D, EnsembleData, TotalSurfaceAreas, ss, -309, float, FloatArrayType, ensembles, 1)
   m_StatsDataArray = StatsDataArray::SafeObjectDownCast<IDataArray*, StatsDataArray*>(m->getEnsembleData(DREAM3D::EnsembleData::Statistics).get());
   if(m_StatsDataArray == NULL)
   {
@@ -227,6 +236,10 @@ void MatchCrystallography::dataCheck(bool preflight, size_t voxels, size_t field
     ss << "Stats Array Not Initialized correctly" << std::endl;
     setErrorCondition(-310);
     addErrorMessage(getHumanLabel(), ss.str(), -310);
+  }
+  if (preflight == true)
+  {
+    notifyStatusMessage("Finished running required filters");
   }
 }
 
@@ -262,14 +275,21 @@ void MatchCrystallography::execute()
     return;
   }
 
+  notifyStatusMessage("Initializing Arrays");
   initializeArrays();
+  notifyStatusMessage("Determining Volumes");
   determine_volumes();
+  notifyStatusMessage("Determining Boundary Areas");
+  determine_boundary_areas();
+  notifyStatusMessage("Assigning Eulers");
   assign_eulers();
+  notifyStatusMessage("Measuring Misorientation");
   measure_misorientations();
+  notifyStatusMessage("Matching Crystallography");
   matchCrystallography();
 
   // If there is an error set this to something negative and also set a message
- notifyStatusMessage("Matching Crystallography Complete");
+  notifyStatusMessage("Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -324,8 +344,10 @@ void MatchCrystallography::determine_volumes()
 
   size_t totalPoints = m->getNumCellTuples();
   size_t totalFields = m->getNumFieldTuples();
+  size_t totalEnsembles = m->getNumEnsembleTuples();
 
-  for (size_t i = 0; i < totalFields; i++)
+  unbiasedvol.resize(totalEnsembles);
+  for (size_t i = 1; i < totalFields; i++)
   {
     m_Volumes[i] = 0.0;
   }
@@ -334,9 +356,48 @@ void MatchCrystallography::determine_volumes()
     m_Volumes[m_GrainIds[i]]++;
   }
   float res_scalar = m->getXRes() * m->getYRes() * m->getZRes();
-  for (size_t i = 0; i < totalFields; i++)
+  for (size_t i = 1; i < totalFields; i++)
   {
     m_Volumes[i] = m_Volumes[i] * res_scalar;
+    unbiasedvol[m_FieldPhases[i]] = unbiasedvol[m_FieldPhases[i]] + m_Volumes[i];
+  }
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void MatchCrystallography::determine_boundary_areas()
+{
+  VoxelDataContainer* m = getVoxelDataContainer();
+
+  NeighborList<int>& neighborlist = *m_NeighborList;
+  NeighborList<float>& neighborsurfacearealist = *m_SharedSurfaceAreaList;
+
+  size_t totalFields = m->getNumFieldTuples();
+  size_t totalEnsembles = m->getNumEnsembleTuples();
+
+  totalSurfaceArea.resize(totalEnsembles,0.0);
+
+  int phase1, phase2;
+  for (size_t i = 1; i < totalFields; i++)
+  {
+    phase1 = m_CrystalStructures[m_FieldPhases[i]];
+    size_t size = 0;
+    if(neighborlist[i].size() != 0 && neighborsurfacearealist[i].size() == neighborlist[i].size())
+    {
+      size = neighborlist[i].size();
+    }
+
+    for (size_t j = 0; j < size; j++)
+    {
+      int nname = neighborlist[i][j];
+      float neighsurfarea = neighborsurfacearealist[i][j];
+      phase2 = m_CrystalStructures[m_FieldPhases[nname]];
+      if(phase1 == phase2)
+      {
+      totalSurfaceArea[phase1] = totalSurfaceArea[phase1] + neighsurfarea;
+    }
+  }
   }
 }
 
@@ -356,7 +417,6 @@ void MatchCrystallography::assign_eulers()
 
   int totalFields = m->getNumFieldTuples();
   size_t xtalCount = m->getNumEnsembleTuples();
-  unbiasedvol.resize(xtalCount);
   for (size_t i = 1; i < xtalCount; ++i)
   {
     unbiasedvol[i] = 0;
@@ -400,8 +460,7 @@ void MatchCrystallography::assign_eulers()
     m_AvgQuats[5 * i + 4] = q[4];
     if(m_SurfaceFields[i] == false)
     {
-    simodf[phase]->SetValue(choose, (simodf[phase]->GetValue(choose) + m_Volumes[i]));
-      unbiasedvol[phase] = unbiasedvol[phase] + m_Volumes[i];
+      simodf[phase]->SetValue(choose, (simodf[phase]->GetValue(choose) + m_Volumes[i]));
     }
   }
   for (int i = 0; i < numbins; i++)
@@ -427,12 +486,12 @@ void MatchCrystallography::MC_LoopBody1(int grain, int phase, int j, float neigh
   newmisobin = m_OrientationOps[sym]->getMisoBin(n1, n2, n3);
   mdfchange = mdfchange
       + (((actualmdf[phase]->GetValue(curmisobin) - simmdf[phase]->GetValue(curmisobin)) * (actualmdf[phase]->GetValue(curmisobin) - simmdf[phase]->GetValue(curmisobin)))
-          - ((actualmdf[phase]->GetValue(curmisobin) - (simmdf[phase]->GetValue(curmisobin) - (neighsurfarea / m_TotalSurfaceAreas[phase])))
-              * (actualmdf[phase]->GetValue(curmisobin) - (simmdf[phase]->GetValue(curmisobin) - (neighsurfarea / m_TotalSurfaceAreas[phase])))));
+          - ((actualmdf[phase]->GetValue(curmisobin) - (simmdf[phase]->GetValue(curmisobin) - (neighsurfarea / totalSurfaceArea[phase])))
+              * (actualmdf[phase]->GetValue(curmisobin) - (simmdf[phase]->GetValue(curmisobin) - (neighsurfarea / totalSurfaceArea[phase])))));
   mdfchange = mdfchange
       + (((actualmdf[phase]->GetValue(newmisobin) - simmdf[phase]->GetValue(newmisobin)) * (actualmdf[phase]->GetValue(newmisobin) - simmdf[phase]->GetValue(newmisobin)))
-          - ((actualmdf[phase]->GetValue(newmisobin) - (simmdf[phase]->GetValue(newmisobin) + (neighsurfarea / m_TotalSurfaceAreas[phase])))
-              * (actualmdf[phase]->GetValue(newmisobin) - (simmdf[phase]->GetValue(newmisobin) + (neighsurfarea / m_TotalSurfaceAreas[phase])))));
+          - ((actualmdf[phase]->GetValue(newmisobin) - (simmdf[phase]->GetValue(newmisobin) + (neighsurfarea / totalSurfaceArea[phase])))
+              * (actualmdf[phase]->GetValue(newmisobin) - (simmdf[phase]->GetValue(newmisobin) + (neighsurfarea / totalSurfaceArea[phase])))));
 }
 
 void MatchCrystallography::MC_LoopBody2(int grain, int phase, int j, float neighsurfarea, unsigned int sym, float q1[5], float q2[5])
@@ -454,8 +513,8 @@ void MatchCrystallography::MC_LoopBody2(int grain, int phase, int j, float neigh
   misorientationlists[grain][3 * j] = miso1;
   misorientationlists[grain][3 * j + 1] = miso2;
   misorientationlists[grain][3 * j + 2] = miso3;
-  simmdf[phase]->SetValue(curmisobin, (simmdf[phase]->GetValue(curmisobin) - (neighsurfarea / m_TotalSurfaceAreas[phase])));
-  simmdf[phase]->SetValue(newmisobin, (simmdf[phase]->GetValue(newmisobin) + (neighsurfarea / m_TotalSurfaceAreas[phase])));
+  simmdf[phase]->SetValue(curmisobin, (simmdf[phase]->GetValue(curmisobin) - (neighsurfarea / totalSurfaceArea[phase])));
+  simmdf[phase]->SetValue(newmisobin, (simmdf[phase]->GetValue(newmisobin) + (neighsurfarea / totalSurfaceArea[phase])));
 }
 
 // -----------------------------------------------------------------------------
@@ -831,7 +890,7 @@ void MatchCrystallography::measure_misorientations()
     q1[4] = m_AvgQuats[5 * i + 4];
     phase1 = m_CrystalStructures[m_FieldPhases[i]];
     size_t size = 0;
-    if(neighborlist[i].size() != 0 && neighborsurfacearealist[i].size() != 0 && neighborsurfacearealist[i].size() == neighborlist[i].size())
+    if(neighborlist[i].size() != 0 && neighborsurfacearealist[i].size() == neighborlist[i].size())
     {
       size = neighborlist[i].size();
     }
@@ -869,7 +928,7 @@ void MatchCrystallography::measure_misorientations()
           && (nname > static_cast<int>(i) || m_SurfaceFields[nname] == true)
           && phase1 == phase2)
       {
-      simmdf[m_FieldPhases[i]]->SetValue(mbin, (simmdf[m_FieldPhases[i]]->GetValue(mbin)+(neighsurfarea/m_TotalSurfaceAreas[m_FieldPhases[i]])));
+      simmdf[m_FieldPhases[i]]->SetValue(mbin, (simmdf[m_FieldPhases[i]]->GetValue(mbin)+(neighsurfarea/totalSurfaceArea[m_FieldPhases[i]])));
       }
     }
   }

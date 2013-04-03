@@ -21,7 +21,7 @@ set(HDF5_FOUND "NO")
 set(HDF5_HL_FOUND "NO")
 
 # Only set HDF5_INSTALL to the environment variable if it is blank
-if ("${HDF5_INSTALL}" STREQUAL "")
+if("${HDF5_INSTALL}" STREQUAL "")
     set(HDF5_INSTALL  $ENV{HDF5_INSTALL})
 endif()
 
@@ -74,6 +74,19 @@ FIND_LIBRARY(HDF5_LIBRARY_RELEASE
   NO_DEFAULT_PATH
   )
 
+if(IS_SYMLINK ${HDF5_LIBRARY_DEBUG})
+ # message(STATUS "SYMLINK: ${HDF5_LIBRARY_DEBUG}")
+  get_filename_component(hdf5_debug_resolved_path ${HDF5_LIBRARY_DEBUG} REALPATH)
+ # message(STATUS "Real Path: ${hdf5_debug_resolved_path}")
+  set(HDF5_LIBRARY_DEBUG ${hdf5_debug_resolved_path})
+endif()
+if(IS_SYMLINK ${HDF5_LIBRARY_RELEASE})
+ # message(STATUS "SYMLINK: ${HDF5_LIBRARY_RELEASE}")
+  get_filename_component(hdf5_release_resolved_path ${HDF5_LIBRARY_RELEASE} REALPATH)
+ # message(STATUS "Real Path: ${hdf5_release_resolved_path}")
+  set(HDF5_LIBRARY_RELEASE ${hdf5_release_resolved_path})
+endif()
+
 IF( HDF5_USE_STATIC_LIBS )
   SET(CMAKE_FIND_LIBRARY_SUFFIXES ${_hdf5_ORIG_CMAKE_FIND_LIBRARY_SUFFIXES})
 ENDIF( HDF5_USE_STATIC_LIBS )
@@ -120,7 +133,9 @@ IF(HDF5_INCLUDE_DIR AND HDF5_LIBRARY)
     GET_FILENAME_COMPONENT(HDF5_BIN_PATH ${HDF5_DUMP_PROG} PATH)
     SET(HDF5_BIN_DIR  ${HDF5_BIN_PATH})
   ENDIF (HDF5_DUMP_PROG)
-  
+
+  message(STATUS "Found HDF5 Library ${HDF5_LIBRARY_RELEASE}")
+
 ELSE(HDF5_INCLUDE_DIR AND HDF5_LIBRARY)
   SET(HDF5_FOUND 0)
   SET(HDF5_LIBRARIES)
@@ -194,21 +209,21 @@ IF (HDF5_FOUND)
     SET(CMAKE_REQUIRED_INCLUDES "${CMAKE_REQUIRED_INCLUDES};${HDF5_INCLUDE_DIRS}")
     
     CHECK_SYMBOL_EXISTS(H5_BUILT_AS_DYNAMIC_LIB "H5pubconf.h" HAVE_HDF5_DLL)
-    if (HAVE_HDF5_DLL)
+    if(HAVE_HDF5_DLL)
      set(HDF5_IS_SHARED 1 CACHE INTERNAL "HDF5 Built as DLL or Shared Library")
     endif()
-    
+
     # Restore CMAKE_REQUIRED_INCLUDES and CMAKE_REQUIRED_FLAGS variables
     SET(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES_SAVE})
     SET(CMAKE_REQUIRED_FLAGS${CMAKE_REQUIRED_FLAGS_SAVE})
     #
     #############################################
     
-    if (NOT HDF5_VERSION)
+    if(NOT HDF5_VERSION)
         # We parse the version information from the boost/version.hpp header.
         file(STRINGS ${HDF5_INCLUDE_DIRS}/H5pubconf.h HDF5_VERSIONSTR
           REGEX "#define[ ]+H5_PACKAGE_VERSION[ ]+\"[0-9]+\\.[0-9]+\\.[0-9]+\"")
-        if (HDF5_VERSIONSTR)
+        if(HDF5_VERSIONSTR)
           string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+" HDF5_VERSIONSTR ${HDF5_VERSIONSTR})
           string(REGEX MATCHALL "[0-9]+" VERSION_LIST ${HDF5_VERSIONSTR})
           list(GET VERSION_LIST 0 HDF5_VERSION_MAJOR)

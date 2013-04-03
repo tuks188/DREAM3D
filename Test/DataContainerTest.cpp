@@ -151,9 +151,9 @@ void TestDataContainerWriter()
   DataContainerWriter::Pointer writer = DataContainerWriter::New();
   writer->setVoxelDataContainer(m.get());
   writer->setOutputFile(UnitTest::DataContainerIOTest::TestFile);
-
   writer->execute();
   int err = writer->getErrorCondition();
+  writer = DataContainerWriter::NullPointer();
   DREAM3D_REQUIRE_EQUAL(err, 0);
 }
 
@@ -171,6 +171,10 @@ void TestDataContainerReader()
   DataContainerReader::Pointer reader = DataContainerReader::New();
   reader->setInputFile(UnitTest::DataContainerIOTest::TestFile);
   reader->setVoxelDataContainer(m.get());
+  reader->setReadVoxelData(true);
+  reader->setReadSurfaceMeshData(false);
+  reader->setReadSolidMeshData(false);
+  reader->setReadAllArrays(true);
   reader->execute();
   int err = reader->getErrorCondition();
   DREAM3D_REQUIRE(err >= 0)
@@ -227,8 +231,6 @@ void insertDeleteArray(VoxelDataContainer::Pointer m)
   t = m->getCellData( "Test" );
   DREAM3D_REQUIRE_EQUAL(t.get(), NULL);
 
-
-
   m->addFieldData("Test", p);
   t = m->getFieldData("Test");
   DREAM3D_REQUIRE_NE(t.get(), NULL);
@@ -237,8 +239,6 @@ void insertDeleteArray(VoxelDataContainer::Pointer m)
   t = m->getFieldData( "Test" );
   DREAM3D_REQUIRE_EQUAL(t.get(), NULL);
 
-
-
   m->addEnsembleData("Test", p);
   t = m->getEnsembleData("Test");
   DREAM3D_REQUIRE_NE(t.get(), NULL);
@@ -246,11 +246,7 @@ void insertDeleteArray(VoxelDataContainer::Pointer m)
   DREAM3D_REQUIRE_NE(t.get(), NULL);
   t = m->getEnsembleData( "Test" );
   DREAM3D_REQUIRE_EQUAL(t.get(), NULL);
-
 }
-
-
-
 
 // -----------------------------------------------------------------------------
 //
@@ -296,7 +292,7 @@ void _arrayCreation(VoxelDataContainer::Pointer m)
   // and negative error condition
   ptr =  m->getCellDataSizeCheck<T, K, AbstractFilter>("BAD_ARRAY_NAME", 10, 2, absFilt.get());
   DREAM3D_REQUIRE_EQUAL(ptr , NULL)
-  DREAM3D_REQUIRE_NE(0, absFilt->getErrorCondition());
+  DREAM3D_REQUIRE_EQUAL(0, absFilt->getErrorCondition());
   absFilt->setErrorCondition(0);
 
   // Next try getting the array, but pass in a bad size name which should produce a null pointer
@@ -332,7 +328,7 @@ void _arrayCreation(VoxelDataContainer::Pointer m)
   // and negative error condition
   ptr =  m->getFieldDataSizeCheck<T, K, AbstractFilter>("BAD_ARRAY_NAME", 10, 2, absFilt.get());
   DREAM3D_REQUIRE_EQUAL(ptr , NULL)
-  DREAM3D_REQUIRE_NE(0, absFilt->getErrorCondition());
+  DREAM3D_REQUIRE_EQUAL(0, absFilt->getErrorCondition());
   absFilt->setErrorCondition(0);
 
   // Next try getting the array, but pass in a bad size name which should produce a null pointer
@@ -369,7 +365,7 @@ void _arrayCreation(VoxelDataContainer::Pointer m)
   // and negative error condition
   ptr =  m->getEnsembleDataSizeCheck<T, K, AbstractFilter>("BAD_ARRAY_NAME", 10, 2, absFilt.get());
   DREAM3D_REQUIRE_EQUAL(ptr , NULL)
-  DREAM3D_REQUIRE_NE(0, absFilt->getErrorCondition());
+  DREAM3D_REQUIRE_EQUAL(0, absFilt->getErrorCondition());
   absFilt->setErrorCondition(0);
 
   // Next try getting the array, but pass in a bad size name which should produce a null pointer
@@ -455,10 +451,10 @@ void TestDataContainer()
   bool ok = true;
 
   int value = neighborList->getValue(5, 4, ok);
-  assert(ok);
+  BOOST_ASSERT(ok);
 
   value = neighborList->getValue(12, 4, ok);
-  assert(!ok);
+  BOOST_ASSERT(!ok);
 
   std::cout << "Number of Lists: " << neighborList->getNumberOfLists() << std::endl;
   std::cout << "Number of Entries for Grain Id[5]: " << neighborList->getListSize(5) << std::endl;
@@ -485,10 +481,10 @@ void TestDataContainer()
 
 
     double* dPtr = IDataArray::SafeReinterpretCast<IDataArray*, DoubleArrayType*, double*>(ptr.get());
-    assert(NULL == dPtr);
+    BOOST_ASSERT(NULL == dPtr);
 
     int32_t* iPtr = IDataArray::SafeReinterpretCast<IDataArray*, Int32ArrayType*, int32_t*>(ptr.get());
-    assert(NULL != iPtr);
+    BOOST_ASSERT(NULL != iPtr);
 
     // Or we can downcast to the type we know it is (in line)
     Int32ArrayType* intPtr = Int32ArrayType::SafeObjectDownCast<IDataArray*, Int32ArrayType* >(dataContainer->getCellData("int32_t_Array").get());

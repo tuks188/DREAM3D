@@ -69,17 +69,19 @@ class DREAM3DLib_EXPORT MergeColonies : public AbstractFilter
     DREAM3D_INSTANCE_STRING_PROPERTY(GrainIdsArrayName)
     DREAM3D_INSTANCE_STRING_PROPERTY(CellPhasesArrayName)
     //------ Created Cell Data
-    DREAM3D_INSTANCE_STRING_PROPERTY(ParentIdsArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(CellParentIdsArrayName)
     DREAM3D_INSTANCE_STRING_PROPERTY(GlobAlphaArrayName)
     //------ Required Field Data
     DREAM3D_INSTANCE_STRING_PROPERTY(AvgQuatsArrayName)
     DREAM3D_INSTANCE_STRING_PROPERTY(FieldPhasesArrayName)
     //------ Created Field Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(FieldParentIdsArrayName)
     DREAM3D_INSTANCE_STRING_PROPERTY(ActiveArrayName)
     //------ Required Ensemble Data
     DREAM3D_INSTANCE_STRING_PROPERTY(CrystalStructuresArrayName)
 
     virtual const std::string getGroupName() { return DREAM3D::FilterGroups::ReconstructionFilters; }
+	virtual const std::string getSubGroupName() {return DREAM3D::FilterSubGroups::GroupingFilters;}
     virtual const std::string getHumanLabel() { return "Reconstruct Prior Beta Grains"; }
 
     DREAM3D_INSTANCE_PROPERTY(float, AxisTolerance)
@@ -107,7 +109,8 @@ class DREAM3DLib_EXPORT MergeColonies : public AbstractFilter
   private:
     int32_t* m_GrainIds;
     int32_t* m_CellPhases;
-    int32_t* m_ParentIds;
+    int32_t* m_CellParentIds;
+    int32_t* m_FieldParentIds;
     int32_t* m_GlobAlpha;
     float* m_AvgQuats;
     bool* m_Active;

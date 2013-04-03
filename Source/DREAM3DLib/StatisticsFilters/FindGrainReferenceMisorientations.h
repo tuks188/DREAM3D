@@ -79,8 +79,11 @@ class DREAM3DLib_EXPORT FindGrainReferenceMisorientations : public AbstractFilte
 	DREAM3D_INSTANCE_STRING_PROPERTY(AvgQuatsArrayName)
 	//------ Created Field Data
 	DREAM3D_INSTANCE_STRING_PROPERTY(GrainAvgMisorientationsArrayName)
+    //------ Required Ensemble Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(CrystalStructuresArrayName)
 
     virtual const std::string getGroupName() { return DREAM3D::FilterGroups::StatisticsFilters; }
+	 virtual const std::string getSubGroupName() { return DREAM3D::FilterSubGroups::CrystallographicFilters; }
     virtual const std::string getHumanLabel() { return "Find Grain Reference Misorientations"; }
 
     DREAM3D_INSTANCE_PROPERTY(unsigned int, ReferenceOrientation)
@@ -113,6 +116,8 @@ class DREAM3DLib_EXPORT FindGrainReferenceMisorientations : public AbstractFilte
     float* m_AvgQuats;
     float* m_GrainAvgMisorientations;
     float* m_Quats;
+
+    unsigned int* m_CrystalStructures;
 
     void dataCheck(bool preflight, size_t voxels, size_t fields, size_t ensembles);
 

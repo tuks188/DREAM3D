@@ -39,25 +39,8 @@
 #include "H5Support/H5Utilities.h"
 #include "H5Support/H5Lite.h"
 
+#include "H5Support/HDF5ScopedFileSentinel.h"
 #include "DREAM3DLib/IOFilters/VoxelDataContainerReader.h"
-
-/**
- * @brief The HDF5FileSentinel class ensures the HDF5 file that is currently open
- * is closed when the variable goes out of Scope
- */
-class HDF5ScopedFileSentinel
-{
-  public:
-    HDF5ScopedFileSentinel(hid_t fileId) : m_FileId(fileId)
-    {}
-    virtual ~HDF5ScopedFileSentinel()
-    {
-      if (m_FileId > 0) {
-        H5Utilities::closeFile(m_FileId);
-      }
-    }
-    DREAM3D_INSTANCE_PROPERTY(hid_t, FileId)
-};
 
 // -----------------------------------------------------------------------------
 //
@@ -177,9 +160,9 @@ void InitializeSyntheticVolume::dataCheck(bool preflight, size_t voxels, size_t 
 
   //Cell Data
   CREATE_NON_PREREQ_DATA(m, DREAM3D, CellData, GrainIds, ss, int32_t, Int32ArrayType, -1, voxels, 1)
-      CREATE_NON_PREREQ_DATA(m, DREAM3D, CellData, CellPhases, ss, int32_t, Int32ArrayType, 0, voxels, 1)
+  CREATE_NON_PREREQ_DATA(m, DREAM3D, CellData, CellPhases, ss, int32_t, Int32ArrayType, 0, voxels, 1)
 
-      if(m_InputFile.empty() == true)
+  if(m_InputFile.empty() == true)
   {
     ss << "The intput file must be set before executing this filter.\n";
     setErrorCondition(-800);
@@ -226,7 +209,7 @@ void InitializeSyntheticVolume::preflight()
     return;
   }
   // This will make sure if we return early from this method that the HDF5 File is properly closed.
-  HDF5ScopedFileSentinel scopedFileSentinel(fileId);
+  HDF5ScopedFileSentinel scopedFileSentinel(&fileId, true);
 
   VoxelDataContainerReader::Pointer read_data = VoxelDataContainerReader::New();
   read_data->setHdfFileId(fileId);
@@ -266,13 +249,14 @@ void InitializeSyntheticVolume::execute()
     return;
   }
   // This will make sure if we return early from this method that the HDF5 File is properly closed.
-  HDF5ScopedFileSentinel scopedFileSentinel(fileId);
+  HDF5ScopedFileSentinel scopedFileSentinel(&fileId, true);
 
   VoxelDataContainerReader::Pointer read_data = VoxelDataContainerReader::New();
   read_data->setHdfFileId(fileId);
   read_data->setReadCellData(false);
   read_data->setReadFieldData(false);
   read_data->setReadEnsembleData(true);
+  read_data->setReadAllArrays(true);
   read_data->setVoxelDataContainer(getVoxelDataContainer());
   read_data->execute();
 

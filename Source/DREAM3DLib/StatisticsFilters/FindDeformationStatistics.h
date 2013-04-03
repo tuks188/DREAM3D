@@ -80,6 +80,11 @@ class DREAM3DLib_EXPORT FindDeformationStatistics : public AbstractFilter
     virtual ~FindDeformationStatistics();
 
 	//------ Required Cell Data
+	DREAM3D_INSTANCE_STRING_PROPERTY(F1ArrayName)
+	DREAM3D_INSTANCE_STRING_PROPERTY(F1sptArrayName)
+	DREAM3D_INSTANCE_STRING_PROPERTY(F7ArrayName)	
+	DREAM3D_INSTANCE_STRING_PROPERTY(mPrimeArrayName)	
+	//------ Required Cell Data
 	DREAM3D_INSTANCE_STRING_PROPERTY(GrainIdsArrayName)
 	DREAM3D_INSTANCE_STRING_PROPERTY(GrainReferenceMisorientationsArrayName)
 	DREAM3D_INSTANCE_STRING_PROPERTY(KernelAverageMisorientationsArrayName)	
@@ -93,12 +98,14 @@ class DREAM3DLib_EXPORT FindDeformationStatistics : public AbstractFilter
 	DREAM3D_INSTANCE_STRING_PROPERTY(FieldPhasesArrayName)
 	DREAM3D_INSTANCE_STRING_PROPERTY(PolesArrayName)
 	DREAM3D_INSTANCE_STRING_PROPERTY(SchmidsArrayName)
-	DREAM3D_INSTANCE_STRING_PROPERTY(SlipSystemsArrayName)
+    //------ Required Ensemble Data
+    DREAM3D_INSTANCE_STRING_PROPERTY(CrystalStructuresArrayName)
 
     DREAM3D_INSTANCE_STRING_PROPERTY(DeformationStatisticsFile)
     DREAM3D_INSTANCE_STRING_PROPERTY(VtkOutputFile)
 
     virtual const std::string getGroupName() { return DREAM3D::FilterGroups::StatisticsFilters; }
+	 virtual const std::string getSubGroupName() { return DREAM3D::FilterSubGroups::MiscFilters; }
     virtual const std::string getHumanLabel() { return "Find Deformation Statistics"; }
 
     virtual void setupFilterParameters();
@@ -123,16 +130,21 @@ class DREAM3DLib_EXPORT FindDeformationStatistics : public AbstractFilter
     int32_t* m_GrainIds;
     int32_t* m_FieldPhases;
     int32_t* m_NearestNeighbors;
-    int32_t* m_SlipSystems;
     float* m_GrainReferenceMisorientations;
     float* m_KernelAverageMisorientations;
     float* m_AvgQuats;
+    float* m_F1;
+    float* m_F1spt;
+    float* m_F7;
+    float* m_mPrime;
     float* m_GrainAvgMisorientations;
     int32_t* m_Poles;
     float* m_Schmids;
     float* m_GBEuclideanDistances;
     float* m_TJEuclideanDistances;
     float* m_QPEuclideanDistances;
+
+    unsigned int* m_CrystalStructures;
 
     void dataCheck(bool preflight, size_t voxels, size_t fields, size_t ensembles);
 

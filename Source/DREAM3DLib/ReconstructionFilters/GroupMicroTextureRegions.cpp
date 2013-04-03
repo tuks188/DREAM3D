@@ -42,7 +42,7 @@
 #include "DREAM3DLib/Common/OrientationMath.h"
 #include "DREAM3DLib/Common/DREAM3DRandom.h"
 
-#include "DREAM3DLib/GenericFilters/FindNeighbors.h"
+#include "DREAM3DLib/StatisticsFilters/FindNeighbors.h"
 #include "DREAM3DLib/GenericFilters/FindGrainPhases.h"
 
 #include "DREAM3DLib/OrientationOps/CubicOps.h"
@@ -66,14 +66,16 @@ const static float m_pi = static_cast<float>(M_PI);
 GroupMicroTextureRegions::GroupMicroTextureRegions() :
 AbstractFilter(),
 m_GrainIdsArrayName(DREAM3D::CellData::GrainIds),
-m_ParentIdsArrayName(DREAM3D::CellData::ParentIds),
+m_CellParentIdsArrayName(DREAM3D::CellData::ParentIds),
 m_AvgQuatsArrayName(DREAM3D::FieldData::AvgQuats),
 m_FieldPhasesArrayName(DREAM3D::FieldData::Phases),
 m_ActiveArrayName(DREAM3D::FieldData::Active),
+m_FieldParentIdsArrayName(DREAM3D::CellData::ParentIds),
 m_CrystalStructuresArrayName(DREAM3D::EnsembleData::CrystalStructures),
 m_CAxisTolerance(1.0f),
 m_GrainIds(NULL),
-m_ParentIds(NULL),
+m_CellParentIds(NULL),
+m_FieldParentIds(NULL),
 m_AvgQuats(NULL),
 m_Active(NULL),
 m_FieldPhases(NULL),
@@ -137,7 +139,7 @@ void GroupMicroTextureRegions::dataCheck(bool preflight, size_t voxels, size_t f
 
   // Cell Data
   GET_PREREQ_DATA( m, DREAM3D, CellData, GrainIds, ss, -301, int32_t, Int32ArrayType, voxels, 1)
-  CREATE_NON_PREREQ_DATA(m, DREAM3D, CellData, ParentIds, ss, int32_t, Int32ArrayType, -1, voxels, 1)
+  CREATE_NON_PREREQ_DATA(m, DREAM3D, CellData, CellParentIds, ss, int32_t, Int32ArrayType, -1, voxels, 1)
 
   // Field Data
   GET_PREREQ_DATA(m, DREAM3D, FieldData, AvgQuats, ss, -302, float, FloatArrayType, fields, 5)
@@ -156,6 +158,7 @@ void GroupMicroTextureRegions::dataCheck(bool preflight, size_t voxels, size_t f
 
 
   CREATE_NON_PREREQ_DATA(m, DREAM3D, FieldData, Active, ss, bool, BoolArrayType, true, fields, 1)
+  CREATE_NON_PREREQ_DATA(m, DREAM3D, FieldData, FieldParentIds, ss, int32_t, Int32ArrayType, 0, fields, 1)
   // Now we are going to get a "Pointer" to the NeighborList object out of the DataContainer
   m_NeighborList = NeighborList<int>::SafeObjectDownCast<IDataArray*, NeighborList<int>*>(m->getFieldData(DREAM3D::FieldData::NeighborList).get());
   if(m_NeighborList == NULL)
@@ -266,17 +269,17 @@ void GroupMicroTextureRegions::merge_micro_texture_regions()
         q1[3] = m_AvgQuats[5*firstgrain+3];
         q1[4] = m_AvgQuats[5*firstgrain+4];
         phase1 = m_CrystalStructures[m_FieldPhases[firstgrain]];
-	    OrientationMath::QuattoMat(q1, g1);
-		//transpose the g matrix so when caxis is multiplied by it
-		//it will give the sample direction that the caxis is along
-		MatrixMath::transpose3x3(g1, g1t);
-		MatrixMath::multiply3x3with3x1(g1t, caxis, c1);
-		//normalize so that the dot product can be taken below without
-		//dividing by the magnitudes (they would be 1)
-		MatrixMath::normalize3x1(c1);
+      OrientationMath::QuattoMat(q1, g1);
+    //transpose the g matrix so when caxis is multiplied by it
+    //it will give the sample direction that the caxis is along
+    MatrixMath::transpose3x3(g1, g1t);
+    MatrixMath::multiply3x3with3x1(g1t, caxis, c1);
+    //normalize so that the dot product can be taken below without
+    //dividing by the magnitudes (they would be 1)
+    MatrixMath::normalize3x1(c1);
 
-		
-		for (int l = 0; l < size; l++)
+
+    for (int l = 0; l < size; l++)
         {
           angcur = 180.0f;
           size_t neigh = neighborlist[firstgrain][l];
@@ -290,16 +293,16 @@ void GroupMicroTextureRegions::merge_micro_texture_regions()
               q2[2] = m_AvgQuats[5*neigh+2];
               q2[3] = m_AvgQuats[5*neigh+3];
               q2[4] = m_AvgQuats[5*neigh+4];
-			  OrientationMath::QuattoMat(q2, g2);
-			  //transpose the g matrix so when caxis is multiplied by it
-			  //it will give the sample direction that the caxis is along
-			  MatrixMath::transpose3x3(g2, g2t);
-			  MatrixMath::multiply3x3with3x1(g2t, caxis, c2);
-			  //normalize so that the dot product can be taken below without
-			  //dividing by the magnitudes (they would be 1)
-			  MatrixMath::normalize3x1(c2);
+        OrientationMath::QuattoMat(q2, g2);
+        //transpose the g matrix so when caxis is multiplied by it
+        //it will give the sample direction that the caxis is along
+        MatrixMath::transpose3x3(g2, g2t);
+        MatrixMath::multiply3x3with3x1(g2t, caxis, c2);
+        //normalize so that the dot product can be taken below without
+        //dividing by the magnitudes (they would be 1)
+        MatrixMath::normalize3x1(c2);
 
-			  w = ((c1[0]*c2[0])+(c1[1]*c2[1])+(c1[2]*c2[2]));
+        w = ((c1[0]*c2[0])+(c1[1]*c2[1])+(c1[2]*c2[2]));
               w = acosf(w);
               if (w <= m_CAxisTolerance || (m_pi-w) <= m_CAxisTolerance)
               {
@@ -317,7 +320,8 @@ void GroupMicroTextureRegions::merge_micro_texture_regions()
   for (size_t k = 0; k < totalPoints; k++)
   {
     int grainname = m_GrainIds[k];
-    m_ParentIds[k] = parentnumbers[grainname];
+    m_CellParentIds[k] = parentnumbers[grainname];
+    m_FieldParentIds[grainname] = m_CellParentIds[k];
   }
 }
 

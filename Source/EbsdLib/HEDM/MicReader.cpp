@@ -308,8 +308,8 @@ int MicReader::readFile()
   std::ifstream inHeader(name.c_str());
   if (!inHeader.is_open())
   {
-    std::cout << "Config file could not be opened: " << name << std::endl;
-    return -100;
+    std::cout << "matching config file could not be opened: " << name << std::endl;
+    return -101;
   }
 
   // 'name' now contains the complete path to the file with the new extension
@@ -335,8 +335,8 @@ int MicReader::readFile()
   std::ifstream inHeader2(name.c_str());
   if (!inHeader2.is_open())
   {
-    std::cout << "Dat file could not be opened: " << name << std::endl;
-    return -100;
+    std::cout << "Matching .dat file could not be opened: " << name << std::endl;
+    return -102;
   }
 
   // 'name' now contains the complete path to the file with the new extension
@@ -371,11 +371,6 @@ int MicReader::readFile()
   err = readData(in, buf, kBufferSize);
   if (err < 0) { return err;}
 
-  if(getRotateSlice() == true || getReorderArray() == true || getAlignEulers() == true)
-  {
-    transformData();
-  }
-
   return err;
 }
 
@@ -406,13 +401,13 @@ int MicReader::readData(std::ifstream &in, char* buf, size_t bufSize)
   ::memset(buf, 0, bufSize); // Clear the buffer
   in.getline(buf, kBufferSize);// Read the next line of data
   fieldsRead = sscanf(buf, "%f", &origEdgeLength);
-  origEdgeLength = origEdgeLength;
+ // origEdgeLength = origEdgeLength;
   ::memset(buf, 0, bufSize); // Clear the buffer
   in.getline(buf, kBufferSize);// Read the next line of data
   this->parseDataLine(buf, 0);
   int level = m_Level[0];
   float newEdgeLength = origEdgeLength/powf(2.0,float(level));
-  totalPossibleDataRows = 6*powf(4,level);
+  totalPossibleDataRows = static_cast<size_t>(6.0f*powf(4.0f,float(level)));
   initPointers(totalPossibleDataRows);
   this->parseDataLine(buf, 0);
   ::memset(buf, 0, bufSize); // Clear the buffer
@@ -436,18 +431,18 @@ int MicReader::readData(std::ifstream &in, char* buf, size_t bufSize)
   std::vector<int> up(totalDataRows,0);
   std::vector<float> xVal(totalDataRows,0.0);
   std::vector<float> yVal(totalDataRows,0.0);
-  float constant = 1.0/(2.0*sqrt(3.0));
+  float constant = static_cast<float>(1.0f/(2.0*sqrt(3.0)));
   float x, y;
   for(size_t i = 0; i < totalDataRows; ++i)
   {
     if(m_Up[i] == 1)
     {
-      x = m_X[i] + (newEdgeLength/2.0);
+      x = m_X[i] + (newEdgeLength/2.0f);
       y = m_Y[i] + (constant*newEdgeLength);
     }
     if(m_Up[i] == 2)
     {
-      x = m_X[i] + (newEdgeLength/2.0);
+      x = m_X[i] + (newEdgeLength/2.0f);
       y = m_Y[i] - (constant*newEdgeLength);
     }
     if(x > xMax) xMax = x;
@@ -465,8 +460,8 @@ int MicReader::readData(std::ifstream &in, char* buf, size_t bufSize)
   }
   xDim = int((xMax-xMin)/newEdgeLength)+1;
   yDim = int((yMax-yMin)/newEdgeLength)+1;
-  xRes = newEdgeLength*1000.0;
-  yRes = newEdgeLength*1000.0;
+  xRes = newEdgeLength*1000.0f;
+  yRes = newEdgeLength*1000.0f;
 
   char buf_2[16];
   ::memset(buf_2, 0, 16);
@@ -491,13 +486,13 @@ int MicReader::readData(std::ifstream &in, char* buf, size_t bufSize)
 
   float xA, xB, xC, yA, yB, yC;
   int point;
-  float root3over2 = sqrt(3.0)/2.0;
+  float root3over2 = sqrtf(3.0f)/2.0f;
   int check1, check2, check3;
   for(size_t i = 0; i < totalDataRows; ++i)
   {
     xA = xVal[i]-xMin;
     xB = xA + newEdgeLength;
-    xC = xA + (newEdgeLength/2.0);
+    xC = xA + (newEdgeLength/2.0f);
     if(up[i] == 1)
     {
       yA = yVal[i]-yMin;
@@ -516,9 +511,9 @@ int MicReader::readData(std::ifstream &in, char* buf, size_t bufSize)
       {
         x = float(j)*newEdgeLength;
         y = float(k)*newEdgeLength;
-        check1 = (x-xB)*(yA-yB)-(xA-xB)*(y-yB);
-        check2 = (x-xC)*(yB-yC)-(xB-xC)*(y-yC);
-        check3 = (x-xA)*(yC-yA)-(xC-xA)*(y-yA);
+        check1 = static_cast<int>((x-xB)*(yA-yB)-(xA-xB)*(y-yB));
+        check2 = static_cast<int>((x-xC)*(yB-yC)-(xB-xC)*(y-yC));
+        check3 = static_cast<int>((x-xA)*(yC-yA)-(xC-xA)*(y-yA));
         if((check1<=0 && check2<=0 && check3<=0) || (check1>=0 && check2>=0 && check3>=0))
         {
           point = (k*xDim) + j;
@@ -687,52 +682,4 @@ float MicReader::getXStep()
 float MicReader::getYStep()
 {
   return getYRes();
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void MicReader::transformData()
-{
-  float* p1 = getEuler1Pointer();
-  float* p = getEuler2Pointer();
-  float* p2 = getEuler3Pointer();
-
-  int* ph = getPhasePointer();
-  float* conf = getConfidencePointer();
-
-  size_t offset = 0;
-
-  size_t yCells = getYDimension();
-  size_t xCells = getXDimension();
-  size_t totalDataRows = yCells * xCells;
-
-  std::vector<size_t> shuffleTable(totalDataRows, 0);
-
-  size_t i = 0;
-  size_t adjustedcol, adjustedrow;
-  for(size_t row = 0; row < yCells; ++row)
-  {
-    for(size_t col = 0; col < xCells; ++col)
-    {
-      adjustedcol = col;
-      adjustedrow = row;
-      if(getRotateSlice() == true) adjustedcol = (xCells-1)-adjustedcol, adjustedrow = (yCells-1)-adjustedrow;
-      if(getReorderArray() == true) adjustedrow = (yCells-1)-adjustedrow;
-      offset = (adjustedrow*xCells)+(adjustedcol);
-      if(getAlignEulers() == true)
-      {
-        p1[i] = p1[i];
-      }
-      shuffleTable[(row*xCells)+col] = offset;
-      ++i;
-    }
-  }
-
-  SHUFFLE_ARRAY(Euler1, p1, float)
-      SHUFFLE_ARRAY(Euler2, p, float)
-      SHUFFLE_ARRAY(Euler3, p2, float)
-      SHUFFLE_ARRAY(Confidence, conf, float)
-      SHUFFLE_ARRAY(Phase, ph, int)
-
 }

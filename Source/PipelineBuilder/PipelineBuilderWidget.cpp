@@ -56,6 +56,9 @@
 #include <QtGui/QMenuBar>
 #include <QtGui/QKeySequence>
 #include <QtGui/QSortFilterProxyModel>
+#include <QtGui/QDesktopServices>
+
+#include "QtSupport/HelpDialog.h"
 
 #include "DREAM3DLib/DREAM3DLib.h"
 #include "DREAM3DLib/Common/DREAM3DSetGetMacros.h"
@@ -79,7 +82,8 @@ DREAM3DPluginFrame(parent),
 m_FilterPipeline(NULL),
 m_MenuPipeline(NULL),
 m_WorkerThread(NULL),
-m_DocErrorTabsIsOpen(false)
+m_DocErrorTabsIsOpen(false),
+m_HelpDialog(NULL)
 {
   m_OpenDialogLastDirectory = QDir::homePath();
   setupUi(this);
@@ -178,19 +182,21 @@ void PipelineBuilderWidget::readSettings(QSettings &prefs, PipelineViewWidget* v
     QString filterName = prefs.value("Filter_Name", "").toString();
 
     QFilterWidget* w = viewWidget->addFilter(filterName); // This will set the variable m_SelectedFilterWidget
+
     if(w) {
+      m_PipelineViewWidget->preflightPipeline();
       w->blockSignals(true);
       w->readOptions(prefs);
       w->blockSignals(false);
-      //w->emitParametersChanged();
     }
     prefs.endGroup();
   }
+  // One last preflight to get the changes introduced by the last filter
   m_PipelineViewWidget->preflightPipeline();
 
 
   QDir tempPathDir = QDir::temp();
-  QString tempPath = tempPathDir.path();
+  //QString tempPath = tempPathDir.path();
 
   //Get Favorites from Pref File and Update Tree Widget
   prefs.beginGroup(Detail::FavoritePipelines);
@@ -337,6 +343,12 @@ void PipelineBuilderWidget::setupGui()
     QTreeWidgetItem* filterGroup = new QTreeWidgetItem(library);
     filterGroup->setText(0, QString::fromStdString(*iter));
     filterGroup->setIcon(0, icon);
+    std::set<std::string> subGroupNames = fm->getSubGroupNames(*iter);
+    for(std::set<std::string>::iterator iter2 = subGroupNames.begin(); iter2 != subGroupNames.end(); ++iter2)
+    {
+      QTreeWidgetItem* filterSubGroup = new QTreeWidgetItem(filterGroup);
+      filterSubGroup->setText(0, QString::fromStdString(*iter2));
+  }
   }
   library->setExpanded(true);
 
@@ -354,13 +366,8 @@ void PipelineBuilderWidget::setupGui()
   toggleDocs->setChecked(false);
   showErrors->setChecked(false);
 
-
-  setDocsToIndexFile();
-
-
-
-  on_toggleDocs_clicked();
-  //on_showErrors_clicked();
+  m_HelpDialog = new HelpDialog(this);
+  m_HelpDialog->setWindowModality(Qt::NonModal);
 
   on_filterLibraryTree_itemClicked(library, 0);
 
@@ -369,8 +376,7 @@ void PipelineBuilderWidget::setupGui()
     presetFilter->setText(0, "Ebsd 3D Reconstruction");
     presetFilter->setIcon(0, QIcon(":/scroll.png"));
     QStringList presetFilterList;
-    presetFilterList << "ReadH5Ebsd" << "AlignSectionsMisorientation" << "EBSDSegmentGrains" << "DataContainerWriter"
-        << "VtkRectilinearGridWriter";
+    presetFilterList << "ReadH5Ebsd" << "MultiThresholdCells"  << "AlignSectionsMisorientation" << "EBSDSegmentGrains" << "GenerateIPFColors" << "DataContainerWriter";
     m_presetMap["Ebsd 3D Reconstruction"] = presetFilterList;
   }
 
@@ -385,37 +391,22 @@ void PipelineBuilderWidget::setupGui()
   }
   {
     QTreeWidgetItem* presetFilter = new QTreeWidgetItem(presets);
-    presetFilter->setText(0, "Synthetic(Single Phases)");
+    presetFilter->setText(0, "Synthetic(Single Phase)");
     presetFilter->setIcon(0, QIcon(":/scroll.png"));
     QStringList presetFilterList;
-    presetFilterList << "InitializeSyntheticVolume" << "PackPrimaryPhases" << "MatchCrystallography" << "DataContainerWriter" << "VtkRectilinearGridWriter";
-    m_presetMap["Synthetic(Single Phases)"] = presetFilterList;
+    presetFilterList << "InitializeSyntheticVolume" << "PackPrimaryPhases" << "MatchCrystallography" << "GenerateIPFColors" << "DataContainerWriter";
+    m_presetMap["Synthetic(Single Phase)"] = presetFilterList;
   }
   {
     QTreeWidgetItem* presetFilter = new QTreeWidgetItem(presets);
-    presetFilter->setText(0, "Synthetic(Two Phases)");
+    presetFilter->setText(0, "Synthetic(Primary + Precipitate)");
     presetFilter->setIcon(0, QIcon(":/scroll.png"));
     QStringList presetFilterList;
-    presetFilterList << "InitializeSyntheticVolume" << "PackPrimaryPhases"  << "InsertPrecipitatePhases" << "MatchCrystallography" << "DataContainerWriter" << "VtkRectilinearGridWriter";
-    m_presetMap["Synthetic(Two Phases)"] = presetFilterList;
+    presetFilterList << "InitializeSyntheticVolume" << "PackPrimaryPhases"  << "InsertPrecipitatePhases" << "MatchCrystallography" << "GenerateIPFColors" << "DataContainerWriter";
+    m_presetMap["Synthetic(Primary + Precipitate)"] = presetFilterList;
   }
 
 
-}
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void PipelineBuilderWidget::setDocsToIndexFile()
-{
-
-  QString html;
-  QString resName = QString(":/index.html");
-  QFile f(resName);
-  if ( f.open(QIODevice::ReadOnly) )
-  {
-    html = QLatin1String(f.readAll());
-  }
-  helpText->setHtml(html);
 }
 
 // -----------------------------------------------------------------------------
@@ -436,6 +427,11 @@ void PipelineBuilderWidget::on_filterLibraryTree_currentItemChanged(QTreeWidgetI
   else if (NULL != item->parent() && item->parent()->text(0).compare(Detail::Library) == 0)
   {
     factories = fm->getFactories(item->text(0).toStdString());
+    updateFilterGroupList(factories);
+  }
+  else if (NULL != item->parent()->parent() && item->parent()->parent()->text(0).compare(Detail::Library) == 0)
+  {
+    factories = fm->getFactories(item->parent()->text(0).toStdString(), item->text(0).toStdString());
     updateFilterGroupList(factories);
   }
   else if (NULL != item->parent() && item->parent()->text(0).compare(Detail::PrebuiltPipelines) == 0)
@@ -471,7 +467,11 @@ void PipelineBuilderWidget::on_filterLibraryTree_itemClicked( QTreeWidgetItem* i
     factories = fm->getFactories(item->text(0).toStdString());
     updateFilterGroupList(factories);
   }
-}
+  else if (item->parent()->parent() != NULL && item->parent()->parent()->text(0).compare(Detail::Library) == 0)
+  {
+    factories = fm->getFactories(item->parent()->text(0).toStdString(), item->text(0).toStdString());
+    updateFilterGroupList(factories);
+  }}
 
 // -----------------------------------------------------------------------------
 //
@@ -550,10 +550,10 @@ void PipelineBuilderWidget::on_filterList_currentItemChanged ( QListWidgetItem *
   AbstractFilter::Pointer filter = wf->getFilterInstance();
   if (NULL == filter.get())
   {
-    helpText->setHtml("");
     return;
   }
 
+#if 0
   QString html;
   QString resName = QString(":/%1Filters/%2.html").arg(filter->getGroupName().c_str()).arg(filter->getNameOfClass().c_str());
   QFile f(resName);
@@ -574,8 +574,8 @@ void PipelineBuilderWidget::on_filterList_currentItemChanged ( QListWidgetItem *
     html.append(resName);
     html.append("</body></html>\n");
   }
+#endif
 
-  helpText->setHtml(html);
 }
 
 // -----------------------------------------------------------------------------
@@ -594,6 +594,10 @@ void PipelineBuilderWidget::on_filterSearch_textChanged (const QString& text)
   else if (item->parent() != NULL && item->parent()->text(0).compare(Detail::Library) == 0)
   {
     factories = fm->getFactories(item->text(0).toStdString());
+  }
+  else if (item->parent()->parent() != NULL && item->parent()->parent()->text(0).compare(Detail::Library) == 0)
+  {
+    factories = fm->getFactories(item->parent()->text(0).toStdString(), item->text(0).toStdString());
   }
 
   // Nothing was in the search Field so just reset to what was listed before
@@ -651,16 +655,14 @@ void PipelineBuilderWidget::on_filterSearch_textChanged (const QString& text)
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PipelineBuilderWidget::on_helpText_anchorClicked ( const QUrl & link )
-{
-//  std::cout << "PipelineBuilderWidget::on_helpText_anchorClicked()" << std::endl;
-  QUrl u(link);
-  u.setScheme("qrc");
-//  std::cout << "URL: " << u.scheme().toStdString()<< "  " << u.path().toStdString() << std::endl;
-  helpText->blockSignals(true);
-  helpText->setSource(u);
-  helpText->blockSignals(false);
-}
+//void PipelineBuilderWidget::on_helpText_anchorClicked ( const QUrl & link )
+//{
+//  QUrl u(link);
+//  u.setScheme("qrc");
+//  helpText->blockSignals(true);
+//  helpText->setSource(u);
+//  helpText->blockSignals(false);
+//}
 
 // -----------------------------------------------------------------------------
 //
@@ -674,41 +676,52 @@ void PipelineBuilderWidget::on_filterList_itemDoubleClicked( QListWidgetItem* it
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
+QUrl PipelineBuilderWidget::htmlHelpIndexFile()
+{
+  QString appPath = qApp->applicationDirPath();
+
+  QDir helpDir = QDir(appPath);
+  QString s("file://");
+
+#if defined(Q_OS_WIN)
+  s = s + "/"; // Need the third slash on windows because file paths start with a drive letter
+#elif defined(Q_OS_MAC)
+  if (helpDir.dirName() == "MacOS")
+  {
+    helpDir.cdUp();
+    helpDir.cdUp();
+    helpDir.cdUp();
+  }
+#else
+  // We are on Linux - I think
+  helpDir.cdUp();
+#endif
+
+  s = s + helpDir.absolutePath() + "/Help/DREAM3D/index.html";
+//  if (helpDir.cd("Help") )
+//  {
+//    s = s + helpDir.absolutePath();
+//  }
+//  s = s + "/DREAM3D/index.html";
+  return QUrl(s);
+}
+
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
 void PipelineBuilderWidget::on_toggleDocs_clicked()
 {
-
-  if(docErrorTabs->currentIndex() == 0 || (m_DocErrorTabsIsOpen == false))
-  {
-    docErrorTabs->setCurrentIndex(0);
-    m_DocErrorTabsIsOpen = !m_DocErrorTabsIsOpen;
-#if 1
-    docErrorTabs->setHidden(!m_DocErrorTabsIsOpen);
-#else
-    QPropertyAnimation *animation1 = new QPropertyAnimation(docErrorTabs, "maximumHeight");
-    if(m_DocErrorTabsIsOpen)
-    {
-      int start = 0;
-      int end = 350;
-      docErrorTabs->setMaximumHeight(end);
-      animation1->setDuration(250);
-      animation1->setStartValue(start);
-      animation1->setEndValue(end);
-    }
-    else //open
-    {
-      int start = docErrorTabs->maximumHeight();
-      int end = 0;
-      animation1->setDuration(250);
-      animation1->setStartValue(start);
-      animation1->setEndValue(end);
-    }
-    animation1->start();
-#endif
-  }
-  else
-  {
-    docErrorTabs->setCurrentIndex(0);
-  }
+   // m_HelpDialog->setContentFile(htmlHelpIndexFile());
+   QUrl url = htmlHelpIndexFile();
+   bool didOpen = QDesktopServices::openUrl(url);
+   if(false == didOpen)
+   {
+   //  std::cout << "Could not open URL: " << url.path().toStdString() << std::endl;
+       displayDialogBox(QString::fromStdString("Error Opening Help File"),
+         QString::fromAscii("DREAM3D could not open the help file path ") + url.path(),
+         QMessageBox::Critical);
+   }
 }
 
 // -----------------------------------------------------------------------------
@@ -716,42 +729,8 @@ void PipelineBuilderWidget::on_toggleDocs_clicked()
 // -----------------------------------------------------------------------------
 void PipelineBuilderWidget::on_showErrors_clicked()
 {
-  if(docErrorTabs->currentIndex() == 1 || (m_DocErrorTabsIsOpen == false))
-  {
-    docErrorTabs->setCurrentIndex(1);
     m_DocErrorTabsIsOpen = !m_DocErrorTabsIsOpen;
-#if 1
-    docErrorTabs->setHidden(!m_DocErrorTabsIsOpen);
-#else
-    int deltaX;
-    QPropertyAnimation *animation1 = new QPropertyAnimation(docErrorTabs, "maximumHeight");
-
-    if(m_DocErrorTabsIsOpen)
-    {
-      int start = 0;
-      int end = 350;
-      docErrorTabs->setMaximumHeight(end);
-      deltaX = start;
-
-      animation1->setDuration(250);
-      animation1->setStartValue(start);
-      animation1->setEndValue(end);
-    }
-    else //open
-    {
-      int start = docErrorTabs->maximumHeight();
-      int end = 0;
-      animation1->setDuration(250);
-      animation1->setStartValue(start);
-      animation1->setEndValue(end);
-    }
-    animation1->start();
-#endif
-  }
-  else
-  {
-    docErrorTabs->setCurrentIndex(1);
-  }
+    docErrorTabs->setHidden(m_DocErrorTabsIsOpen);
 }
 
 // -----------------------------------------------------------------------------

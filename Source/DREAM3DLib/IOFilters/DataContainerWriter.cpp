@@ -48,28 +48,11 @@
 #include "DREAM3DLib/IOFilters/VoxelDataContainerWriter.h"
 #include "DREAM3DLib/IOFilters/SurfaceMeshDataContainerWriter.h"
 #include "DREAM3DLib/IOFilters/SolidMeshDataContainerWriter.h"
+#include "H5Support/HDF5ScopedFileSentinel.h"
 
 #define APPEND_DATA_TRUE 1
 #define APPEND_DATA_FALSE 0
 
-
-/**
- * @brief The HDF5FileSentinel class ensures the HDF5 file that is currently open
- * is closed when the variable goes out of Scope
- */
-class HDF5ScopedFileSentinel
-{
-  public:
-    HDF5ScopedFileSentinel(hid_t fileId) : m_FileId(fileId)
-    {}
-    virtual ~HDF5ScopedFileSentinel()
-    {
-      if (m_FileId > 0) {
-        H5Utilities::closeFile(m_FileId);
-      }
-    }
-    DREAM3D_INSTANCE_PROPERTY(hid_t, FileId)
-};
 
 // -----------------------------------------------------------------------------
 //
@@ -78,9 +61,9 @@ DataContainerWriter::DataContainerWriter() :
   AbstractFilter(),
   m_WritePipeline(true),
   m_WriteVoxelData(true),
-  m_WriteSurfaceMeshData(true),
-  m_WriteSolidMeshData(true),
-  m_WriteXdmfFile(false),
+  m_WriteSurfaceMeshData(false),
+  m_WriteSolidMeshData(false),
+  m_WriteXdmfFile(true),
   m_FileId(-1)
 {
   setupFilterParameters();
@@ -105,7 +88,7 @@ void DataContainerWriter::setupFilterParameters()
     option->setHumanLabel("Output File");
     option->setPropertyName("OutputFile");
     option->setWidgetType(FilterParameter::OutputFileWidget);
-    option->setFileExtension("dream3d");
+    option->setFileExtension("*.dream3d");
     option->setFileType("DREAM.3D Data");
     option->setValueType("string");
     parameters.push_back(option);
@@ -183,6 +166,11 @@ void DataContainerWriter::dataCheck(bool preflight, size_t voxels, size_t fields
     addWarningMessage(getHumanLabel(), ss.str(), -1);
   }
 
+  if (MXAFileInfo::extension(m_OutputFile).compare("") == 0)
+  {
+    m_OutputFile.append(".dream3d");
+  }
+
 }
 
 // -----------------------------------------------------------------------------
@@ -236,7 +224,7 @@ void DataContainerWriter::execute()
   }
 
   // This will make sure if we return early from this method that the HDF5 File is properly closed.
-  HDF5ScopedFileSentinel scopedFileSentinel(m_FileId);
+  HDF5ScopedFileSentinel scopedFileSentinel(&m_FileId, true);
 
   // Write our File Version string to the Root "/" group
   H5Lite::writeStringAttribute(m_FileId, "/", DREAM3D::HDF5::FileVersionName, DREAM3D::HDF5::FileVersion);

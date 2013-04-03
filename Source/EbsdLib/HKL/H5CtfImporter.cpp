@@ -70,7 +70,8 @@ yDim(0),
 xRes(0),
 yRes(0),
 zRes(0),
-m_NumSlicesImported(1)
+m_NumSlicesImported(1),
+m_FileVersion(Ebsd::H5::FileVersion)
 {
 }
 
@@ -179,12 +180,30 @@ int H5CtfImporter::importFile(hid_t fileId, int64_t z, const std::string &ctfFil
     }
     else
     {
-      ss << "H5CtfImporter Error: Unknown error.";
+      ss << reader.getErrorMessage();
     }
     setPipelineMessage(ss.str());
     setErrorCondition(err);
     progressMessage(ss.str(), 100);
     return -1;
+  }
+
+  // Write the fileversion attribute if it does not exist
+  {
+    std::vector<hsize_t> dims;
+    H5T_class_t type_class;
+    size_t type_size = 0;
+    hid_t attr_type = -1;
+    err = H5Lite::getAttributeInfo(fileId, "/", Ebsd::H5::FileVersionStr, dims, type_class, type_size, attr_type);
+    if (attr_type < 0) // The attr_type variable was never set which means the attribute was NOT there
+    {
+      // The file version does not exist so write it to the file
+      err = H5Lite::writeScalarAttribute(fileId, "/", Ebsd::H5::FileVersionStr, m_FileVersion);
+    }
+    else
+    {
+      H5Aclose(attr_type);
+    }
   }
 
   bool multiSliceFile = false;
@@ -325,7 +344,7 @@ int H5CtfImporter::writeSliceData(hid_t fileId, CtfReader &reader, int z, int ac
       int32_t* dataPtr = static_cast<int32_t*>(reader.getPointerByName(columnNames[i]));
       if(NULL == dataPtr)
       {
-        assert(false);
+        BOOST_ASSERT(false);
       } // We are going to crash here. I would rather crash than have bad data
       dataPtr = dataPtr + (actualSlice * dims[0]); // Put the pointer at the proper offset into the larger array
       WRITE_EBSD_DATA_ARRAY(reader, int, gid, columnNames[i]);
@@ -335,14 +354,14 @@ int H5CtfImporter::writeSliceData(hid_t fileId, CtfReader &reader, int z, int ac
       float* dataPtr = static_cast<float*>(reader.getPointerByName(columnNames[i]));
       if(NULL == dataPtr)
       {
-        assert(false);
+        BOOST_ASSERT(false);
       } // We are going to crash here. I would rather crash than have bad data
       dataPtr = dataPtr + (actualSlice * dims[0]); // Put the pointer at the proper offset into the larger array
       WRITE_EBSD_DATA_ARRAY(reader, float, gid, columnNames[i]);
     }
     else
     {
-      assert(false);
+      BOOST_ASSERT(false);
       // We are going to crash here because I would rather crash than have bad data
     }
   }
@@ -444,5 +463,14 @@ int H5CtfImporter::writePhaseData(CtfReader &reader, hid_t phasesGid)
     err = H5Gclose(pid);
   }
   return err;
+}
+
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void H5CtfImporter::setFileVersion(uint32_t version)
+{
+  m_FileVersion = version;
 }
 
