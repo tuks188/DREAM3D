@@ -50,12 +50,12 @@
  */
 class CalculateCentroidsImpl
 {
-    StructArray<SurfaceMesh::DataStructures::Vert_t>::Pointer m_Nodes;
-    StructArray<SurfaceMesh::DataStructures::Face_t>::Pointer m_Triangles;
+    DREAM3D::SurfaceMesh::VertListPointer_t m_Nodes;
+    DREAM3D::SurfaceMesh::FaceListPointer_t m_Triangles;
     double* m_Centroids;
 
   public:
-    CalculateCentroidsImpl(StructArray<SurfaceMesh::DataStructures::Vert_t>::Pointer nodes, StructArray<SurfaceMesh::DataStructures::Face_t>::Pointer triangles, double* centroids) :
+    CalculateCentroidsImpl(DREAM3D::SurfaceMesh::VertListPointer_t nodes, DREAM3D::SurfaceMesh::FaceListPointer_t triangles, double* centroids) :
       m_Nodes(nodes),
       m_Triangles(triangles),
       m_Centroids(centroids)
@@ -65,8 +65,8 @@ class CalculateCentroidsImpl
     void generate(size_t start, size_t end) const
     {
 
-      SurfaceMesh::DataStructures::Vert_t* nodes = m_Nodes->GetPointer(0);
-      SurfaceMesh::DataStructures::Face_t* triangles = m_Triangles->GetPointer(0);
+      DREAM3D::SurfaceMesh::Vert_t* nodes = m_Nodes->GetPointer(0);
+      DREAM3D::SurfaceMesh::Face_t* triangles = m_Triangles->GetPointer(0);
 
       for (size_t i = start; i < end; i++)
       {
@@ -91,9 +91,9 @@ class CalculateCentroidsImpl
 //
 // -----------------------------------------------------------------------------
 TriangleCentroidFilter::TriangleCentroidFilter() :
-SurfaceMeshFilter(),
-m_SurfaceMeshTriangleCentroidsArrayName(DREAM3D::FaceData::SurfaceMeshTriangleCentroids),
-m_SurfaceMeshTriangleCentroids(NULL)
+  SurfaceMeshFilter(),
+  m_SurfaceMeshTriangleCentroidsArrayName(DREAM3D::FaceData::SurfaceMeshFaceCentroids),
+  m_SurfaceMeshTriangleCentroids(NULL)
 {
   setupFilterParameters();
 }
@@ -139,7 +139,7 @@ void TriangleCentroidFilter::dataCheck(bool preflight, size_t voxels, size_t fie
   }
   else
   {
-      // We MUST have Nodes
+    // We MUST have Nodes
     if(sm->getVertices().get() == NULL)
     {
       addErrorMessage(getHumanLabel(), "SurfaceMesh DataContainer missing Nodes", -384);
@@ -189,22 +189,33 @@ void TriangleCentroidFilter::execute()
   setErrorCondition(0);
   notifyStatusMessage("Starting");
 
-  StructArray<SurfaceMesh::DataStructures::Vert_t>::Pointer nodesPtr = getSurfaceMeshDataContainer()->getVertices();
+  bool doParallel = false;
+#ifdef DREAM3D_USE_PARALLEL_ALGORITHMS
+  tbb::task_scheduler_init init;
+  doParallel = true;
+#endif
 
-  StructArray<SurfaceMesh::DataStructures::Face_t>::Pointer trianglesPtr = getSurfaceMeshDataContainer()->getFaces();
+  DREAM3D::SurfaceMesh::VertListPointer_t nodesPtr = getSurfaceMeshDataContainer()->getVertices();
+
+  DREAM3D::SurfaceMesh::FaceListPointer_t trianglesPtr = getSurfaceMeshDataContainer()->getFaces();
   size_t totalPoints = trianglesPtr->GetNumberOfTuples();
 
   // Run the data check to allocate the memory for the centroid array
   dataCheck(false, trianglesPtr->GetNumberOfTuples(), 0, 0);
 
 #ifdef DREAM3D_USE_PARALLEL_ALGORITHMS
-  tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints),
-                    CalculateCentroidsImpl(nodesPtr, trianglesPtr, m_SurfaceMeshTriangleCentroids), tbb::auto_partitioner());
+  if (doParallel == true)
+  {
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints),
+                      CalculateCentroidsImpl(nodesPtr, trianglesPtr, m_SurfaceMeshTriangleCentroids), tbb::auto_partitioner());
 
-#else
-  CalculateCentroidsImpl serial(nodesPtr, trianglesPtr, m_SurfaceMeshTriangleCentroids);
-  serial.generate(0, totalPoints);
+  }
+  else
 #endif
+  {
+    CalculateCentroidsImpl serial(nodesPtr, trianglesPtr, m_SurfaceMeshTriangleCentroids);
+    serial.generate(0, totalPoints);
+  }
 
   /* Let the GUI know we are done with this filter */
   notifyStatusMessage("Complete");

@@ -53,14 +53,14 @@
  */
 class CalculateNormalsImpl
 {
-    StructArray<SurfaceMesh::DataStructures::Vert_t>::Pointer m_Nodes;
-    StructArray<SurfaceMesh::DataStructures::Face_t>::Pointer m_Triangles;
+    DREAM3D::SurfaceMesh::VertListPointer_t m_Nodes;
+    DREAM3D::SurfaceMesh::FaceListPointer_t m_Triangles;
     double* m_Normals;
 
   public:
-    CalculateNormalsImpl(StructArray<SurfaceMesh::DataStructures::Vert_t>::Pointer nodes,
-                                      StructArray<SurfaceMesh::DataStructures::Face_t>::Pointer triangles,
-                                      double* normals) :
+    CalculateNormalsImpl(DREAM3D::SurfaceMesh::VertListPointer_t nodes,
+                         DREAM3D::SurfaceMesh::FaceListPointer_t triangles,
+                         double* normals) :
       m_Nodes(nodes),
       m_Triangles(triangles),
       m_Normals(normals)
@@ -69,13 +69,13 @@ class CalculateNormalsImpl
 
     /**
      * @brief generate Generates the Normals for the triangles
-     * @param start The starting SurfaceMesh::DataStructures::Face_t Index
-     * @param end The ending SurfaceMesh::DataStructures::Face_t Index
+     * @param start The starting DREAM3D::SurfaceMesh::Face_t Index
+     * @param end The ending DREAM3D::SurfaceMesh::Face_t Index
      */
     void generate(size_t start, size_t end) const
     {
-      SurfaceMesh::DataStructures::Vert_t* nodes = m_Nodes->GetPointer(0);
-      SurfaceMesh::DataStructures::Face_t* triangles = m_Triangles->GetPointer(0);
+      DREAM3D::SurfaceMesh::Vert_t* nodes = m_Nodes->GetPointer(0);
+      DREAM3D::SurfaceMesh::Face_t* triangles = m_Triangles->GetPointer(0);
       for (size_t i = start; i < end; i++)
       {
         // Get the true indices of the 3 nodes
@@ -106,9 +106,9 @@ class CalculateNormalsImpl
 //
 // -----------------------------------------------------------------------------
 TriangleNormalFilter::TriangleNormalFilter() :
-SurfaceMeshFilter(),
-m_SurfaceMeshTriangleNormalsArrayName(DREAM3D::FaceData::SurfaceMeshTriangleNormals),
-m_SurfaceMeshTriangleNormals(NULL)
+  SurfaceMeshFilter(),
+  m_SurfaceMeshTriangleNormalsArrayName(DREAM3D::FaceData::SurfaceMeshFaceNormals),
+  m_SurfaceMeshTriangleNormals(NULL)
 {
   setupFilterParameters();
 }
@@ -154,7 +154,7 @@ void TriangleNormalFilter::dataCheck(bool preflight, size_t voxels, size_t field
   }
   else
   {
-      // We MUST have Nodes
+    // We MUST have Nodes
     if(sm->getVertices().get() == NULL)
     {
       addErrorMessage(getHumanLabel(), "SurfaceMesh DataContainer missing Nodes", -384);
@@ -203,22 +203,32 @@ void TriangleNormalFilter::execute()
   setErrorCondition(0);
   notifyStatusMessage("Starting");
 
-  StructArray<SurfaceMesh::DataStructures::Vert_t>::Pointer nodesPtr = getSurfaceMeshDataContainer()->getVertices();
+  bool doParallel = false;
+#ifdef DREAM3D_USE_PARALLEL_ALGORITHMS
+  doParallel = true;
+#endif
 
-  StructArray<SurfaceMesh::DataStructures::Face_t>::Pointer trianglesPtr = getSurfaceMeshDataContainer()->getFaces();
+  DREAM3D::SurfaceMesh::VertListPointer_t nodesPtr = getSurfaceMeshDataContainer()->getVertices();
+
+  DREAM3D::SurfaceMesh::FaceListPointer_t trianglesPtr = getSurfaceMeshDataContainer()->getFaces();
   size_t totalPoints = trianglesPtr->GetNumberOfTuples();
 
   // Run the data check to allocate the memory for the centroid array
   dataCheck(false, trianglesPtr->GetNumberOfTuples(), 0, 0);
 
 #ifdef DREAM3D_USE_PARALLEL_ALGORITHMS
-  tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints),
-                    CalculateNormalsImpl(nodesPtr, trianglesPtr, m_SurfaceMeshTriangleNormals), tbb::auto_partitioner());
+  if (doParallel == true)
+  {
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints),
+                      CalculateNormalsImpl(nodesPtr, trianglesPtr, m_SurfaceMeshTriangleNormals), tbb::auto_partitioner());
 
-#else
-  CalculateNormalsImpl serial(nodesPtr, trianglesPtr, m_SurfaceMeshTriangleNormals);
-  serial.generate(0, totalPoints);
+  }
+  else
 #endif
+  {
+    CalculateNormalsImpl serial(nodesPtr, trianglesPtr, m_SurfaceMeshTriangleNormals);
+    serial.generate(0, totalPoints);
+  }
 
 
   /* Let the GUI know we are done with this filter */

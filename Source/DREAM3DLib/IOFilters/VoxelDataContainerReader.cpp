@@ -51,6 +51,9 @@
 VoxelDataContainerReader::VoxelDataContainerReader() :
   AbstractFilter(),
   m_HdfFileId(-1),
+  m_ReadVertexData(true),
+  m_ReadEdgeData(true),
+  m_ReadFaceData(true),
   m_ReadCellData(true),
   m_ReadFieldData(true),
   m_ReadEnsembleData(true),
@@ -154,6 +157,16 @@ void VoxelDataContainerReader::execute()
   m->setResolution(spacing);
   m->setOrigin(origin);
 
+  if(m_VertexArraysToRead.size() == 0 && m_ReadAllArrays != true) m_ReadVertexData = false;
+  if(m_EdgeArraysToRead.size() == 0 && m_ReadAllArrays != true) m_ReadEdgeData = false;
+  if(m_FaceArraysToRead.size() == 0 && m_ReadAllArrays != true) m_ReadFaceData = false;
+  if(m_CellArraysToRead.size() == 0 && m_ReadAllArrays != true) m_ReadCellData = false;
+  if(m_FieldArraysToRead.size() == 0 && m_ReadAllArrays != true) m_ReadFieldData = false;
+  if(m_EnsembleArraysToRead.size() == 0 && m_ReadAllArrays != true) m_ReadEnsembleData = false;
+
+  if(m_ReadVertexData == true) m->clearVertexData();
+  if(m_ReadEdgeData == true) m->clearEdgeData();
+  if(m_ReadFaceData == true) m->clearFaceData();
   if(m_ReadCellData == true) m->clearCellData();
   if(m_ReadFieldData == true) m->clearFieldData();
   if(m_ReadEnsembleData == true) m->clearEnsembleData();
@@ -280,6 +293,42 @@ int VoxelDataContainerReader::gatherData(bool preflight)
     m->setOrigin(origin);
   }
 
+  if(m_ReadVertexData == true)
+  {
+    std::vector<std::string> readNames;
+    err |= readGroupsData(dcGid, H5_VERTEX_DATA_GROUP_NAME, preflight, readNames, m_VertexArraysToRead);
+    if(err < 0)
+    {
+      err |= H5Gclose(dcGid);
+      setErrorCondition(err);
+      return -1;
+    }
+  }
+
+  if(m_ReadEdgeData == true)
+  {
+    std::vector<std::string> readNames;
+    err |= readGroupsData(dcGid, H5_EDGE_DATA_GROUP_NAME, preflight, readNames, m_EdgeArraysToRead);
+    if(err < 0)
+    {
+      err |= H5Gclose(dcGid);
+      setErrorCondition(err);
+      return -1;
+    }
+  }
+
+  if(m_ReadFaceData == true)
+  {
+    std::vector<std::string> readNames;
+    err |= readGroupsData(dcGid, H5_FACE_DATA_GROUP_NAME, preflight, readNames, m_FaceArraysToRead);
+    if(err < 0)
+    {
+      err |= H5Gclose(dcGid);
+      setErrorCondition(err);
+      return -1;
+    }
+  }
+
   if(m_ReadCellData == true)
   {
     std::vector<std::string> readNames;
@@ -290,10 +339,10 @@ int VoxelDataContainerReader::gatherData(bool preflight)
       setErrorCondition(err);
       return -1;
     }
-    for(size_t i = 0; i < readNames.size(); ++i)
-    {
-      addCreatedCellData(readNames[i]);
-    }
+//    for(size_t i = 0; i < readNames.size(); ++i)
+//    {
+//      addCreatedCellData(readNames[i]);
+//    }
   }
 
   if(m_ReadFieldData == true)
@@ -306,10 +355,10 @@ int VoxelDataContainerReader::gatherData(bool preflight)
       setErrorCondition(err);
       return -1;
     }
-    for(size_t i = 0; i < readNames.size(); ++i)
-    {
-      addCreatedFieldData(readNames[i]);
-    }
+//    for(size_t i = 0; i < readNames.size(); ++i)
+//    {
+//      addCreatedFieldData(readNames[i]);
+//    }
   }
 
   if(m_ReadEnsembleData == true)
@@ -322,10 +371,10 @@ int VoxelDataContainerReader::gatherData(bool preflight)
       setErrorCondition(err);
       return -1;
     }
-    for(size_t i = 0; i < readNames.size(); ++i)
-    {
-      addCreatedEnsembleData(readNames[i]);
-    }
+//    for(size_t i = 0; i < readNames.size(); ++i)
+//    {
+//      addCreatedEnsembleData(readNames[i]);
+//    }
   }
 
   err |= H5Gclose(dcGid);

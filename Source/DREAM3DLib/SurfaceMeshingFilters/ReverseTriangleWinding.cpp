@@ -49,11 +49,11 @@
  */
 class ReverseWindingImpl
 {
-    StructArray<SurfaceMesh::DataStructures::Face_t>::Pointer m_Triangles;
+    DREAM3D::SurfaceMesh::FaceListPointer_t m_Triangles;
     double* m_Normals;
 
   public:
-    ReverseWindingImpl(StructArray<SurfaceMesh::DataStructures::Face_t>::Pointer triangles) :
+    ReverseWindingImpl(DREAM3D::SurfaceMesh::FaceListPointer_t triangles) :
       m_Triangles(triangles)
     {}
     virtual ~ReverseWindingImpl(){}
@@ -65,7 +65,7 @@ class ReverseWindingImpl
      */
     void generate(size_t start, size_t end) const
     {
-      SurfaceMesh::DataStructures::Face_t* triangles = m_Triangles->GetPointer(0);
+      DREAM3D::SurfaceMesh::Face_t* triangles = m_Triangles->GetPointer(0);
 
       for (size_t i = start; i < end; i++)
       {
@@ -216,7 +216,7 @@ void ReverseTriangleWinding::dataCheck(bool preflight, size_t voxels, size_t fie
   }
   else
   {
-      // We MUST have Nodes
+    // We MUST have Nodes
     if(sm->getVertices().get() == NULL)
     {
       addErrorMessage(getHumanLabel(), "SurfaceMesh DataContainer missing Nodes", -384);
@@ -263,20 +263,30 @@ void ReverseTriangleWinding::execute()
   setErrorCondition(0);
   notifyStatusMessage("Starting");
 
-  StructArray<SurfaceMesh::DataStructures::Face_t>::Pointer trianglesPtr = getSurfaceMeshDataContainer()->getFaces();
+  bool doParallel = false;
+#ifdef DREAM3D_USE_PARALLEL_ALGORITHMS
+  doParallel = true;
+#endif
+
+  DREAM3D::SurfaceMesh::FaceListPointer_t trianglesPtr = getSurfaceMeshDataContainer()->getFaces();
   size_t totalPoints = trianglesPtr->GetNumberOfTuples();
 
   // Run the data check to allocate the memory for the centroid array
   dataCheck(false, trianglesPtr->GetNumberOfTuples(), 0, 0);
 
 #ifdef DREAM3D_USE_PARALLEL_ALGORITHMS
-  tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints),
-                    ReverseWindingImpl(trianglesPtr), tbb::auto_partitioner());
+  if (doParallel == true)
+  {
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints),
+                      ReverseWindingImpl(trianglesPtr), tbb::auto_partitioner());
 
-#else
-  ReverseWindingImpl serial(trianglesPtr);
-  serial.generate(0, totalPoints);
+  }
+  else
 #endif
+  {
+    ReverseWindingImpl serial(trianglesPtr);
+    serial.generate(0, totalPoints);
+  }
 
 
   /* Let the GUI know we are done with this filter */

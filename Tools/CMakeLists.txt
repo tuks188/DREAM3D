@@ -137,32 +137,14 @@ COMPILE_TOOL(
     LINK_LIBRARIES DREAM3DLib ${QT_QTCORE_LIBRARY}
 )
 
-# Create a Command line tool for the DocsToPdf
-set(DREAM3D_DOCS_PDF_FILENAME ${DREAM3DProj_BINARY_DIR}/DREAM3D_Filter_Docs.pdf)
-configure_file(${DREAM3DTools_SOURCE_DIR}/DocsToPdf.h.in ${DREAM3DTools_BINARY_DIR}/DocsToPdf.h)
-include_directories(${DREAM3DTools_BINARY_DIR})
-COMPILE_TOOL(
-    TARGET DocsToPdf
-    SOURCES ${DREAM3DTools_SOURCE_DIR}/DocsToPdf.cpp ${DREAM3DTools_BINARY_DIR}/DocsToPdf.h
-    DEBUG_EXTENSION ${EXE_DEBUG_EXTENSION}
-    VERSION_MAJOR ${DREAM3D_VER_MAJOR}
-    VERSION_MINOR ${DREAM3D_VER_MINOR}
-    VERSION_PATCH ${DREAM3D_VER_PATCH}
-    BINARY_DIR    ${${PROJECT_NAME}_BINARY_DIR}
-    COMPONENT     Applications
-    INSTALL_DEST  "${install_dir}"
-    LINK_LIBRARIES ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY}
-)
-
-
 option(COMPILE_EBSD_TO_TIFF "Compile the EbsdToTiff program" OFF)
 if(COMPILE_EBSD_TO_TIFF)
      # Prepend our own "FindTiff" code in front of what CMake itself provides
         set(CMAKE_MODULE_PATH ${CMP_MODULES_SOURCE_DIR} ${CMAKE_MODULE_PATH} )
         FIND_PACKAGE(Tiff)
-        IF (NOT TIFF_FOUND)
+        if(NOT TIFF_FOUND)
               MESSAGE (FATAL_ERROR " Tiff Library was NOT Found and is needed.")
-        ENDIF (NOT TIFF_FOUND)
+        endif(NOT TIFF_FOUND)
         INCLUDE_DIRECTORIES(${TIFF_INCLUDE_DIRS})
       # Copy DLL libraries into the correct build location on MSVC platforms
       if(HAVE_TIFF_DLL)
