@@ -21,11 +21,11 @@ set(DOCUMENTATION_RESOURCES_DIR ${PROJECT_RESOURCES_DIR}/DocConfigFiles)
 # Create the initial list of Files for DOxygen to process
 set(DOCUMENTATION_SOURCE_FILES
   ${PROJECT_SOURCE_DIR}/Index.dox
-  ${PROJECT_SOURCE_DIR}/UserManual/UserManual.dox
-  ${PROJECT_SOURCE_DIR}/UserManual/Acknowledgements.md
-  ${PROJECT_SOURCE_DIR}/UserManual/UserInterface.md
-  ${PROJECT_SOURCE_DIR}/UserManual/CreatingPipeline.md
-  ${PROJECT_SOURCE_DIR}/UserManual/ImportExportPipelines.md
+  ${PROJECT_SOURCE_DIR}/Acknowledgements.md
+  ${PROJECT_SOURCE_DIR}/DataStructure.md
+  ${PROJECT_SOURCE_DIR}/UserInterface.md
+  ${PROJECT_SOURCE_DIR}/CreatingPipeline.md
+  ${PROJECT_SOURCE_DIR}/ImportExportPipelines.md
   ${PROJECT_SOURCE_DIR}/SupportedFileFormats/SupportedFileFormats.dox
   ${PROJECT_SOURCE_DIR}/SupportedFileFormats/NativeDREAM3DFileFormat.md
   ${PROJECT_SOURCE_DIR}/SupportedFileFormats/XdmfForVisualization.md
@@ -35,10 +35,16 @@ set(DOCUMENTATION_SOURCE_FILES
   ${PROJECT_SOURCE_DIR}/Tutorials/EBSDReconstruction.md
   ${PROJECT_SOURCE_DIR}/Tutorials/SurfaceMeshing.md
   ${PROJECT_SOURCE_DIR}/Tutorials/SyntheticSinglePhase.md
-  ${PROJECT_SOURCE_DIR}/StatsGenerator/index.md
+  ${PROJECT_SOURCE_DIR}/AuxiliaryTools/StatsGenerator.md
+  ${PROJECT_SOURCE_DIR}/AuxiliaryTools/AuxiliaryTools.dox
 )
 
-
+set(DOXYGEN_IMAGE_DIRS
+  ${PROJECT_SOURCE_DIR}/Images
+  ${PROJECT_SOURCE_DIR}/SupportedFileFormats/Images
+  ${PROJECT_SOURCE_DIR}/Tutorials/Images
+  ${PROJECT_SOURCE_DIR}/AuxiliaryTools/Images
+)
 
 #-------------------------------------------------------------------------------
 # Read the list of Groups back into CMake
@@ -57,13 +63,17 @@ file(APPEND ${DREAM3DReferenceManual_BINARY_DIR}/FilterDocumentation.dox "\n*/\n
 # Now Append the list of filters for each Group into the same file
 foreach( group ${DREAM3D_DOC_GROUPS_FILE_LIST} )
   string(TOLOWER ${group} filterGroup_Lower)
-  file(STRINGS ${DREAM3DProj_BINARY_DIR}/DREAM3DDoc_${group} filter_list)
+  file(STRINGS ${DREAM3DProj_BINARY_DIR}/DREAM3DDoc_${group} filter_path_list)
   file(APPEND ${DREAM3DReferenceManual_BINARY_DIR}/FilterDocumentation.dox "/*!\n@page ${filterGroup_Lower} ${group}\n\n")
-  foreach(filter ${filter_list})
+  foreach(filterPath ${filter_path_list})
+    get_filename_component(filter  ${filterPath} NAME_WE)
+    get_filename_component(group_path ${filterPath} PATH)
+    list(APPEND DOXYGEN_IMAGE_DIRS ${group_path})
     string(TOLOWER ${filter} filter_Lower)
     file(APPEND ${DREAM3DReferenceManual_BINARY_DIR}/FilterDocumentation.dox "@subpage ${filter_Lower}\n\n")
-    list(APPEND DOCUMENTATION_SOURCE_FILES ${DREAM3DReferenceManual_SOURCE_DIR}/Filters/${group}/${filter}.md)
+    list(APPEND DOCUMENTATION_SOURCE_FILES ${filterPath})
   endforeach()
+  list(REMOVE_DUPLICATES DOXYGEN_IMAGE_DIRS)
   file(APPEND ${DREAM3DReferenceManual_BINARY_DIR}/FilterDocumentation.dox "*/\n\n")
   file(REMOVE ${DREAM3DProj_BINARY_DIR}/DREAM3DDoc_${group})
 endforeach()
@@ -84,23 +94,10 @@ set(LATEX_EPS_FILES
 
 )
 
-set(DOXYGEN_IMAGE_DIRS
-  ${PROJECT_SOURCE_DIR}/UserManual/Images
-  ${PROJECT_SOURCE_DIR}/SupportedFileFormats/Images
-  ${PROJECT_SOURCE_DIR}/Tutorials/Images
-  ${PROJECT_SOURCE_DIR}/StatsGenerator/Images
-  ${PROJECT_SOURCE_DIR}/Filters/GenericFilters
-  ${PROJECT_SOURCE_DIR}/Filters/IOFilters
-  ${PROJECT_SOURCE_DIR}/Filters/ProcessingFilters
-  ${PROJECT_SOURCE_DIR}/Filters/ReconstructionFilters
-  ${PROJECT_SOURCE_DIR}/Filters/SamplingFilters
-  ${PROJECT_SOURCE_DIR}/Filters/StatisticsFilters
-  ${PROJECT_SOURCE_DIR}/Filters/SurfaceMeshingFilters
-  ${PROJECT_SOURCE_DIR}/Filters/SyntheticBuildingFilters 
-)
+
 
 if(DOX_GENERATE_LATEX)
-  ADD_DOXYGEN_TARGETS(PDF_FILENAME "DREAM3D_Reference_Manual"
+  ADD_DOXYGEN_TARGETS(PDF_FILENAME "DREAM3D_User_Manual"
                      PROJECT_NAME  "${PROJECT_NAME}_LATEX"
                      PROJECT_BINARY_DIR "${PROJECT_BINARY_DIR}_LATEX"
                      SOURCE_FILES "${DOCUMENTATION_SOURCE_FILES}"
@@ -122,7 +119,7 @@ set(DOCUMENTATION_SOURCE_FILES
 
 
 if(DOX_GENERATE_HTML)
-  ADD_DOXYGEN_TARGETS(PDF_FILENAME "DREAM3D Reference Manual"
+  ADD_DOXYGEN_TARGETS(PDF_FILENAME "DREAM3D User Manual"
                      PROJECT_NAME  "${PROJECT_NAME}_HTML"
                      PROJECT_BINARY_DIR "${PROJECT_BINARY_DIR}"
                      SOURCE_FILES "${DOCUMENTATION_SOURCE_FILES}"

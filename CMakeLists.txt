@@ -40,6 +40,7 @@ set(PROJECT_RESOURCES_DIR ${DREAM3DProj_SOURCE_DIR}/Resources)
 set(EXE_DEBUG_EXTENSION "_debug")
 set(PROJECT_INSTALL_HEADERS "0")
 set(PROJECT_INSTALL_EXECUTABLES "1")
+set(DREAM3D_DOCUMENTATION_DIR ${PROJECT_SOURCE_DIR}/Documentation)
 
 set(CMP_SOURCE_DIR ${DREAM3DProj_SOURCE_DIR}/Support/cmp)
 INCLUDE (${CMP_SOURCE_DIR}/cmpCMakeMacros.cmake )
@@ -65,7 +66,7 @@ endif()
 # calculate how many commits since the last "tag" was applied to the repository.
 # this basically gives us an always incrementing number for the patch level
 # and we can set the Major and Minor versions as we see fit.
-set(CMP_VERSION_MAJOR "4RC4")
+set(CMP_VERSION_MAJOR "4RC5")
 
 # --------------------------------------------------------------------
 # Over ride CMake's built in module directory by prepending cmp's module
@@ -321,7 +322,7 @@ if(DREAM3D_BUILD_DREAM3D AND DREAM3D_BUILD_QT_APPS)
         endif()
     endforeach()
 
-    set(DREAM3D_DOCS_ROOT_DIR "${DREAM3DProj_SOURCE_DIR}/Source/Applications/DREAM3D/Help")
+    set(DREAM3D_DOCS_ROOT_DIR "${DREAM3DProj_BINARY_DIR}/Bin/Help/DREAM3D")
 endif()
 
 #- Add in the Main DREAM.3D Application

@@ -245,8 +245,8 @@ PackPrimaryPhases::PackPrimaryPhases() :
   m_VolumesArrayName(DREAM3D::FieldData::Volumes),
   m_PhaseTypesArrayName(DREAM3D::EnsembleData::PhaseTypes),
   m_ShapeTypesArrayName(DREAM3D::EnsembleData::ShapeTypes),
-  m_ErrorOutputFile("test.txt"),
-  m_VtkOutputFile("test.vtk"),
+  m_ErrorOutputFile(""),
+  m_VtkOutputFile(""),
   m_CsvOutputFile(""),
   m_PeriodicBoundaries(false),
   m_WriteGoalAttributes(false),
@@ -1805,10 +1805,9 @@ void PackPrimaryPhases::assign_voxels()
   };
 
 
-  bool doParallel = false;
 #ifdef DREAM3D_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
-  doParallel = true;
+  bool doParallel = true;
 #endif
 
   DimType column, row, plane;

@@ -5,14 +5,14 @@ Insert Precipitate Phases {#insertprecipitatephases}
 Synthetic Builder Filters (Packing)
 
 ## Description ##
-If precipitate phases have been included in the _Statistics_ file used by the _Initialize Synthetic Volume_ Filter, _**Cells**_ are assigned based on the volume fraction of the precipitate phase.
- Periodic Boundary conditions are selected by the user to be active or inactive. 
+If there are precipitate phases in the Statistics file, then this filter will place precipitate **Fields** with the sizes, shapes, physical orientations and locations corresponding to the goal statistics.  The user can specify if they want *periodic boundary conditions* and whether they would like to write out the goal attributes of the generated **Fields**. 
 
 ## Parameters ##
-
 | Name | Type |
 |------|------|
 | Periodic Boundary | Boolean (On or Off) |
+| Write Goal Attributes | Boolean (On or Off) |
+| Goal Attributes CSV File | Output File |
 
 
 ## Required DataContainers ##
@@ -24,7 +24,7 @@ Voxel
 |------|--------------|---------|
 | Cell | CellPhases |  |
 | Cell | GrainIds |  |
-| Cell | Surface**Cells** |  |
+| Cell | SurfaceVoxels |  |
 | Ensemble | PhaseTypes |  |
 | Ensemble | ShapeTypes |  |
 
@@ -33,16 +33,6 @@ Voxel
 | Type | Default Name | Comment |
 |------|--------------|---------|
 | Field | Active |  |
-| Field | AxisEulerAngles |  |
-| Field | AxisLengths |  |
-| Field | Centroids |  |
-| Field | EquivalentDiameters |  |
-| Field | FieldPhases |  |
-| Field | Neighborhoods |  |
-| Field | NumCells |  |
-| Field | Omega3s |  |
-| Field | Volumes |  |
-| Ensemble | NumFields |  |
 
 ## Authors ##
 

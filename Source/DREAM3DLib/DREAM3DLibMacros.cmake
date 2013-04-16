@@ -51,7 +51,7 @@ endmacro()
 
 #-------------------------------------------------------------------------------
 # Macro ADD_DREAM3D_FILTER
-macro(ADD_DREAM3D_FILTER FilterLib WidgetLib filterGroup filterName publicFilter)
+macro(ADD_DREAM3D_FILTER FilterLib WidgetLib filterGroup filterName filterDocPath publicFilter)
     set(Project_SRCS ${Project_SRCS}
                     ${${FilterLib}_SOURCE_DIR}/${filterGroup}/${filterName}.h
                     ${${FilterLib}_SOURCE_DIR}/${filterGroup}/${filterName}.cpp)
@@ -75,18 +75,22 @@ macro(ADD_DREAM3D_FILTER FilterLib WidgetLib filterGroup filterName publicFilter
           #  message(STATUS "${${WidgetLib}_SOURCE_DIR}/${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.h")
           #  set(FILTER_WIDGET_HDR_FILE ${${WidgetLib}_BINARY_DIR}/${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.h)
           #  set(FILTER_WIDGET_SRC_FILE ${${WidgetLib}_BINARY_DIR}/${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.cpp)
-            file(APPEND ${FilterWidget_GEN_HDRS_File} "${${WidgetLib}_BINARY_DIR}/${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.h;")
-            file(APPEND ${FilterWidget_GEN_SRCS_File} "${${WidgetLib}_BINARY_DIR}/${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.cpp;")
-            if( NOT EXISTS ${${WidgetLib}_BINARY_DIR}/${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.h)
+          #-- Write all the headers to this file which gets read later on in order to have Qt4 wrap them with moc
+            set(FiltWidgHeaderFile ${${WidgetLib}_BINARY_DIR}/${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.h)
+            set(FiltWidgSourceFile ${${WidgetLib}_BINARY_DIR}/${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.cpp)
+            file(APPEND ${FilterWidget_GEN_HDRS_File} "${FiltWidgHeaderFile};")
+            file(APPEND ${FilterWidget_GEN_SRCS_File} "${FiltWidgSourceFile};")
+            if( NOT EXISTS ${FiltWidgHeaderFile})
                 set(GENERATED_MOC_SOURCE_FILE "moc_Q${name}Widget.cpp")
                 configure_file(${FilterWidgetsLib_SOURCE_DIR}/QFilterWidget_Template.h.in
-                              ${${WidgetLib}_BINARY_DIR}/${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.h)
+                               ${FiltWidgHeaderFile})
                 configure_file(${FilterWidgetsLib_SOURCE_DIR}/QFilterWidget_Template.cpp.in
-                              ${${WidgetLib}_BINARY_DIR}/${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.cpp)
+                               ${FiltWidgSourceFile})
+            #    message(STATUS "${FiltWidgSourceFile}")
             endif()
 
-            file(APPEND ${CodeGeneratorFile} "  createHeaderFile(\"${filterGroup}\", \"${filterName}\", _${filterName}->getFilterParameters(), \"${filterGroup}Widgets/Q${filterName}Widget.h\");\n")
-            file(APPEND ${CodeGeneratorFile} "  createSourceFile(\"${filterGroup}\", \"${filterName}\", _${filterName}->getFilterParameters(), \"${filterGroup}Widgets/Q${filterName}Widget.cpp\");\n")
+            file(APPEND ${CodeGeneratorFile} "  createHeaderFile(\"${filterGroup}\", \"${filterName}\", _${filterName}->getFilterParameters(), \"${FiltWidgHeaderFile}\");\n")
+            file(APPEND ${CodeGeneratorFile} "  createSourceFile(\"${filterGroup}\", \"${filterName}\", _${filterName}->getFilterParameters(), \"${FiltWidgSourceFile}\");\n")
         endif()
 
         file(APPEND ${AllFilterWidgetsHeaderFile} "#include \"${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.h\"\n")
@@ -96,18 +100,11 @@ macro(ADD_DREAM3D_FILTER FilterLib WidgetLib filterGroup filterName publicFilter
 
 
        #-- Check to make sure we have a Documentation file for the filter
-        if(NOT EXISTS ${DREAM3DProj_SOURCE_DIR}/Documentation/ReferenceManual/Filters/${filterGroup}/${filterName}.md )
-          message(STATUS "*** Missing Documenation File for ${filterGroup}/${filterName}")
+        if(NOT EXISTS ${filterDocPath} )
+          message(FATAL_ERROR "*** Missing Documenation File for ${filterDocPath}")
         endif()
 
-        file(APPEND ${DREAM3DProj_BINARY_DIR}/DREAM3DDoc_${filterGroup} "${filterName}\n")
-
-
-
-    #--- The next block was to quickly generate some files DO NOT UNCOMMENT IT. You will overwrite files. YOU HAVE BEEN WARNED!
-    #    string(TOLOWER ${filterName} filterName_Lower)
-    #    file(APPEND ${DREAM3DProj_SOURCE_DIR}/Source/Applications/DREAM3D/Help/Filters/${filterGroup}/${filterGroup}.dox "\n@subpage ${filterName_Lower}\n")
-    #   file(APPEND ${LATEX_FILTER_INDEX_FILE} "  \${PROJECT_SOURCE_DIR}/Filters/${filterGroup}/${filterName}.dox\n")
+        file(APPEND ${DREAM3DProj_BINARY_DIR}/DREAM3DDoc_${filterGroup} "${filterDocPath}\n")
 
     endif()
 endmacro()

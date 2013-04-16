@@ -116,9 +116,12 @@ void RenameCellArray::dataCheck(bool preflight, size_t voxels, size_t fields, si
   else
   {
 	bool check = m->renameCellData(m_SelectedCellArrayName, m_NewCellArrayName);
-	if(check == false) ss << "Array to be renamed could not be found in DataContainer";
-	addErrorMessage(getHumanLabel(),ss.str(),getErrorCondition());
-	notifyErrorMessage(ss.str(), getErrorCondition());
+	if(check == false)
+	{ 
+		ss << "Array to be renamed could not be found in DataContainer";
+		addErrorMessage(getHumanLabel(),ss.str(),getErrorCondition());
+		notifyErrorMessage(ss.str(), getErrorCondition());
+	}
   }
 }
 
