@@ -28,7 +28,7 @@ file(READ ${FilterWidget_GEN_HDRS_File} FilterWidget_GEN_HDRS)
 file(READ ${FilterWidget_GEN_SRCS_File} FilterWidget_GEN_SRCS)
 
 # Remove the temp files that we no longer need
-file(REMOVE ${CodeGeneratorFile})
+#file(REMOVE ${CodeGeneratorFile})
 #file(REMOVE ${FilterWidget_GEN_HDRS_File})
 #file(REMOVE ${FilterWidget_GEN_SRCS_File})
 

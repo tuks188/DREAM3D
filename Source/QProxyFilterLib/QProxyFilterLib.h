@@ -1,0 +1,9 @@
+#ifndef _QPROXYFILTERLIB_H_HHUMMHLS
+#define _QPROXYFILTERLIB_H_HHUMMHLS
+
+
+Q_DECLARE_METATYPE(IntVec3Widget_t)
+Q_DECLARE_METATYPE(FloatVec3Widget_t)
+
+
+#endif /* end of include guard: _QPROXYFILTERLIB_H_HHUMMHLS */

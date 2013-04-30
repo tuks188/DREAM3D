@@ -70,6 +70,7 @@ macro(ADD_DREAM3D_FILTER FilterLib WidgetLib filterGroup filterName filterDocPat
     if( ${publicFilter} STREQUAL TRUE)
         #message(STATUS "    ${filterName}")
         file(APPEND ${CodeGeneratorFile} "  ${filterName}::Pointer _${filterName} = ${filterName}::New();\n")
+        file(APPEND ${CodeGeneratorFile_Proxy} "  ${filterName}::Pointer _${filterName} = ${filterName}::New();\n")
 
         if(NOT EXISTS ${${WidgetLib}_SOURCE_DIR}/${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.h )
           #  message(STATUS "${${WidgetLib}_SOURCE_DIR}/${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.h")
@@ -86,12 +87,31 @@ macro(ADD_DREAM3D_FILTER FilterLib WidgetLib filterGroup filterName filterDocPat
                                ${FiltWidgHeaderFile})
                 configure_file(${FilterWidgetsLib_SOURCE_DIR}/QFilterWidget_Template.cpp.in
                                ${FiltWidgSourceFile})
-            #    message(STATUS "${FiltWidgSourceFile}")
             endif()
-
             file(APPEND ${CodeGeneratorFile} "  createHeaderFile(\"${filterGroup}\", \"${filterName}\", _${filterName}->getFilterParameters(), \"${FiltWidgHeaderFile}\");\n")
             file(APPEND ${CodeGeneratorFile} "  createSourceFile(\"${filterGroup}\", \"${filterName}\", _${filterName}->getFilterParameters(), \"${FiltWidgSourceFile}\");\n")
         endif()
+
+
+#--------------------------------------
+# This section is for the new QProxyFilter subsystem
+        set(QProxyFilterHeaderFile ${QProxyFilterLib_BINARY_DIR}/DREAM3DLib/${filterGroup}/Q${filterName}Proxy.h)
+        set(QProxyFilterSourceFile ${QProxyFilterLib_BINARY_DIR}/DREAM3DLib/${filterGroup}/Q${filterName}Proxy.cpp)
+        file(APPEND ${QProxyFilterLib_GEN_HDRS_File} "${QProxyFilterHeaderFile};")
+        file(APPEND ${QProxyFilterLib_GEN_SRCS_File} "${QProxyFilterSourceFile};")
+        if( NOT EXISTS ${QProxyFilterHeaderFile})
+            set(GENERATED_MOC_SOURCE_FILE "moc_Q${name}Widget.cpp")
+            configure_file(${QProxyFilterLib_SOURCE_DIR}/QFilterProxy_Template.h.in
+                           ${QProxyFilterHeaderFile})
+            configure_file(${QProxyFilterLib_SOURCE_DIR}/QFilterProxy_Template.cpp.in
+                           ${QProxyFilterSourceFile})
+        endif()
+
+        file(APPEND ${CodeGeneratorFile_Proxy} "  createHeaderFile(\"${filterGroup}\", \"${filterName}\", _${filterName}->getFilterParameters(), \"${QProxyFilterHeaderFile}\");\n")
+        file(APPEND ${CodeGeneratorFile_Proxy} "  createSourceFile(\"${filterGroup}\", \"${filterName}\", _${filterName}->getFilterParameters(), \"${QProxyFilterSourceFile}\");\n")
+
+# END SECTION
+#--------------------------------------
 
         file(APPEND ${AllFilterWidgetsHeaderFile} "#include \"${FilterLib}/${filterGroup}Widgets/Q${filterName}Widget.h\"\n")
 

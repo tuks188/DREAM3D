@@ -1,0 +1,21 @@
+
+
+#error This file should be over written during the build process by a file that\
+fully describes the needed widget functionality.
+
+#include "@DirName@/@name@.h"
+
+class Q@name@Proxy : public QObject
+{
+Q_OBJECT
+public:
+  Q@name@Proxy(QObject* parent = 0);
+  virtual Q@name@Proxy();
+  
+private:
+  ${name}::Pointer m_Filter;
+  
+  Q@name@Proxy(const Q@name@Proxy&);
+  void operator=(const Q@name@Proxy&);
+
+};

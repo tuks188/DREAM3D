@@ -93,8 +93,10 @@ file(WRITE ${AllFiltersHeaderFile} "#ifndef _DREAM3D_FILTERS_H_\n#define _DREAM3
 # Create a File that will be used to generate a program that itself generates a
 # QFilterWidget derived header for each of the filters based on thier exposed
 # filter options
-set(CodeGeneratorFile  ${FilterWidgetsLib_BINARY_DIR}/CodeGenerator.h)
+set(CodeGeneratorFile ${FilterWidgetsLib_BINARY_DIR}/CodeGenerator.h)
 file(WRITE ${CodeGeneratorFile} "")
+set(CodeGeneratorFile_Proxy ${QProxyFilterLib_BINARY_DIR}/CodeGenerator.h)
+file(WRITE ${CodeGeneratorFile_Proxy} "")
 
 # --------------------------------------------------------------------
 # Create a File that has all the headers for the various Filter Widgets
@@ -114,6 +116,11 @@ set(FilterWidget_GEN_HDRS_File ${FilterWidgetsLib_BINARY_DIR}/FilterWidget_GEN_H
 set(FilterWidget_GEN_SRCS_File ${FilterWidgetsLib_BINARY_DIR}/FilterWidget_GEN_SRCS.cmake)
 file(WRITE ${FilterWidget_GEN_HDRS_File})
 file(WRITE ${FilterWidget_GEN_SRCS_File})
+
+set(QProxyFilterLib_GEN_HDRS_File ${QProxyFilterLib_BINARY_DIR}/QProxyFilter_GEN_HDRS_File.cmake)
+set(QProxyFilterLib_GEN_SRCS_File ${QProxyFilterLib_BINARY_DIR}/QProxyFilter_GEN_SRCS.cmake)
+file(WRITE ${QProxyFilterLib_GEN_HDRS_File})
+file(WRITE ${QProxyFilterLib_GEN_SRCS_File})
 
 
 

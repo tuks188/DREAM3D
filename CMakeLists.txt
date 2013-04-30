@@ -247,6 +247,8 @@ if(DREAM3D_BUILD_QT_APPS)
    # Append the locations of the Qt libraries to our Library Search Paths
    list(APPEND CMP_LIB_SEARCH_DIRS ${QT_BINARY_DIR} ${QT_LIBRARY_DIR} )
 
+#   add_subdirectory(${DREAM3DProj_SOURCE_DIR}/Source/QProxyFilterLib ${PROJECT_BINARY_DIR}/QProxyFilterLib)
+
    # Build the static QtSupport library - which MUST be a static library or the linking
    # will not work due to signals/slots mechanism.
    add_subdirectory(${DREAM3DProj_SOURCE_DIR}/Source/QtSupport ${PROJECT_BINARY_DIR}/QtSupport)
