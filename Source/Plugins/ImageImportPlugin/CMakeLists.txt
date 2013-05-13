@@ -28,6 +28,8 @@ file(WRITE ${AllFiltersHeaderFile} "#ifndef _ImageImport_Filters_H_\n#define _Im
 # filter options
 set(CodeGeneratorFile  ${ImageImportPlugin_BINARY_DIR}/ImageImportCodeGenerator.h)
 file(WRITE ${CodeGeneratorFile} "")
+set(CodeGeneratorFile_Proxy  ${ImageImportPlugin_BINARY_DIR}/ImageImportCodeGeneratorProxy.h)
+file(WRITE ${CodeGeneratorFile_Proxy} "")
 
 # --------------------------------------------------------------------
 # Create a File that has all the headers for the various Filter Widgets

@@ -212,6 +212,10 @@ add_subdirectory( ${DREAM3DProj_SOURCE_DIR}/Source/EbsdLib ${PROJECT_BINARY_DIR}
 set(FilterWidgetsLib_SOURCE_DIR ${DREAM3DProj_SOURCE_DIR}/Source/FilterWidgets)
 set(FilterWidgetsLib_BINARY_DIR ${DREAM3DProj_BINARY_DIR}/FilterWidgets)
 
+#--- This needs to be set here as we are going to look for files in this directory
+set(QProxyFilterLib_SOURCE_DIR ${DREAM3DProj_SOURCE_DIR}/Source/QProxyFilterLib)
+set(QProxyFilterLib_BINARY_DIR ${DREAM3DProj_BINARY_DIR}/QProxyFilterLib)
+
 # -----------------------------------------------------------------------
 # -- Add in the DREAM3D Sources into a static library
 add_subdirectory( ${DREAM3DProj_SOURCE_DIR}/Source/DREAM3DLib/ ${PROJECT_BINARY_DIR}/DREAM3DLib)
@@ -247,7 +251,7 @@ if(DREAM3D_BUILD_QT_APPS)
    # Append the locations of the Qt libraries to our Library Search Paths
    list(APPEND CMP_LIB_SEARCH_DIRS ${QT_BINARY_DIR} ${QT_LIBRARY_DIR} )
 
-#   add_subdirectory(${DREAM3DProj_SOURCE_DIR}/Source/QProxyFilterLib ${PROJECT_BINARY_DIR}/QProxyFilterLib)
+   add_subdirectory(${DREAM3DProj_SOURCE_DIR}/Source/QProxyFilterLib ${PROJECT_BINARY_DIR}/QProxyFilterLib)
 
    # Build the static QtSupport library - which MUST be a static library or the linking
    # will not work due to signals/slots mechanism.
