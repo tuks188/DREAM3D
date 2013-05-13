@@ -176,7 +176,8 @@ std::vector<AngPhase::Pointer> H5AngVolumeReader::getPhases()
   hid_t fileId = H5Utilities::openFile(getFileName(), true);
   if(fileId < 0)
   {
-    std::cout << "Error: Could not open .h5ebsd file for reading." << std::endl;
+    setErrorMessage("Error: Could not open .h5ebsd file for reading.");
+    setErrorCode(-90000);
     return m_Phases;
   }
   herr_t err = 0;
@@ -187,7 +188,8 @@ std::vector<AngPhase::Pointer> H5AngVolumeReader::getPhases()
   err = reader->readHeader(gid);
   if(err < 0)
   {
-    std::cout << "Error reading the header information from the .h5ebsd file" << std::endl;
+    setErrorMessage(reader->getErrorMessage());
+    setErrorCode(reader->getErrorCode());
     err = H5Gclose(gid);
     err = H5Utilities::closeFile(fileId);
     return m_Phases;
@@ -242,8 +244,9 @@ int H5AngVolumeReader::loadData(int64_t xpoints,
     err = reader->readFile();
     if(err < 0)
     {
-      std::cout << "H5AngDataLoader Error: There was an issue loading the data from the hdf5 file." << std::endl;
-      return -1;
+      setErrorCode(reader->getErrorCode());
+      setErrorMessage(getErrorMessage());
+      return getErrorCode();
     }
     readerIndex = 0;
     xpointsslice = reader->getNumEvenCols();

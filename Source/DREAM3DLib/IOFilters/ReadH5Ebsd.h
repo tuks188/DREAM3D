@@ -83,7 +83,7 @@ class DREAM3DLib_EXPORT ReadH5Ebsd : public AbstractFilter
     //------ Created Ensemble Data
     DREAM3D_INSTANCE_STRING_PROPERTY(CrystalStructuresArrayName)
     DREAM3D_INSTANCE_STRING_PROPERTY(PhaseNameArrayName)
-    DREAM3D_INSTANCE_STRING_PROPERTY(MaterialNamesArrayName)
+    DREAM3D_INSTANCE_STRING_PROPERTY(MaterialNameArrayName)
 
 
     DREAM3D_INSTANCE_STRING_PROPERTY(InputFile)
@@ -147,11 +147,13 @@ class DREAM3DLib_EXPORT ReadH5Ebsd : public AbstractFilter
       std::vector<typename EbsdPhase::Pointer> phases = reader->getPhases();
       if (phases.size() == 0)
       {
-        return -1;
+        setErrorCondition(reader->getErrorCode());
+        addErrorMessage(getHumanLabel(), reader->getErrorMessage(), getErrorCondition());
+        return getErrorCondition();
       }
 
       DataArray<unsigned int>::Pointer crystalStructures = DataArray<unsigned int>::CreateArray(phases.size() + 1, m_CrystalStructuresArrayName);
-      StringDataArray::Pointer materialNames = StringDataArray::CreateArray(phases.size() + 1, m_MaterialNamesArrayName);
+      StringDataArray::Pointer materialNames = StringDataArray::CreateArray(phases.size() + 1, m_MaterialNameArrayName);
 
       // Initialize the zero'th element to unknowns. The other elements will
       // be filled in based on values from the data file

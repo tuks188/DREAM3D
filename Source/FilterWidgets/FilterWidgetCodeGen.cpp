@@ -48,6 +48,7 @@
 
 #include "DREAM3DLib/Common/AbstractFilter.h"
 #include "DREAM3DLib/Common/FilterParameter.h"
+#include "DREAM3DLib/Common/CreatedArrayHelpIndexEntry.h"
 
 
 
@@ -66,6 +67,12 @@ std::string FILTER_WIDGETS_TEMP_DIR();
 std::string FILTER_WIDGETS_DOCS_DIR();
 std::string DREAM3D_SOURCE_DIR();
 std::string FILTER_INCLUDE_PREFIX();
+std::string DREAM3D_SOURCE_DIR();
+std::string DREAM3D_BINARY_DIR();
+
+typedef std::map<std::string, CreatedArrayHelpIndexEntry::VectorType> IndexMap_t;
+
+std::map<std::string, CreatedArrayHelpIndexEntry::VectorType>  helpIndex;
 
 // -----------------------------------------------------------------------------
 //
@@ -91,265 +98,74 @@ void copyFile(const std::string &src, const std::string &dest)
   free(contents);
 }
 
-#if 0
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void writeArrayNameHeaderCode(FILE* f, std::set<std::string> &list, const std::string &filterName, const std::string &title)
-{
-  if(list.size() == 0) { return; }
-  fprintf(f, "  //------ %s ----------------\n", title.c_str());
-  const char* cType = "QString";
-  for (std::set<std::string>::iterator iter = list.begin(); iter != list.end(); ++iter)
-  {
-    std::string arrayname = std::string((*iter) + "ArrayName");
-
-    fprintf(f, "  // Get/Set the Array name for %s\n", (*iter).c_str());
-    fprintf(f, "  private:\n");
-    fprintf(f, "    QString m_%sArrayName;\n", (*iter).c_str());
-    fprintf(f, "  public:\n");
-    fprintf(f, "    Q_PROPERTY(%s %s READ get%s WRITE set%s)\n", cType, arrayname.c_str(), arrayname.c_str(), arrayname.c_str());
-    fprintf(f, "    %s  get%s();\n", cType, arrayname.c_str());
-    fprintf(f, "  public slots:\n");
-    fprintf(f, "    void set%s(const %s &v);\n", arrayname.c_str(), cType);
-    fprintf(f, "  // Get/Set the Array name for %s Complete ------------\n\n", (*iter).c_str());
-  }
-}
 
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void writeArrayNameSourceCode(FILE* f, std::set<std::string> &list, const std::string &filter, const std::string &title)
+void extractHelpIndexEntries(AbstractFilter* filter)
 {
-  if(list.size() == 0) { return; }
-  //  fprintf(f, "//------ %s ----------------\n", title.c_str());
-  const char* cType = "QString";
-  for (std::set<std::string>::iterator iter = list.begin(); iter != list.end(); ++iter)
-  {
-    std::string arrayname = std::string((*iter) + "ArrayName");
+  VoxelDataContainer::Pointer vdc = VoxelDataContainer::New();
+  SurfaceMeshDataContainer::Pointer surf = SurfaceMeshDataContainer::New();
+  SolidMeshDataContainer::Pointer sol = SolidMeshDataContainer::New();
+  filter->setVoxelDataContainer(vdc.get());
+  filter->setSurfaceMeshDataContainer(surf.get());
+  filter->setSolidMeshDataContainer(sol.get());
+  filter->preflight();
+  CreatedArrayHelpIndexEntry::VectorType entries = filter->getCreatedArrayHelpIndexEntries();
 
-    fprintf(f, "// -----------------------------------------------------------------------------\n");
-    fprintf(f, "// Get/Set the Array name for %s '%s'\n", title.c_str(), (*iter).c_str());
-    fprintf(f, "void Q%sWidget::set%s(const %s &v)\n{\n  m_%s = v;\n}\n", filter.c_str(), arrayname.c_str(), cType, arrayname.c_str());
-    fprintf(f, "%s  Q%sWidget::get%s()\n{\n  return m_%s; \n}\n\n", cType, filter.c_str(), arrayname.c_str(), arrayname.c_str());
+  for(CreatedArrayHelpIndexEntry::VectorType::iterator entry = entries.begin(); entry != entries.end(); ++entry)
+  {
+    std::string entryName = (*entry)->getArrayDefaultName();
+    entryName = entryName + " (" + (*entry)->getArrayGroup() + ")";
+    CreatedArrayHelpIndexEntry::VectorType& vec = helpIndex[entryName]; // Will Create one if not there already
+    vec.push_back((*entry));
   }
+
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void writeArrayNameConstructorCode(FILE* f, std::set<std::string> &list, const std::string &filter, const std::string &title)
+void createMarkdownCreatedArrayIndex()
 {
-  if(list.size() == 0) { return; }
-  for (std::set<std::string>::iterator iter = list.begin(); iter != list.end(); ++iter)
+
+  std::string path = DREAM3D_BINARY_DIR();
+  path = path + MXADir::Separator + "createdarrayindex.md";
+
+  FILE* f = fopen(path.c_str(), "wb");
+
+  fprintf(f, "Created Array Index {#createdarrayindex}\n======\n");
+
+  for(IndexMap_t::iterator entry = helpIndex.begin(); entry != helpIndex.end(); ++entry)
   {
-    std::string arrayname = std::string((*iter) + "ArrayName");
-    fprintf(f, "     set%s( QString::fromStdString(filter->get%s() ) );\n", arrayname.c_str(), arrayname.c_str());
-  }
-}
+    std::string name = (*entry).first;
+    fprintf (f, "## %s ##\n\n", (*entry).first.c_str());
 
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void writeArrayNameGetFilterCode(FILE* f, std::set<std::string> &list, const std::string &filter, const std::string &title)
-{
-  if(list.size() == 0) { return; }
-  for (std::set<std::string>::iterator iter = list.begin(); iter != list.end(); ++iter)
-  {
-    std::string arrayname = std::string((*iter) + "ArrayName");
-    fprintf(f, "  filter->set%s( get%s().toStdString() );\n", arrayname.c_str(), arrayname.c_str());
-  }
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void writeArrayNameDeepCopyCode(FILE* f, std::set<std::string> &list, const std::string &filter, const std::string &title)
-{
-  if(list.size() == 0) { return; }
-  for (std::set<std::string>::iterator iter = list.begin(); iter != list.end(); ++iter)
-  {
-    std::string arrayname = std::string((*iter) + "ArrayName");
-    fprintf(f, "  w->set%s( get%s() );\n", arrayname.c_str(), arrayname.c_str() );
-  }
-}
-#endif
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void createProxyHeaderFile(const std::string &group,
-                           const std::string &filter,
-                           std::vector<FilterParameter::Pointer> options,
-                           const std::string &outputPath)
-{
-  std::stringstream ss;
-
-  //  ss << FILTER_WIDGETS_BINARY_DIR() << "/" << outSubPath;
-
-  std::string completePath = MXADir::toNativeSeparators(outputPath);
-  // Make sure the output path exists
-  std::string parentPath = MXADir::parentPath(completePath);
-  if (MXADir::exists(parentPath) == false)
-  {
-    MXADir::mkdir(parentPath, true);
-  }
-
-  ss << FILTER_WIDGETS_TEMP_DIR() << "/Q" << filter << "Proxy.h";
-  std::string tempPath = ss.str();
-  tempPath = MXAFileInfo::toNativeSeparators(tempPath);
-
-  FILE* f = fopen(tempPath.c_str(), "wb");
-  fprintf(f, "/*\n");
-  fprintf(f, "  This file was auto-generated from the program FilterWidgetCodeGen.cpp which is\n  itself generated during cmake time\n");
-  fprintf(f, "  If you need to make changes to the code that is generated you will need to make\n  them in the original file. \n");
-  fprintf(f, "  The code generated is based off values from the filter located at\n");
-  if (FILTER_INCLUDE_PREFIX().empty() == true) {
-    fprintf(f, "  %s/%s.h\n*/\n", group.c_str(), filter.c_str());
-  }
-  else
-  {
-    fprintf(f, "  %s/%s/%s.h\n*/\n", FILTER_INCLUDE_PREFIX().c_str(), group.c_str(), filter.c_str());
-  }
-
-  fprintf(f, "#ifndef _Q%sProxy_H_\n", filter.c_str());
-  fprintf(f, "#define _Q%sProxy_H_\n\n", filter.c_str());
-
-  fprintf(f, "#include <QtCore/QObject>\n");
-  fprintf(f, "#include <QtCore/QSettings>\n\n");
-
-  // fprintf(f, "#include \"DREAM3DLib/Common/DREAM3DSetGetMacros.h\"\n");
-  fprintf(f, "#include \"DREAM3DLib/Common/FilterParameter.h\"\n\n");
-  if (FILTER_INCLUDE_PREFIX().empty() == true) {
-    fprintf(f, "#include \"%s/%s.h\"\n\n", group.c_str(), filter.c_str());
-  }
-  else
-  {
-    fprintf(f, "#include \"%s/%s/%s.h\"\n\n", FILTER_INCLUDE_PREFIX().c_str(), group.c_str(), filter.c_str());
-  }
-
-  fprintf(f, "class Q%sProxy : public QObject, public %s \n{\n", filter.c_str(), filter.c_str());
-  fprintf(f, "   Q_OBJECT\n");
-  fprintf(f, "  public:\n");
-  fprintf(f, "    Q%sProxy(QObject* parent = NULL);\n", filter.c_str());
-  fprintf(f, "    virtual ~Q%sProxy();\n", filter.c_str());
-  fprintf(f, "    virtual AbstractFilter::Pointer getFilter();\n");
-  fprintf(f, "    QString getFilterGroup();\n\n");
-  fprintf(f, "    QString getFilterSubGroup();\n\n");
-  fprintf(f, "    void writeOptions(QSettings &prefs);\n");
-  fprintf(f, "    void readOptions(QSettings &prefs);\n\n");
+    CreatedArrayHelpIndexEntry::VectorType& filters = (*entry).second;
 
 
-  std::stringstream privVarsDecls;
-  std::stringstream pubMethods;
-  std::stringstream qProps;
-  std::stringstream pubSlots;
-
-  bool implementArrayNameComboBoxUpdated = false;
-
-  // Loop on all the filter options
-  for(size_t i = 0; i < options.size(); ++i)
-  {
-    FilterParameter::Pointer opt = options[i];
-    std::string prop = opt->getPropertyName();
-    std::string typ = opt->getValueType();
-
-    if (opt->getCastableValueType().empty() == false)
+    for(CreatedArrayHelpIndexEntry::VectorType::iterator indexEntry = filters.begin(); indexEntry != filters.end(); ++indexEntry)
     {
-      std::string cType = opt->getCastableValueType();
-      privVarsDecls << "    " << cType << " m_" << prop << ";\n";
-      qProps << "    Q_PROPERTY(" << cType << " " << prop << " READ get" << prop << " WRITE set" << prop << ")\n";
-      pubSlots << "    void set" << prop << "(" << cType << " v, bool emitChanged = true);\n";
-      pubMethods << "    " << cType << " get" << prop << "();\n";
-    }
-    else if (opt->getValueType().compare("string") == 0)
-    {
-      std::string cType = "QString";
-      privVarsDecls << "    QString m_" << prop << ";\n";
-      qProps << "    Q_PROPERTY(" << cType << " " << prop << " READ get" << prop << " WRITE set" << prop << ")\n";
-      pubSlots << "    void set" << prop << "(const " << cType << " &v, bool emitChanged = true);\n";
-      pubMethods << "    " << cType << " get" << prop << "();\n";
-    }
-    else if (opt->getWidgetType() == FilterParameter::ArraySelectionWidget)
-    {
-      fprintf(f, "  public:\n");
-      fprintf(f, "    virtual void preflightAboutToExecute(VoxelDataContainer::Pointer vdc, SurfaceMeshDataContainer::Pointer smdc, SolidMeshDataContainer::Pointer sdc);\n");
-      fprintf(f, "\n\n");
-    }
-    else if (opt->getWidgetType() == FilterParameter::IntVec3Widget)
-    {
-      std::string cType = "IntVec3Widget";
-      privVarsDecls << "    IntVec3Widget m_" << prop << ";\n";
-      qProps << "    Q_PROPERTY(IntVec3Widget_t " << prop << " READ get" << prop << " WRITE set" << prop << ")\n";
-      pubSlots << "    void set" << prop << "(const " << cType << " &v, bool emitChanged = true);\n";
-      pubMethods << "    " << cType << " get" << prop << "();\n";
-    }
-    else if (opt->getWidgetType() == FilterParameter::FloatVec3Widget)
-    {
-      std::string cType = "FloatVec3Widget";
-      privVarsDecls << "    " << cType << " m_" << prop << ";\n";
-      qProps << "    Q_PROPERTY(" << cType << " " << prop << " READ get" << prop << " WRITE set" << prop << ")\n";
-      pubSlots << "    void set" << prop << "(const " << cType << " &v, bool emitChanged = true);\n";
-      pubMethods << "    " << cType << " get" << prop << "();\n";
-    }
-    else if (opt->getWidgetType() == FilterParameter::ComparisonSelectionWidget)
-    {
-      fprintf(f, "  public:\n");
-      fprintf(f, "    virtual void preflightAboutToExecute(VoxelDataContainer::Pointer vdc, SurfaceMeshDataContainer::Pointer smdc, SolidMeshDataContainer::Pointer sdc);\n");
-      fprintf(f, "\n\n");
-    }
-    else
-    {
-      std::string cType = typ;
-      privVarsDecls << "    " << cType << " m_" << prop << ";\n";
-      qProps << "    Q_PROPERTY(" << cType << " " << prop << " READ get" << prop << " WRITE set" << prop << ")\n";
-      pubSlots << "    void set" << prop << "(const " << cType << " &v, bool emitChanged = true);\n";
-      pubMethods << "    " << cType << " get" << prop << "();\n";
-
-     // fprintf(f, "    Q_PROPERTY(%s %s READ get%s WRITE set%s)\n", typ.c_str(), prop.c_str(), prop.c_str(), prop.c_str());
-     // fprintf(f, "    QFILTERWIDGET_INSTANCE_PROPERTY(%s, %s)\n\n", typ.c_str(), prop.c_str());
+      std::string lower = (*indexEntry)->getFilterName();
+      std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+      fprintf(f, "+ [%s](%s.html) (%s->%s)\n", (*indexEntry)->getFilterHumanLabel().c_str(), lower.c_str(), (*indexEntry)->getFilterGroup().c_str(), (*indexEntry)->getFilterSubGroup().c_str());
     }
 
-    if (opt->getWidgetType() >= FilterParameter::VoxelCellArrayNameSelectionWidget
-        && opt->getWidgetType() <= FilterParameter::SurfaceMeshEdgeArrayNameSelectionWidget )
-    { implementArrayNameComboBoxUpdated = true; }
+    fprintf(f, "\n");
   }
-
-  if (true == implementArrayNameComboBoxUpdated)
-  {
-    fprintf(f, "  public:\n    virtual void arrayNameComboBoxUpdated(QComboBox* cb);\n\n");
-  }
-
-  fprintf(f, "\n  public:\n");
-  fprintf(f, "%s", qProps.str().c_str());
-  fprintf(f, "%s", pubMethods.str().c_str());
-  fprintf(f, "\n  public slots:\n");
-  fprintf(f, "%s", pubSlots.str().c_str());
-
-
-
-
-  fprintf(f, "\n  private:\n");
-  fprintf(f, "%s\n", privVarsDecls.str().c_str());
-  fprintf(f, "    Q%sProxy(const Q%sProxy);\n", filter.c_str(), filter.c_str());
-  fprintf(f, "    void operator=(const Q%sProxy);\n", filter.c_str());
-  fprintf(f, "};\n\n");
-  fprintf(f, "#endif /* Q%sProxy_H_ */\n", filter.c_str());
-
   fclose(f);
+
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void createHeaderFile(const std::string &group, const std::string &filter, std::vector<FilterParameter::Pointer> options, const std::string &outputPath)
+void createHeaderFile(const std::string &group, const std::string &filterName, AbstractFilter* filterPtr, const std::string &outputPath)
 {
   std::stringstream ss;
 
-  createProxyHeaderFile(group, filter, options, outputPath);
-
-  //  ss << FILTER_WIDGETS_BINARY_DIR() << "/" << outSubPath;
+  extractHelpIndexEntries(filterPtr);
 
   std::string completePath = MXADir::toNativeSeparators(outputPath);
   // Make sure the output path exists
@@ -358,27 +174,34 @@ void createHeaderFile(const std::string &group, const std::string &filter, std::
   {
     MXADir::mkdir(parentPath, true);
   }
+
+  std::vector<FilterParameter::Pointer> options = filterPtr->getFilterParameters();
 
   ss.str("");
   ss << FILTER_WIDGETS_TEMP_DIR() << "/TEMP_WIDGET.h";
   std::string tempPath = ss.str();
 
   FILE* f = fopen(tempPath.c_str(), "wb");
+  if (NULL == f)
+  {
+    std::cout << "Could not open file '" << tempPath << "' for writing." << std::endl;
+     return;
+  }
 
   fprintf(f, "/*\n");
   fprintf(f, "  This file was auto-generated from the program FilterWidgetCodeGen.cpp which is\n  itself generated during cmake time\n");
   fprintf(f, "  If you need to make changes to the code that is generated you will need to make\n  them in the original file. \n");
   fprintf(f, "  The code generated is based off values from the filter located at\n");
   if (FILTER_INCLUDE_PREFIX().empty() == true) {
-    fprintf(f, "  %s/%s.h\n*/\n", group.c_str(), filter.c_str());
+    fprintf(f, "  %s/%s.h\n*/\n", group.c_str(), filterName.c_str());
   }
   else
   {
-    fprintf(f, "  %s/%s/%s.h\n*/\n", FILTER_INCLUDE_PREFIX().c_str(), group.c_str(), filter.c_str());
+    fprintf(f, "  %s/%s/%s.h\n*/\n", FILTER_INCLUDE_PREFIX().c_str(), group.c_str(), filterName.c_str());
   }
 
-  fprintf(f, "#ifndef _Q%sWidget_H_\n", filter.c_str());
-  fprintf(f, "#define _Q%sWidget_H_\n\n", filter.c_str());
+  fprintf(f, "#ifndef _Q%sWidget_H_\n", filterName.c_str());
+  fprintf(f, "#define _Q%sWidget_H_\n\n", filterName.c_str());
 
   fprintf(f, "#include <QtCore/QObject>\n");
   fprintf(f, "#include <QtCore/QSettings>\n\n");
@@ -387,17 +210,17 @@ void createHeaderFile(const std::string &group, const std::string &filter, std::
   fprintf(f, "#include \"DREAM3DLib/Common/DREAM3DSetGetMacros.h\"\n");
   fprintf(f, "#include \"DREAM3DLib/Common/FilterParameter.h\"\n\n");
   if (FILTER_INCLUDE_PREFIX().empty() == true) {
-    fprintf(f, "#include \"%s/%s.h\"\n", group.c_str(), filter.c_str());
+    fprintf(f, "#include \"%s/%s.h\"\n", group.c_str(), filterName.c_str());
   }
   else
   {
-    fprintf(f, "#include \"%s/%s/%s.h\"\n", FILTER_INCLUDE_PREFIX().c_str(), group.c_str(), filter.c_str());
+    fprintf(f, "#include \"%s/%s/%s.h\"\n", FILTER_INCLUDE_PREFIX().c_str(), group.c_str(), filterName.c_str());
   }
-  fprintf(f, "class Q%sWidget : public QFilterWidget \n{\n", filter.c_str());
+  fprintf(f, "class Q%sWidget : public QFilterWidget \n{\n", filterName.c_str());
   fprintf(f, "   Q_OBJECT\n");
   fprintf(f, "  public:\n");
-  fprintf(f, "    Q%sWidget(QWidget* parent = NULL);\n", filter.c_str());
-  fprintf(f, "    virtual ~Q%sWidget();\n", filter.c_str());
+  fprintf(f, "    Q%sWidget(QWidget* parent = NULL);\n", filterName.c_str());
+  fprintf(f, "    virtual ~Q%sWidget();\n", filterName.c_str());
   fprintf(f, "    virtual AbstractFilter::Pointer getFilter();\n");
   fprintf(f, "    void writeOptions(QSettings &prefs);\n");
   fprintf(f, "    void readOptions(QSettings &prefs);\n\n");
@@ -454,7 +277,8 @@ void createHeaderFile(const std::string &group, const std::string &filter, std::
       fprintf(f, "    Q_PROPERTY(FloatVec3Widget_t %s READ get%s WRITE set%s)\n", prop.c_str(), prop.c_str(), prop.c_str());
       fprintf(f, "    QFILTERWIDGET_INSTANCE_PROPERTY(FloatVec3Widget_t, %s)\n\n", prop.c_str());
     }
-    else if (opt->getWidgetType() == FilterParameter::ComparisonSelectionWidget)
+    else if (opt->getWidgetType() >= FilterParameter::CellArrayComparisonSelectionWidget
+             && opt->getWidgetType() <= FilterParameter::EdgeArrayComparisonSelectionWidget)
     {
       fprintf(f, "  public:\n");
       fprintf(f, "    virtual void preflightAboutToExecute(VoxelDataContainer::Pointer vdc, SurfaceMeshDataContainer::Pointer smdc, SolidMeshDataContainer::Pointer sdc);\n");
@@ -480,10 +304,10 @@ void createHeaderFile(const std::string &group, const std::string &filter, std::
   fprintf(f, "  private:\n");
   fprintf(f, "    QString m_FilterGroup;\n\n");
   fprintf(f, "    QString m_FilterSubGroup;\n\n");
-  fprintf(f, "    Q%sWidget(const Q%sWidget&);\n", filter.c_str(), filter.c_str());
-  fprintf(f, "    void operator=(const Q%sWidget&);\n", filter.c_str());
+  fprintf(f, "    Q%sWidget(const Q%sWidget&);\n", filterName.c_str(), filterName.c_str());
+  fprintf(f, "    void operator=(const Q%sWidget&);\n", filterName.c_str());
   fprintf(f, "};\n");
-  fprintf(f, "#endif /* Q%sWidget_H_ */\n", filter.c_str());
+  fprintf(f, "#endif /* Q%sWidget_H_ */\n", filterName.c_str());
 
   fclose(f);
 
@@ -593,7 +417,8 @@ void createSourceFile( const std::string &group,
     {
       fprintf(f, "#include \"ArraySelectionWidget.h\"\n");
     }
-    if (opt->getWidgetType() == FilterParameter::ComparisonSelectionWidget)
+    if (opt->getWidgetType() >= FilterParameter::CellArrayComparisonSelectionWidget
+             && opt->getWidgetType() <= FilterParameter::EdgeArrayComparisonSelectionWidget)
     {
       fprintf(f, "#include \"ComparisonSelectionWidget.h\"\n");
     }
@@ -623,7 +448,8 @@ void createSourceFile( const std::string &group,
       fprintf(f, "    //Do we need to preset something from the filter maybe?\n");
       implementArrayNameSelectionWidget = true;
     }
-    else if (opt->getWidgetType() == FilterParameter::ComparisonSelectionWidget)
+    else if (opt->getWidgetType() >= FilterParameter::CellArrayComparisonSelectionWidget
+             && opt->getWidgetType() <= FilterParameter::EdgeArrayComparisonSelectionWidget)
     {
       fprintf(f, "    //Do we need to preset something from the filter maybe?\n");
       implementComparisonSelectionWidget = true;
@@ -671,7 +497,8 @@ void createSourceFile( const std::string &group,
       fprintf(f, "  if (NULL != w) {\n");
       fprintf(f, "    w->getArraySelections(filter.get());\n  }\n");
     }
-    else if (opt->getWidgetType() == FilterParameter::ComparisonSelectionWidget)
+    else if (opt->getWidgetType() >= FilterParameter::CellArrayComparisonSelectionWidget
+             && opt->getWidgetType() <= FilterParameter::EdgeArrayComparisonSelectionWidget)
     {
       fprintf(f, "  ComparisonSelectionWidget* w = qFindChild<ComparisonSelectionWidget*>(this, \"%s\");\n", prop.c_str());
       fprintf(f, "  if (NULL != w) {\n");
@@ -794,7 +621,8 @@ void createSourceFile( const std::string &group,
       fprintf(f, "  prefs.setValue(\"z\", static_cast<double>(v_%s.z));\n", prop.c_str());
       fprintf(f, "  prefs.endArray();\n");
     }
-    else if (opt->getWidgetType() == FilterParameter::ComparisonSelectionWidget)
+    else if (opt->getWidgetType() >= FilterParameter::CellArrayComparisonSelectionWidget
+             && opt->getWidgetType() <= FilterParameter::EdgeArrayComparisonSelectionWidget)
     {
       fprintf(f, "  // ------------- %s ----------------------------------\n", prop.c_str());
       fprintf(f, "  ComparisonSelectionWidget* w = qFindChild<ComparisonSelectionWidget*>(this, \"%s\");\n", prop.c_str());
@@ -931,7 +759,8 @@ void createSourceFile( const std::string &group,
 
       fprintf(f, "   prefs.endArray();\n");
     }
-    else if (opt->getWidgetType() == FilterParameter::ComparisonSelectionWidget)
+    else if (opt->getWidgetType() >= FilterParameter::CellArrayComparisonSelectionWidget
+             && opt->getWidgetType() <= FilterParameter::EdgeArrayComparisonSelectionWidget)
     {
       fprintf(f, "    ComparisonSelectionWidget* w = qFindChild<ComparisonSelectionWidget*>(this, \"%s\");\n", prop.c_str());
       fprintf(f, "    if (NULL != w) {\n");
@@ -1000,7 +829,9 @@ void createSourceFile( const std::string &group,
       std::string prop = opt->getPropertyName();
       std::string typ = opt->getValueType();
       std::string hl = opt->getHumanLabel();
-      if (opt->getWidgetType() == FilterParameter::ComparisonSelectionWidget ) {
+      if (opt->getWidgetType() >= FilterParameter::CellArrayComparisonSelectionWidget
+             && opt->getWidgetType() <= FilterParameter::EdgeArrayComparisonSelectionWidget)
+      {
         fprintf(f, "  ComparisonSelectionWidget* w = qFindChild<ComparisonSelectionWidget*>(this, \"%s\");\n", prop.c_str()); // Make sure we have a non null QWidget to deal with
 
         fprintf(f, "  if (NULL != w) {\n    w->populateArrayNames(vdc, smdc, sdc);\n  }\n");
@@ -1109,6 +940,8 @@ int main(int argc, char **argv)
 #endif
 
   setFilters();
+
+  createMarkdownCreatedArrayIndex();
 
   return 0;
 }

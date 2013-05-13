@@ -5,32 +5,34 @@ This is the list of things to do. It is written with the Markdown style so it ca
 
 ## Show Stopping Bugs ##
 
++ Fix EBSDLib to understand more Crystal Symmetries in TSL .ang files.
++ Synthetic Microstructure generation tutorial needs to be updated with the additional filters that are required for Match Crystallography to work properly.
++ Convert Hex to Square needs to create an output directory for the files as the default output files are not readily recognized by the Import Orientation data filter which is a break down of User interaction
 
 ## Critical to Fix before Bad Things Happen ##
 + All the shape ops classes need to be fully reentrant for parallel applications
 
-
-## Documentation Issues ##
-
-
 ### Groeber Documentation
 + Missing Documentation File for IOFilters/ImportImageStack
 
+### Documentation ###
 
-
-### Workshop Priority
 + Tutorial::Small IN100 for Docs/Website
 + Tutorial::Synthetic Generation for Docs/Website
 + Tutorial::Visualization Techniques for Docs/Website
 + Tutorial::Creating Ensemble Statistics for Docs/Website
 + Tutorial::Importing Orientation Data for Docs/Website
 + FileFormats::Xdmf files for Docs/Website
++ Update/Create a user manual for the stats generator - last parts need pasting
++ Update documentation file structure now that users can specify array names
 
+
+### Workshop Priority
 
 
 ### User Centric
-+ Update/Create a user manual for the stats generator - last parts need pasting
-+ Update documentation file structure now that users can specify array names
+
++ Add splash Screen similar to ParaView where the various entities that have donated code or Funding are shown with their logos.
 
 ### Developer Centric ###
 + Add documentation on how to add new filter directly into DREAM3D
@@ -42,8 +44,54 @@ This is the list of things to do. It is written with the Markdown style so it ca
 + Add a filter to apply operations to the surface mesh such as moving the surface mesh in space coordinates
 
 
+## Joey K. Summer List ##
++ When loading a Pipeline file detect any paths that are the wrong platform (C: on Unix) and offer to pick a new file
++ Add a 'Rename Favorite' menu
++ allow user to right-click on a favorite and "delete, rename, ..." the favorite
++ allow user to right-click on a filter and display help in a separate window
++ Create Dialog that contains prebuilt stats files for StatsGenerator users to select from
++ Error messages that can contain HTTP hyperlinks that would take the user to what ever is suggested in the error message like a specific filter
+
+
+## Statistics/Analysis/Other Algorithms ##
++ Add filter to calculate histograms of user selected arrays (cell or field)
++ Add filter to insert subgrains
++ Fix the deformation statistics filter to adapt to new structure of transmission metrics
++ Add Filter to initialize the Ensemble Map based on a user defined array such as Phase Ids.
++ Integrate Lisa Chan's Twin Insertion Code - Have Code From Joe Tucker
++ Change Field to Region in all codes
++ Add/Modify filter to note if grain is a twin, parent or untwinned
++ Add ability to define twins of interest on merge twin filter
++ Add ability to flag regions as 'defects' or a new phase in the fill bad data filter
++ Look into incorporating genetic algorithms in the packing algorithms of the synthetic builder
++ Include a filter to calculate 2-pt statistics
++ Look into using 2-pt statistics to advance the packing algorithms in the synthetic builder
++ Add a filter to calculate Kearn's number
++ Look into matching the Kearn's number when matching cystallography in the synthetic builder
++ Add a cleanup filter that considers the orientation (nearest) or kikuchi pattern of neighboring voxels when assigning bad voxels
++ Add GBCD calculation filters from G. Rohrer
++ Add a filter to calculate 'clustering' statistics on 'marked' features
++ Modify ODF/PF generation in stats generator to better combine random baseline with user inputs (also degree/radian checkbox)
++ Add/Finish filter to calculate slice-slice misorientation (in terms of axis-angle in sample ref frame)
++ Add filter to calculate microtexture function or equivalent
++ Look into creating a reverse Saltykov/Sahagian filter to predict 3D grain size distribution from 2D data
++ Add filter to merge twins using surface mesh (5 parameter)
++ Add virtual sectioning filter
++ Add/Finish filter to 'standardize' euler angles within a grain
++ Look into creating a filter to color orientations using C. Shuh's color scale
++ Add mesh quantification filter (code from Tony)
++ Add 3D linear intercept calculation filter (C. Hartley filter)
++ Add filter to perform Tony's hot spot analysis
++ Add filter to combine far field data with near field data from HEDM
++ Add filter to determine spherical correlation length from each grain centroid
++ Add mean filter in orientation space
++ Add mean filter on scalar array
++ Add median filter on scalar array
++ Fix the mPrime, F1, F1spt, F7 functions in Hex- and Ortho- Ops
+
+
 ## Still to Do ##
-+ Fix match crystallogrpahy to deal with matrix phases, etc.
+
 + Add "Tool" example program that shows writing a command line pipeline program
 + Add checks in MinSize and MinNeighbor filters to exit gracefully if minimum is larger than largest grain/num neighbors
 + Add in Xdmf wrapper for H5Ebsd so they can be easily viewed in ParaView
@@ -55,47 +103,14 @@ This is the list of things to do. It is written with the Markdown style so it ca
 + Sometimes dragging a filter from the filter list to the PipelineView area will cause a crash.
 + Filter that can execute any program on the users computer
 + Add in the HyperSlabArray class to use for some of the SurfaceMeshing Triangle/Node data
-+ Fix the deformation statistics filter to adapt to new structure of transmission metrics
-+ Add Filter to initialize the Ensemble Map based on a user defined array such as Phase Ids.
-+ Integrate Lisa Chan's Twin Insertion Code - Have Code From Joe Tucker
-+ Change Field to Region in all codes
-+ Add/Modify filter to note if grain is a twin, parent or untwinned
-+ Add ability to define twins of interest on merge twin filter
 + Add ability to append to pipeline folder in .dream3d file when starting a new pipeline with the read dream3d filter
-+ Add ability to flag regions as 'defects' or a new phase in the fill bad data filter
-+ Look into incorporating genetic algorithms in the packing algorithms of the synthetic builder
-+ Include a filter to calculate 2-pt statistics
-+ Look into using 2-pt statistics to advance the packing algorithms in the synthetic builder
-+ Add a filter to calculate Kearn's number
-+ Look into matching the Kearn's number when matching cystallography in the synthetic builder
-+ Add a cleanup filter that considers the orientation (nearest) or kikuchi pattern of neighboring voxels when assigning bad voxels
-+ Add GBCD calculation filters from G. Rohrer
-+ Add a filter to calculate 'clustering' statistics on 'marked' features
 + Look into creating multiple maps at each level (i.e. parent and grain filed maps)
-+ Modify ODF/PF generation in stats generator to better combine random baseline with user inputs (also degree/radian checkbox)
-+ Add/Finish filter to calculate slice-slice misorientation (in terms of axis-angle in sample ref frame)
-+ Add filter to calculate microtexture function or equivalent
-+ Look into creating a reverse Saltykov/Sahagian filter to predict 3D grain size distribution from 2D data
-+ Add filter to merge twins using surface mesh (5 parameter)
-+ Add virtual sectioning filter
-+ Add/Finish filter to 'standardize' euler angles within a grain
-+ Look into creating a filter to color orientations using C. Shuh's color scale
-+ Add mesh quantification filter (code from Tony)
 + Create filter to generate surface mesh from volume mesh
-+ Add 3D linear intercept calculation filter (C. Hartley filter)
 + Design protocol to learn user's 'ontology'
-+ Add filter to perform Tony's hot spot analysis
-+ Add filter to combine far field data with near field data from HEDM
 + Allow the user to specify the phase for minimum neighbors filter
 + Look at adding a mirror option to the rotate sample reference frame filter
 + Add the option for the user to set the name of a copied array (from field to cell)
-+ Add filter to determine spherical correlation length from each grain centroid
-+ Add mean filter in orientation space
-+ Add mean filter on scalar array
-+ Add median filter on scalar array
 + Work through all filters and change single for loops over totalPoints to triple loops over x-,y- and zPoints if the coordinates need to be calculated
-+ Add splash Screen similar to ParaView where the various entities that have donated code or Funding are shown with their logos.
-+ Fix the mPrime, F1, F1spt, F7 functions in Hex- and Ortho- Ops
 
 
 ##  Synthetic Building Filters ##
@@ -105,21 +120,16 @@ This is the list of things to do. It is written with the Markdown style so it ca
 
 
 ##  IO Filters ##
+
++ Add output directory to the HexToSquare Grid convertor filter
 + Add filter to generate IPF Images for each slice of data, or a user defined range of slices and plane by defining the normal to the plane (X, Y or Z)
 + Provide better feedback on 3D .ctf files (No way to do this without major changes to codes)
-+ Add filter to write out slices as images of any array
++ Add filter to write out slices as images
 + Add ability to store EBSPs and EDS spectra in h5ebsd file and data container
 + Add filter to write out 2D slices as .ang, .ctf or .mic files
 + Add filter to dump ensemble stats/info
 + Add filter to read .edf data
 + Read in more meta-data about each phase: Space Group, Phase Name, Material Name
-
-
-##  Add to the Pipeline Gui ##
-+ When loading a Pipeline file detect any paths that are the wrong platform (C: on Unix) and offer to pick a new file
-+ Add a 'Rename Favorite' menu
-+ allow user to right-click on a favorite and "delete, rename, ..." the favorite
-+ allow user to right-click on a filter and display help in a separate window
 
 
 ##  Feature Request ##
@@ -142,6 +152,17 @@ This is the list of things to do. It is written with the Markdown style so it ca
 
 
 ## Items Completed ##
+
++ Make reading of the "Categories" a non fatal error from the H5Ebsd file as TSL Combo Scans do not include this header.
++ AutoScroll PipelineView when dragging a filter widget
++ Add filter to calculate triangle areas
++ Add filter to calculate minimum dihedral angle of triangles
++ ComparisonSelectionWidget ONLY works on Cell Arrays - Now works on Cell, Field, Ensemble, Point, face and Edge
++ Add info in the documentation files that state where a required array could be created from
++ Added a widget to draw attention to the 'Set Reference Frame' button which is yellow until they click the button.
++ Fixed slow calculation in StatsGenerator when initially calculating default statistics
++ Allow user to set the bin step size in generate ensemble statistics filter
++ Fix match crystallogrpahy to deal with matrix phases, etc.
 + Remove all "under-the-hood" calls to other filters
 + Add filter to set the Origin, Resolution of the voxel data container( Basically change the meta data with out needing to change any of the data)
 + write-up contributors section for website
