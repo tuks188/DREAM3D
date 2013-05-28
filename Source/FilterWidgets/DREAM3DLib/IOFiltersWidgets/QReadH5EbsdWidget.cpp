@@ -46,6 +46,7 @@
 
 #include "QtSupport/QR3DFileCompleter.h"
 #include "QtSupport/DREAM3DQtMacros.h"
+#include "QtSupport/DREAM3DHelpUrlGenerator.h"
 
 #include "DREAM3DLib/IOFiltersWidgets/moc_QReadH5EbsdWidget.cxx"
 
@@ -420,3 +421,11 @@ void QReadH5EbsdWidget::resetGuiFileInfoWidgets()
   m_ZMax->setText("xxx");
   m_RefFrameZDir->setText("xxx");
 }
+
+// -----------------------------------------------------------------------------
+void QReadH5EbsdWidget::openHtmlHelpFile()
+{
+  QString lowerFilter = QString("ReadH5Ebsd").toLower();
+  DREAM3DHelpUrlGenerator::generateAndOpenHTMLUrl(lowerFilter, this);
+}
+

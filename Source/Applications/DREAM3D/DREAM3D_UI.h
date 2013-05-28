@@ -86,14 +86,11 @@ class DREAM3D_UI : public QMainWindow, private Ui::DREAM3D_UI
     void on_actionExit_triggered();
     void on_actionOpen_Pipeline_2_triggered();
     void on_actionSave_Pipeline_2_triggered();
+    void on_action_CheckForUpdates_triggered();
 
-    void on_action_ShowPluginToolbar_toggled(bool state);
-
-    void on_action_IconText_toggled(bool state);
-    void on_action_IconOnly_toggled(bool state);
-    void on_action_TextOnly_toggled(bool state);
     void on_actionLicense_Information_triggered();
     void on_actionAbout_triggered();
+	void on_actionShow_User_Manual_triggered();
 
     /**
      * @brief Reads the Preferences from the users pref file
@@ -176,7 +173,11 @@ class DREAM3D_UI : public QMainWindow, private Ui::DREAM3D_UI
      * @param prefs
      */
     void writeWindowSettings(QSettings &prefs);
+
     void readWindowSettings(QSettings &prefs);
+
+    void readVersionCheckSettings(QSettings &prefs);
+    void writeVersionCheckSettings(QSettings &prefs);
 
     /**
      * @brief Initializes some of the GUI elements with selections or other GUI related items

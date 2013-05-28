@@ -56,6 +56,7 @@
 #include "QtSupport/QCheckboxDialog.h"
 #include "QtSupport/QR3DFileCompleter.h"
 #include "QtSupport/DREAM3DQtMacros.h"
+#include "QtSupport/DREAM3DHelpUrlGenerator.h"
 
 #include "QEbsdReferenceFrameDialog.h"
 
@@ -753,3 +754,12 @@ void QEbsdToH5EbsdWidget::m_findEbsdMaxSliceAndPrefix()
   //  this->m_ZStartIndex->setRange(minSlice, maxSlice);
   //  this->m_ZEndIndex->setRange(minSlice, maxSlice);
 }
+
+// -----------------------------------------------------------------------------
+void QEbsdToH5EbsdWidget::openHtmlHelpFile()
+{
+  QString lowerFilter = QString("EbsdToH5Ebsd").toLower();
+  DREAM3DHelpUrlGenerator::generateAndOpenHTMLUrl(lowerFilter, this);
+}
+
+

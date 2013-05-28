@@ -41,10 +41,6 @@
 #include "DREAM3DLib/Common/Constants.h"
 #include "DREAM3DLib/Common/IDataArray.h"
 
-#include "DREAM3DLib/OrientationOps/CubicOps.h"
-#include "DREAM3DLib/OrientationOps/HexagonalOps.h"
-#include "DREAM3DLib/OrientationOps/OrthoRhombicOps.h"
-
 const static float m_pi = static_cast<float>(M_PI);
 
 // -----------------------------------------------------------------------------
@@ -61,12 +57,8 @@ FindCellQuats::FindCellQuats() :
   m_CellEulerAngles(NULL),
   m_CrystalStructures(NULL)
 {
-  m_HexOps = HexagonalOps::New();
-  m_OrientationOps.push_back(m_HexOps.get());
-  m_CubicOps = CubicOps::New();
-  m_OrientationOps.push_back(m_CubicOps.get());
-  m_OrthoOps = OrthoRhombicOps::New();
-  m_OrientationOps.push_back(m_OrthoOps.get());
+  m_OrientationOps = OrientationMath::getOrientationOpsVector();
+  
 }
 
 // -----------------------------------------------------------------------------
@@ -75,10 +67,12 @@ FindCellQuats::FindCellQuats() :
 FindCellQuats::~FindCellQuats()
 {
 }
+
 // -----------------------------------------------------------------------------
 void FindCellQuats::writeFilterParameters(AbstractFilterParametersWriter* writer)
 {
 }
+
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
@@ -123,6 +117,7 @@ void FindCellQuats::execute()
     return;
   }
   setErrorCondition(0);
+  std::stringstream ss;
 
   int64_t totalPoints = m->getTotalPoints();
   size_t totalFields = m->getNumFieldTuples();
@@ -149,8 +144,22 @@ void FindCellQuats::execute()
     }
     else
     {
-      m_OrientationOps[m_CrystalStructures[phase]]->getFZQuat(qr);
-      OrientationMath::normalizeQuat(qr);
+      uint32_t xtalStruct = m_CrystalStructures[phase];
+      if (xtalStruct >= m_OrientationOps.size())
+      {
+        setErrorCondition(-55000);
+        ss.str("");
+        ss << "The value for the Crystal Structure is " << xtalStruct << " which is a value that is not understood by DREAM3D. The "
+        << "symmetry operations have not been implemented. Please report this to dream3d@bluequartz.net along with any data that you "
+        << "can provide.";
+        notifyErrorMessage(ss.str(), getErrorCondition());
+        return;
+      }
+      else
+      {
+        m_OrientationOps[m_CrystalStructures[phase]]->getFZQuat(qr);
+        OrientationMath::normalizeQuat(qr);
+      }
     }
 
     m_Quats[i*5 + 0] = 1.0f;

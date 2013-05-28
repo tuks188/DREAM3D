@@ -91,7 +91,7 @@ class QFilterWidgetFactory : public IFilterWidgetFactory
     std::string m_GroupName;
     std::string m_SubGroupName;
     std::string m_HumanName;
-    
+
     QFilterWidgetFactory(const QFilterWidgetFactory&); // Copy Constructor Not Implemented
     void operator=(const QFilterWidgetFactory&); // Operator '=' Not Implemented
 };

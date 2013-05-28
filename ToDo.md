@@ -5,15 +5,16 @@ This is the list of things to do. It is written with the Markdown style so it ca
 
 ## Show Stopping Bugs ##
 
-+ Fix EBSDLib to understand more Crystal Symmetries in TSL .ang files.
-+ Synthetic Microstructure generation tutorial needs to be updated with the additional filters that are required for Match Crystallography to work properly.
-+ Convert Hex to Square needs to create an output directory for the files as the default output files are not readily recognized by the Import Orientation data filter which is a break down of User interaction
++ OrientationOps classes need a redesign so that we don't crash when we hit an unknown or new crystal structure.
 
-## Critical to Fix before Bad Things Happen ##
+### Critical to Fix Before Bad Things Happen ###
+
 + All the shape ops classes need to be fully reentrant for parallel applications
 
 ### Groeber Documentation
 + Missing Documentation File for IOFilters/ImportImageStack
++ incorrect Documentation for Neighbor CI Correlation
++ incorrect Documentation for Neighbor Orientation Correlation
 
 ### Documentation ###
 
@@ -44,13 +45,26 @@ This is the list of things to do. It is written with the Markdown style so it ca
 + Add a filter to apply operations to the surface mesh such as moving the surface mesh in space coordinates
 
 
-## Joey K. Summer List ##
-+ When loading a Pipeline file detect any paths that are the wrong platform (C: on Unix) and offer to pick a new file
-+ Add a 'Rename Favorite' menu
-+ allow user to right-click on a favorite and "delete, rename, ..." the favorite
-+ allow user to right-click on a filter and display help in a separate window
+### Joey K. Summer List ###
+
++ Create a "TestFilter" that has one of every FilterParameter Type
+    - Create a new file in DREAM3DLib/GenericFilters/TestFilter.h & cpp
+    - Update the SourceList.cmake but make the filter "Private" by adding the filter to the \_PrivateFilters cmake variable.
+    - The actual source code you will need to implement the _setupFilterParameters()_ function. You can copy/paste from other filters to build up the list of every parameter type.
+    - This will make that when **FilterWidgetCodeGen** is run we are truly testing every type of parameter
++ Design protocol to check for updated Version of DREAM3D.
+    - Initial Skeleton Code Already Done.
+    - See DevelopmentNotes.md
++ Error messages returned from Pipeline should be hyperlinked to the filter docs. See DevelopmentNotes.md for more explanation
 + Create Dialog that contains prebuilt stats files for StatsGenerator users to select from
-+ Error messages that can contain HTTP hyperlinks that would take the user to what ever is suggested in the error message like a specific filter
++ Show Favorites or Prebuilt Pipelines in the OS X Finder or Windows Explorer
+    - Use QDesktopServices::openUrl(PATH_TO_FOLDER) and Qt will figure out the proper thing to do
++ Append a favorite to a pipeline that is already built up in the PipelineView widget
++ When loading a Pipeline file detect any paths that are the wrong platform (C: on Unix) and offer to pick a new file
++ Import Pipeline from a .dream3d file
+    - Add ability to append to pipeline folder in .dream3d file when starting a new pipeline with the read dream3d filter
+
+
 
 
 ## Statistics/Analysis/Other Algorithms ##
@@ -68,7 +82,6 @@ This is the list of things to do. It is written with the Markdown style so it ca
 + Look into using 2-pt statistics to advance the packing algorithms in the synthetic builder
 + Add a filter to calculate Kearn's number
 + Look into matching the Kearn's number when matching cystallography in the synthetic builder
-+ Add a cleanup filter that considers the orientation (nearest) or kikuchi pattern of neighboring voxels when assigning bad voxels
 + Add GBCD calculation filters from G. Rohrer
 + Add a filter to calculate 'clustering' statistics on 'marked' features
 + Modify ODF/PF generation in stats generator to better combine random baseline with user inputs (also degree/radian checkbox)
@@ -96,14 +109,12 @@ This is the list of things to do. It is written with the Markdown style so it ca
 + Add checks in MinSize and MinNeighbor filters to exit gracefully if minimum is larger than largest grain/num neighbors
 + Add in Xdmf wrapper for H5Ebsd so they can be easily viewed in ParaView
 + On the raw binary reader allow user to optionally over ride the origin and spacing values with the entries in the filter.
-+ Create a Parameter Type that suggests Internal Array names but allows the user to type their own array name
 + Create filter to generate Abaqus input files, Albert Cerrone or Curt Bronkhorst to help with this
 + Write program to read in Pipeline Files on the command line
 + Writing NonConformal Surface Mesh does not take into account values whose sign is dependent on the winding of the triangle.
+    + Add in the HyperSlabArray class to use for some of the SurfaceMeshing Triangle/Node data
 + Sometimes dragging a filter from the filter list to the PipelineView area will cause a crash.
 + Filter that can execute any program on the users computer
-+ Add in the HyperSlabArray class to use for some of the SurfaceMeshing Triangle/Node data
-+ Add ability to append to pipeline folder in .dream3d file when starting a new pipeline with the read dream3d filter
 + Look into creating multiple maps at each level (i.e. parent and grain filed maps)
 + Create filter to generate surface mesh from volume mesh
 + Design protocol to learn user's 'ontology'
@@ -153,6 +164,18 @@ This is the list of things to do. It is written with the Markdown style so it ca
 
 ## Items Completed ##
 
++ Add the "Show User Manual" to the "Help" menu.
++ Create Helper Class in QtSupport that generates the proper URL to open an html file in the users browser since this code is reused all over the place.
++ Add a cleanup filter that considers the orientation of neighboring voxels when assigning bad voxels
++ Add TSL Neighbor CI correlation clean up filter
++ Add TSL Neighbor Orientation correlation clean up filter
++ Right-click on filter in the **Filter List** and display the help for that filter
++ Right click on FilterWidget title area and have context menu (Show Help, Remove, etc)
++ HexToSquare Convertor changed to put the "Sqr_" as a prefix on the new files instead of a suffix which allows the files to be more easily recognized by the "ImportOrientationData" filter.
++ Fix EBSDLib to understand more Crystal Symmetries in TSL .ang files.
++ Synthetic Microstructure generation tutorial needs to be updated with the additional filters that are required for Match Crystallography to work properly.
++ Add a 'Rename Favorite' menu
++ Allow user to right-click on a favorite and "delete, rename, ..." the favorite
 + Make reading of the "Categories" a non fatal error from the H5Ebsd file as TSL Combo Scans do not include this header.
 + AutoScroll PipelineView when dragging a filter widget
 + Add filter to calculate triangle areas

@@ -58,7 +58,7 @@ class CalculateGBCDImpl
     DREAM3D::SurfaceMesh::VertListPointer_t m_Nodes;
     DREAM3D::SurfaceMesh::FaceListPointer_t m_Triangles;
     int32_t* m_Labels;
-    double* m_Normals;
+    //double* m_Normals;
     double* m_Areas;
     int32_t* m_Phases;
     float* m_Quats;
@@ -68,7 +68,7 @@ class CalculateGBCDImpl
     int* m_GBCDsizes;
     float* m_GBCDlimits;
     unsigned int* m_CrystalStructures;
-    std::vector<OrientationMath*> m_OrientationOps;
+    std::vector<OrientationMath::Pointer> m_OrientationOps;
     CubicOps::Pointer m_CubicOps;
     HexagonalOps::Pointer m_HexOps;
     OrthoRhombicOps::Pointer m_OrthoOps;
@@ -81,7 +81,7 @@ class CalculateGBCDImpl
       m_Nodes(nodes),
       m_Triangles(triangles),
       m_Labels(Labels),
-      m_Normals(Normals),
+    //  m_Normals(Normals),
       m_Areas(Areas),
       m_Phases(Phases),
       m_Quats(Quats),
@@ -92,14 +92,7 @@ class CalculateGBCDImpl
       m_GBCDlimits(GBCDlimits),
       m_CrystalStructures(CrystalStructures)
     {
-      m_HexOps = HexagonalOps::New();
-      m_OrientationOps.push_back(dynamic_cast<OrientationMath*>(m_HexOps.get()));
-
-      m_CubicOps = CubicOps::New();
-      m_OrientationOps.push_back(dynamic_cast<OrientationMath*>(m_CubicOps.get()));
-
-      m_OrthoOps = OrthoRhombicOps::New();
-      m_OrientationOps.push_back(dynamic_cast<OrientationMath*>(m_OrthoOps.get()));
+    m_OrientationOps = OrientationMath::getOrientationOpsVector();
     }
     virtual ~CalculateGBCDImpl(){}
 
@@ -252,7 +245,7 @@ FindGBCD::FindGBCD() :
   m_SurfaceMeshFaceLabelsArrayName(DREAM3D::FaceData::SurfaceMeshFaceLabels),
   m_SurfaceMeshFaceAreasArrayName(DREAM3D::FaceData::SurfaceMeshFaceAreas),
   m_SurfaceMeshFaceNormalsArrayName(DREAM3D::FaceData::SurfaceMeshFaceNormals),
-  m_AvgQuatsArrayName(DREAM3D::FieldData::EulerAngles),
+  m_AvgQuatsArrayName(DREAM3D::FieldData::AvgQuats),
   m_FieldPhasesArrayName(DREAM3D::FieldData::Phases),
   m_CrystalStructuresArrayName(DREAM3D::EnsembleData::CrystalStructures),
   m_SurfaceMeshFaceAreas(NULL),
@@ -405,11 +398,32 @@ void FindGBCD::execute()
 
   dataCheckVoxel(false, 0, totalFields, totalEnsembles);
 
-  float* m_GBCD;
-  float* m_GBCDcount;
-  float* m_GBCDdeltas;
-  int* m_GBCDsizes;
-  float* m_GBCDlimits;
+  FloatArrayType::Pointer gbcdArray = FloatArrayType::NullPointer();
+  FloatArrayType::Pointer gbcdCountArray = FloatArrayType::NullPointer();
+  FloatArrayType::Pointer gbcdDeltasArray = FloatArrayType::NullPointer();
+  FloatArrayType::Pointer gbcdLimitsArray = FloatArrayType::NullPointer();
+  Int32ArrayType::Pointer gbcdSizesArray = Int32ArrayType::NullPointer();
+  gbcdArray = FloatArrayType::CreateArray(36*18*36*36*18*36, "GBCD");
+  gbcdArray->SetNumberOfComponents(1);
+  gbcdArray->initializeWithZeros();
+  gbcdCountArray = FloatArrayType::CreateArray(36*18*36*36*18*36, "GBCDCount");
+  gbcdCountArray->SetNumberOfComponents(1);
+  gbcdCountArray->initializeWithZeros();
+  gbcdDeltasArray = FloatArrayType::CreateArray(5, "GBCDDeltas");
+  gbcdDeltasArray->SetNumberOfComponents(1);
+  gbcdDeltasArray->initializeWithZeros();
+  gbcdLimitsArray = FloatArrayType::CreateArray(10, "GBCDLimits");
+  gbcdLimitsArray->SetNumberOfComponents(1);
+  gbcdLimitsArray->initializeWithZeros();
+  gbcdSizesArray = Int32ArrayType::CreateArray(5, "GBCDSizes");
+  gbcdSizesArray->SetNumberOfComponents(1);
+  gbcdSizesArray->initializeWithZeros();
+  float* m_GBCD = gbcdArray->GetPointer(0);
+  float* m_GBCDcount = gbcdCountArray->GetPointer(0);
+  float* m_GBCDdeltas = gbcdDeltasArray->GetPointer(0);
+  int* m_GBCDsizes = gbcdSizesArray->GetPointer(0);
+  float* m_GBCDlimits = gbcdLimitsArray->GetPointer(0);
+
 
 #ifdef DREAM3D_USE_PARALLEL_ALGORITHMS
   if (doParallel == true)

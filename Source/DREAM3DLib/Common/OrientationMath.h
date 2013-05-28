@@ -33,6 +33,8 @@
 #ifndef _OrientationMath_H_
 #define _OrientationMath_H_
 
+#include <vector>
+
 #include "MXA/Common/MXASetGetMacros.h"
 #include "DREAM3DLib/DREAM3DLib.h"
 #include "DREAM3DLib/Common/Constants.h"
@@ -40,10 +42,12 @@
 #include "DREAM3DLib/Common/DREAM3DMath.h"
 #include "DREAM3DLib/Common/MatrixMath.h"
 
+
+// Here the order of multiplication is q1*q2 not q2*q1
 #define MULT_QUAT(q1, q2, out)\
-    out[1] = q2[4] * q1[1] + q2[1] * q1[4] + q2[3] * q1[2] - q2[2] * q1[3];\
-    out[2] = q2[4] * q1[2] + q2[2] * q1[4] + q2[1] * q1[3] - q2[3] * q1[1];\
-    out[3] = q2[4] * q1[3] + q2[3] * q1[4] + q2[2] * q1[1] - q2[1] * q1[2];\
+    out[1] = q2[1] * q1[4] + q2[4] * q1[1] + q2[3] * q1[2] - q2[2] * q1[3];\
+    out[2] = q2[2] * q1[4] - q2[3] * q1[1] + q2[4] * q1[2] + q2[1] * q1[3];\
+    out[3] = q2[3] * q1[4] + q2[2] * q1[1] - q2[1] * q1[2] + q2[4] * q1[3];\
     out[4] = q2[4] * q1[4] - q2[1] * q1[1] - q2[2] * q1[2] - q2[3] * q1[3];\
 
 
@@ -74,8 +78,8 @@ class DREAM3DLib_EXPORT OrientationMath
     virtual int getODFSize() = 0;
     virtual int getMDFSize() = 0;
     virtual int getNumSymOps() = 0;
-	
-	virtual float getMisoQuat(float q1[5], float q2[5], float &n1, float &n2, float &n3) = 0;
+
+    virtual float getMisoQuat(float q1[5], float q2[5], float &n1, float &n2, float &n3) = 0;
     virtual void getQuatSymOp(int i, float *q) = 0;
     virtual void getRodSymOp(int i, float *r) = 0;
     virtual void getODFFZRod(float &r1, float &r2, float &r3) = 0;
@@ -92,6 +96,7 @@ class DREAM3DLib_EXPORT OrientationMath
     virtual void getF1spt(float q1[5], float q2[5], float LD[3], bool maxSF, float &F1spt) = 0;
     virtual void getF7(float q1[5], float q2[5], float LD[3], bool maxSF, float &F7) = 0;
 
+	static std::vector<OrientationMath::Pointer> getOrientationOpsVector();
     static void axisAngletoHomochoric(float w, float n1, float n2, float n3, float &r1, float &r2, float &r3);
     static void axisAngletoRod(float w, float n1, float n2, float n3, float &r1, float &r2, float &r3);
     static void axisAngletoMat(float w, float n1, float n2, float n3, float g[3][3]);

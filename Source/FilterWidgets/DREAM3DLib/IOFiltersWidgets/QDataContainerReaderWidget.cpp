@@ -39,6 +39,7 @@
 #include "QtSupport/QCheckboxDialog.h"
 #include "QtSupport/QR3DFileCompleter.h"
 #include "QtSupport/DREAM3DQtMacros.h"
+#include "QtSupport/DREAM3DHelpUrlGenerator.h"
 
 #include "H5Support/H5Utilities.h"
 #include "H5Support/H5Lite.h"
@@ -356,3 +357,10 @@ void QDataContainerReaderWidget::preflightDoneExecuting(VoxelDataContainer::Poin
 
 }
 
+
+// -----------------------------------------------------------------------------
+void QDataContainerReaderWidget::openHtmlHelpFile()
+{
+  QString lowerFilter = QString("DataContainerReader").toLower();
+  DREAM3DHelpUrlGenerator::generateAndOpenHTMLUrl(lowerFilter, this);
+}

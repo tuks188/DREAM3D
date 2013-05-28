@@ -46,10 +46,6 @@
 #include "DREAM3DLib/Common/DREAM3DRandom.h"
 #include "DREAM3DLib/Common/DataArray.hpp"
 
-#include "DREAM3DLib/OrientationOps/CubicOps.h"
-#include "DREAM3DLib/OrientationOps/HexagonalOps.h"
-#include "DREAM3DLib/OrientationOps/OrthoRhombicOps.h"
-
 #include "DREAM3DLib/GenericFilters/FindCellQuats.h"
 
 #define ERROR_TXT_OUT 1
@@ -81,12 +77,7 @@ m_CrystalStructures(NULL)
 {
   Seed = MXA::getMilliSeconds();
 
-  m_HexOps = HexagonalOps::New();
-  m_OrientationOps.push_back(m_HexOps.get());
-  m_CubicOps = CubicOps::New();
-  m_OrientationOps.push_back(m_CubicOps.get());
-  m_OrthoOps = OrthoRhombicOps::New();
-  m_OrientationOps.push_back(m_OrthoOps.get());
+  m_OrientationOps = OrientationMath::getOrientationOpsVector();
 
   graincounts = NULL;
   INIT_DataArray(m_GrainCounts, int);
@@ -447,7 +438,9 @@ void AlignSectionsMutualInformation::form_grains_sections()
   size_t size = 0;
   size_t initialVoxelsListSize = 1000;
 
-  graincounts = m_GrainCounts->WritePointer(0, dims[2]);
+  m_GrainCounts->SetNumberOfComponents(1);
+  m_GrainCounts->Resize(dims[2]);
+  graincounts = m_GrainCounts->GetPointer(0);
 
   std::vector<int> voxelslist(initialVoxelsListSize, -1);
   DimType neighpoints[4];

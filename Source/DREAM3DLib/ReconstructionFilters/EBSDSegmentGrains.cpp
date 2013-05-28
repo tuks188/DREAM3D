@@ -42,12 +42,7 @@
 
 #include "DREAM3DLib/Common/Constants.h"
 #include "DREAM3DLib/Common/DREAM3DMath.h"
-#include "DREAM3DLib/Common/OrientationMath.h"
 #include "DREAM3DLib/Common/DREAM3DRandom.h"
-
-#include "DREAM3DLib/OrientationOps/CubicOps.h"
-#include "DREAM3DLib/OrientationOps/HexagonalOps.h"
-#include "DREAM3DLib/OrientationOps/OrthoRhombicOps.h"
 
 #include "DREAM3DLib/GenericFilters/FindCellQuats.h"
 
@@ -83,12 +78,7 @@ m_GoodVoxels(NULL),
 m_Active(NULL),
 m_CrystalStructures(NULL)
 {
-  m_HexOps = HexagonalOps::New();
-  m_OrientationOps.push_back(m_HexOps.get());
-  m_CubicOps = CubicOps::New();
-  m_OrientationOps.push_back(m_CubicOps.get());
-  m_OrthoOps = OrthoRhombicOps::New();
-  m_OrientationOps.push_back(m_OrthoOps.get());
+  m_OrientationOps = OrientationMath::getOrientationOpsVector();
 
   setupFilterParameters();
 }
@@ -326,6 +316,7 @@ bool EBSDSegmentGrains::determineGrouping(int referencepoint, int neighborpoint,
     q2[2] = m_Quats[neighborpoint*5 + 2];
     q2[3] = m_Quats[neighborpoint*5 + 3];
     q2[4] = m_Quats[neighborpoint*5 + 4];
+
 
 //	  if (phase1 == phase2 && m_GoodVoxels[referencepoint] == true && m_GoodVoxels[neighborpoint] == true) w = m_OrientationOps[phase1]->getMisoQuat( q1, q2, n1, n2, n3);
     if (m_CellPhases[referencepoint] == m_CellPhases[neighborpoint]) w = m_OrientationOps[phase1]->getMisoQuat( q1, q2, n1, n2, n3);

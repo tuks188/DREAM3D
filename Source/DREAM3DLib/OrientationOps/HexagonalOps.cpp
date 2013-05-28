@@ -96,7 +96,7 @@ HexagonalOps::~HexagonalOps()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-float HexagonalOps::_calcMisoQuat(const float quatsym[24][5], int numsym,
+float HexagonalOps::_calcMisoQuat(const float quatsym[12][5], int numsym,
                                       float q1[5], float q2[5],
                                       float &n1, float &n2, float &n3)
 {
@@ -109,10 +109,11 @@ float HexagonalOps::_calcMisoQuat(const float quatsym[24][5], int numsym,
   float qc[5];
 // float temp;
 
-  qr[1] = -q1[1] * q2[4] + q1[4] * q2[1] - q1[2] * q2[3] + q1[3] * q2[2];
-  qr[2] = -q1[2] * q2[4] + q1[4] * q2[2] - q1[3] * q2[1] + q1[1] * q2[3];
-  qr[3] = -q1[3] * q2[4] + q1[4] * q2[3] - q1[1] * q2[2] + q1[2] * q2[1];
-  qr[4] = -q1[4] * q2[4] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3];
+  for(int m=1; m < 4; m++)
+  {
+    q1[m] *= -1.0; //inverse q1
+  }
+  MULT_QUAT(q1, q2, qr)
   for (int i = 0; i < numsym; i++)
   {
     //  OrientationMath::multiplyQuaternions(qr, quatsym[i], qc);
@@ -155,11 +156,11 @@ float HexagonalOps::getMisoQuat( float q1[5],float q2[5],float &n1,float &n2,flo
 
 void HexagonalOps::getQuatSymOp(int i,float *q)
 {
-  //q[0] = CubicQuatSym[i][0];
-  //q[1] = CubicQuatSym[i][1];
-  //q[2] = CubicQuatSym[i][2];
-  //q[3] = CubicQuatSym[i][3];
-  //q[4] = CubicQuatSym[i][4];
+  q[0] = HexQuatSym[i][0];
+  q[1] = HexQuatSym[i][1];
+  q[2] = HexQuatSym[i][2];
+  q[3] = HexQuatSym[i][3];
+  q[4] = HexQuatSym[i][4];
 }
 
 void HexagonalOps::getRodSymOp(int i,float *r)

@@ -56,6 +56,7 @@
 #include "QtSupport/QCheckboxDialog.h"
 #include "QtSupport/QR3DFileCompleter.h"
 #include "QtSupport/DREAM3DQtMacros.h"
+#include "QtSupport/DREAM3DHelpUrlGenerator.h"
 
 #include "DREAM3DLib/SamplingFiltersWidgets/moc_QHex2SqrConverterWidget.cxx"
 
@@ -544,3 +545,13 @@ void QHex2SqrConverterWidget::m_findEbsdMaxSliceAndPrefix()
 //  this->m_ZStartIndex->setRange(minSlice, maxSlice);
 //  this->m_ZEndIndex->setRange(minSlice, maxSlice);
 }
+
+
+// -----------------------------------------------------------------------------
+void QHex2SqrConverterWidget::openHtmlHelpFile()
+{
+  QString lowerFilter = QString("Hex2SqrConverter").toLower();
+  DREAM3DHelpUrlGenerator::generateAndOpenHTMLUrl(lowerFilter, this);
+}
+
+

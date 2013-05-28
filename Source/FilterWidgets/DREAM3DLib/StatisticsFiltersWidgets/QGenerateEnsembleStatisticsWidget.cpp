@@ -36,8 +36,11 @@
 
 #include "QGenerateEnsembleStatisticsWidget.h"
 
+#include <QtCore/QDir>
+
 #include "QtSupport/DREAM3DQtMacros.h"
 #include "QtSupport/DistributionTypeWidget.h"
+#include "QtSupport/DREAM3DHelpUrlGenerator.h"
 
 #include "DREAM3DLib/Common/PhaseType.h"
 
@@ -107,7 +110,7 @@ AbstractFilter::Pointer QGenerateEnsembleStatisticsWidget::getFilter()
 
     int count = phaseTypeTableWidget->rowCount();
     std::vector<unsigned int> phaseTypes;
-	phaseTypes.push_back(DREAM3D::PhaseType::UnknownPhaseType);
+  phaseTypes.push_back(DREAM3D::PhaseType::UnknownPhaseType);
     for(int r = 0; r < count; ++r)
     {
       QWidget* w = phaseTypeTableWidget->cellWidget(r, 0);
@@ -175,7 +178,7 @@ void QGenerateEnsembleStatisticsWidget::readOptions(QSettings &prefs)
   bool ok;
   qint32 i;
 
-	// Read the values back from the prefs and set them into the DistributionTypeWidgets
+  // Read the values back from the prefs and set them into the DistributionTypeWidgets
   READ_CHECKBOX_SETTING(prefs, calc, SizeDistribution, false)
   READ_COMBO_BOX(prefs, m_, SizeDistributionFitType)
 
@@ -338,4 +341,12 @@ void QGenerateEnsembleStatisticsWidget::on_removePhaseType_clicked()
   emit parametersChanged();
 }
 
+
+
+// -----------------------------------------------------------------------------
+void QGenerateEnsembleStatisticsWidget::openHtmlHelpFile()
+{
+  QString lowerFilter = QString("GenerateEnsembleStatistics").toLower();
+  DREAM3DHelpUrlGenerator::generateAndOpenHTMLUrl(lowerFilter, this);
+}
 

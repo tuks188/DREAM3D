@@ -44,6 +44,7 @@
 #include <QtCore/QUrl>
 #include <QtCore/QThread>
 #include <QtCore/QFileInfoList>
+#include <QtCore/QDateTime>
 
 
 
@@ -57,6 +58,8 @@
 //-- DREAM3D Includes
 #include "DREAM3DLib/Common/Constants.h"
 #include "DREAM3DLib/DREAM3DVersion.h"
+
+
 #include "QtSupport/ApplicationAboutBoxDialog.h"
 #include "QtSupport/QRecentFileList.h"
 #include "QtSupport/QR3DFileCompleter.h"
@@ -64,12 +67,22 @@
 #include "QtSupport/DREAM3DPluginFrame.h"
 #include "QtSupport/DREAM3DPluginInterface.h"
 #include "QtSupport/HelpDialog.h"
+#include "QtSupport/DREAM3DUpdateCheckDialog.h"
+#include "QtSupport/DREAM3DHelpUrlGenerator.h"
+
 #include "PipelineBuilder/PipelineBuilderWidget.h"
+
 #include "FilterWidgets/FilterWidgetsLib.h"
 
 #include "DREAM3D/License/DREAM3DLicenseFiles.h"
 
-#include "DREAM3DUpdateCheck.h"
+namespace Detail
+{
+  static const QString VersionCheckGroupName("VersionCheck");
+  static const QString LastVersionCheck("LastVersionCheck");
+  static const QString WhenToCheck("WhenToCheck");
+  static const QString UpdateWebSite("http://dream3d.bluequartz.net/version.txt");
+}
 
 // -----------------------------------------------------------------------------
 //
@@ -137,9 +150,9 @@ void DREAM3D_UI::on_actionExit_triggered()
 //
 // -----------------------------------------------------------------------------
 void DREAM3D_UI::on_actionOpen_Pipeline_2_triggered() {
-  QString file = QFileDialog::getOpenFileName(m_PipelineBuilderWidget, tr("Select Settings File"),
+  QString file = QFileDialog::getOpenFileName(m_PipelineBuilderWidget, tr("Select Pipeline File"),
     m_PipelineBuilderWidget->getLastDirectory(),
-    tr("Settings File (*.txt)") );
+    tr("Pipeline File (*.txt *.ini)") );
   if ( true == file.isEmpty() ) { return; }
   m_PipelineBuilderWidget->openPipelineFile(file);
 }
@@ -148,10 +161,10 @@ void DREAM3D_UI::on_actionOpen_Pipeline_2_triggered() {
 //
 // -----------------------------------------------------------------------------
 void DREAM3D_UI::on_actionSave_Pipeline_2_triggered() {
-  QString proposedFile = m_PipelineBuilderWidget->getLastDirectory() + QDir::separator() + "UntitledPipeline.txt";
-  QString filePath = QFileDialog::getSaveFileName(this, tr("Save PipelineBuilder Settings"),
+  QString proposedFile = m_PipelineBuilderWidget->getLastDirectory() + QDir::separator() + "Untitled.txt";
+  QString filePath = QFileDialog::getSaveFileName(this, tr("Save Pipeline To File"),
     proposedFile,
-    tr("*.txt") );
+    tr("Pipeline File (*.txt *.ini)") );
   if ( true == filePath.isEmpty() ) { return; }
 
   //If the filePath already exists - delete it so that we get a clean write to the file
@@ -198,6 +211,21 @@ void DREAM3D_UI::readSettings()
   // Have the PipelineBuilder Widget read its settings
   m_PipelineBuilderWidget->readSettings(prefs);
   readWindowSettings(prefs);
+
+  readVersionCheckSettings(prefs);
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void DREAM3D_UI::readVersionCheckSettings(QSettings &prefs)
+{
+   // So the idea here may be to read the values, figure out if we should check the version
+   // against the server, if we DO need to check the version then Reuse the DREAM3DUpdateCheckDialog code
+   // to do the check and if the check comes back that we need to update then pop open the dialog box?
+   // We could also separate out the codes that do the actual checking from the  DREAM3DUpdateCheckDialog
+   // class so we can reuse those codes here?
+
 }
 
 // -----------------------------------------------------------------------------
@@ -237,21 +265,28 @@ void DREAM3D_UI::writeSettings()
   QSettings prefs(QSettings::IniFormat, QSettings::UserScope, QCoreApplication::organizationDomain(), QCoreApplication::applicationName());
 #endif
 
-//  if (m_ActivePlugin != NULL) {
-//    prefs.setValue("ActivePlugin" , this->m_ActivePlugin->getPluginName());
-//  }
-//
-//
-//  foreach (DREAM3DPluginInterface* plugin, m_LoadedPlugins) {
-//    plugin->writeSettings(prefs);
-//  }
-
   // Have the pipeline builder write its settings to the prefs file
   m_PipelineBuilderWidget->writeSettings(prefs);
 
   writeWindowSettings(prefs);
-//  prefs.setValue("PluginDisplay", this->m_PluginToolBar->toolButtonStyle());
+
+  writeVersionCheckSettings(prefs);
+
 }
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void DREAM3D_UI::writeVersionCheckSettings(QSettings &prefs)
+{
+   // In this function we are going to have to first see if the settings are even in the
+   // file (this would occur on the very first launch of DREAM3D). If they are not then
+   // set Manual as the default.
+   // If the settings are already in the file then we don't write anything because we don't
+   // want to over write anything.
+
+}
+
 
 // -----------------------------------------------------------------------------
 //
@@ -292,9 +327,8 @@ void DREAM3D_UI::setupGui()
  // Q_INIT_RESOURCE(Generated_FilterDocs);
 
   // Now create our central widget
-  m_PipelineBuilderWidget = new PipelineBuilderWidget(this);
+  m_PipelineBuilderWidget = new PipelineBuilderWidget(this->menuPipeline, this);
   m_PipelineBuilderWidget->setStatusBar(this->statusBar());
-  m_PipelineBuilderWidget->setPipelineMenu(this->menuPipeline);
   centerWidget->layout()->addWidget(m_PipelineBuilderWidget);
 
   connect(m_PipelineBuilderWidget, SIGNAL(fireWriteSettings()),
@@ -308,55 +342,6 @@ void DREAM3D_UI::setupGui()
 
   QKeySequence actionSaveKeySeq(Qt::CTRL + Qt::Key_S);
   actionSave_Pipeline_2->setShortcut(actionSaveKeySeq);
-
-#if 0
-  m_UpdateCheckThread = new QThread(); // Create a new Thread Resource
-  m_UpdateCheck = new DREAM3DUpdateCheck(NULL);
-  m_UpdateCheck->moveToThread(m_UpdateCheckThread);
-    // When the thread starts its event loop, start the PipelineBuilder going
-  connect(m_UpdateCheckThread, SIGNAL(started()),
-          m_UpdateCheck, SLOT(checkVersion()));
-
-  // When the PipelineBuilder ends then tell the QThread to stop its event loop
-  connect(m_UpdateCheck, SIGNAL(finished() ),
-          m_UpdateCheckThread, SLOT(quit()) );
-
-  connect(m_UpdateCheck, SIGNAL(hasMessage(const QString&)),
-          this, SLOT(threadHasMessage(const QString)));
-  m_UpdateCheckThread->start();
-  #endif
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void DREAM3D_UI::on_action_ShowPluginToolbar_toggled(bool state )
-{
-  m_PluginToolBar->setVisible(state);
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void DREAM3D_UI::on_action_IconText_toggled(bool state)
-{
-  m_PluginToolBar->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void DREAM3D_UI::on_action_IconOnly_toggled(bool state)
-{
-  m_PluginToolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void DREAM3D_UI::on_action_TextOnly_toggled(bool state)
-{
-  m_PluginToolBar->setToolButtonStyle(Qt::ToolButtonTextOnly);
 }
 
 // -----------------------------------------------------------------------------
@@ -367,6 +352,37 @@ void DREAM3D_UI::setWidgetListEnabled(bool b)
   foreach (QWidget* w, m_WidgetList) {
     w->setEnabled(b);
   }
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void DREAM3D_UI::on_action_CheckForUpdates_triggered()
+{
+  DREAM3DUpdateCheckDialog d;
+  d.setCurrentVersion(QString::fromStdString(DREAM3DLib::Version::Complete()));
+  d.setUpdateWebSite(Detail::UpdateWebSite);
+  d.setApplicationName("DREAM3D");
+
+  // Read from the QSettings Pref file the information that we need
+  #if defined (Q_OS_MAC)
+  QSettings prefs(QSettings::NativeFormat, QSettings::UserScope, QCoreApplication::organizationDomain(), QCoreApplication::applicationName());
+#else
+  QSettings prefs(QSettings::IniFormat, QSettings::UserScope, QCoreApplication::organizationDomain(), QCoreApplication::applicationName());
+#endif
+  prefs.beginGroup(Detail::VersionCheckGroupName);
+  QDateTime dateTime = prefs.value(Detail::LastVersionCheck, QDateTime::currentDateTime()).toDateTime();
+  d.setLastCheckDateTime(dateTime);
+
+  DREAM3DUpdateCheckDialog::UpdateType whenToCheck = static_cast<DREAM3DUpdateCheckDialog::UpdateType>(prefs.value(Detail::WhenToCheck, DREAM3DUpdateCheckDialog::UpdateCheckManual).toUInt());
+  d.setWhenToCheck(whenToCheck);
+  prefs.endGroup();
+
+  // Now display the dialog box
+  d.exec();
+
+  // Now pull any new values from the dialog and push back into the prefs
+
 }
 
 // -----------------------------------------------------------------------------
@@ -735,4 +751,12 @@ void DREAM3D_UI::on_actionLicense_Information_triggered()
   version.append(DREAM3DLib::Version::PackageComplete().c_str());
   about.setApplicationInfo(an, version);
   about.exec();
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void DREAM3D_UI::on_actionShow_User_Manual_triggered()
+{
+	DREAM3DHelpUrlGenerator::generateAndOpenHTMLUrl("index", this);
 }

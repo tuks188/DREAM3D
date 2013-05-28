@@ -61,6 +61,7 @@
 
 #include "QtSupport/QR3DFileCompleter.h"
 #include "QtSupport/DREAM3DQtMacros.h"
+#include "QtSupport/DREAM3DHelpUrlGenerator.h"
 
 #include "DREAM3DLib/SyntheticBuildingFiltersWidgets/moc_QInitializeSyntheticVolumeWidget.cxx"
 
@@ -566,4 +567,10 @@ void QInitializeSyntheticVolumeWidget::writeOptions(QSettings &prefs)
 
 }
 
+// -----------------------------------------------------------------------------
+void QInitializeSyntheticVolumeWidget::openHtmlHelpFile()
+{
+  QString lowerFilter = QString("InitializeSyntheticVolume").toLower();
+  DREAM3DHelpUrlGenerator::generateAndOpenHTMLUrl(lowerFilter, this);
+}
 

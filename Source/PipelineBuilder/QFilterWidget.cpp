@@ -58,10 +58,13 @@
 #include <QtGui/QPushButton>
 #include <QtGui/QFileDialog>
 #include <QtGui/QMouseEvent>
+#include <QtGui/QDesktopServices>
+#include <QtGui/QMessageBox>
 
 
 #include "QtSupport/QR3DFileCompleter.h"
 #include "QtSupport/QFSDropLineEdit.h"
+#include "QtSupport/DREAM3DHelpUrlGenerator.h"
 
 
 #include "ArraySelectionWidget.h"
@@ -97,7 +100,8 @@ QFilterWidget::QFilterWidget(QWidget* parent) :
   m_BorderIncrement(16),
   m_IsSelected(false),
   m_HasPreflightErrors(false),
-  m_HasPreflightWarnings(false)
+  m_HasPreflightWarnings(false),
+  m_FilterMenu(this)
 {
   qRegisterMetaType<IntVec3Widget_t>("IntVec3Widget_t");
   qRegisterMetaTypeStreamOperators<IntVec3Widget_t>("IntVec3Widget_t");
@@ -110,12 +114,21 @@ QFilterWidget::QFilterWidget(QWidget* parent) :
     m_OpenDialogLastDirectory = QDir::homePath();
   }
 
+  // Initialize right-click menu
+  initFilterMenu();
+
   m_DeleteRect.setX(PADDING + BORDER);
   m_DeleteRect.setY(PADDING + BORDER);
   m_DeleteRect.setWidth(IMAGE_WIDTH);
   m_DeleteRect.setHeight(IMAGE_HEIGHT);
   m_timer = new QTimer(this);
   connect(m_timer, SIGNAL(timeout()), this, SLOT(changeStyle()));
+
+  setContextMenuPolicy(Qt::CustomContextMenu);
+
+  connect(this,
+    SIGNAL(customContextMenuRequested(const QPoint&)),
+    SLOT(onCustomContextMenuRequested(const QPoint&)));
 }
 
 // -----------------------------------------------------------------------------
@@ -123,6 +136,61 @@ QFilterWidget::QFilterWidget(QWidget* parent) :
 // -----------------------------------------------------------------------------
 QFilterWidget::~QFilterWidget()
 {
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void QFilterWidget::openHtmlHelpFile()
+{
+
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void QFilterWidget::onCustomContextMenuRequested(const QPoint& pos)
+{
+  m_FilterMenu.exec( mapToGlobal(pos) );
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void QFilterWidget::initFilterMenu()
+{
+  m_actionFilterHelp = new QAction(this);
+  m_actionFilterHelp->setObjectName(QString::fromUtf8("actionWidgetHelp"));
+  m_actionFilterHelp->setText(QApplication::translate("QFilterWidget", "Show Filter Help", 0, QApplication::UnicodeUTF8));
+  connect(m_actionFilterHelp, SIGNAL(triggered()),
+    this, SLOT( actionWidgetHelp_triggered() ) );
+  m_FilterMenu.addAction(m_actionFilterHelp);
+
+  m_FilterMenu.addSeparator();
+
+  m_actionRemoveFilter = new QAction(this);
+  m_actionRemoveFilter->setObjectName(QString::fromUtf8("actionRemoveFilter"));
+  m_actionRemoveFilter->setText(QApplication::translate("QFilterWidget", "Remove Filter", 0, QApplication::UnicodeUTF8));
+  connect(m_actionRemoveFilter, SIGNAL(triggered()),
+    this, SLOT( actionRemoveFilter_triggered() ) );
+  m_FilterMenu.addAction(m_actionRemoveFilter);
+
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void QFilterWidget::actionWidgetHelp_triggered()
+{
+	openHtmlHelpFile();
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void QFilterWidget::actionRemoveFilter_triggered()
+{
+  emit clicked(true);
 }
 
 // -----------------------------------------------------------------------------
@@ -454,9 +522,6 @@ void QFilterWidget::setupGui()
                         this, theSlot.toAscii());
       QObject::connect( fp, SIGNAL(textChanged(const QString &)),
                         this, theSlot.toAscii());
-      //      connect(fp, SIGNAL(textChanged(const QString &)),
-      //              this, SLOT(updateLineEdit(const QString &)));
-
       gridLayout->addWidget(fp, 0, 1, 1, 1);
 
       QPushButton* btn = new QPushButton("Select...");
@@ -603,6 +668,7 @@ void QFilterWidget::setupGui()
       if (NULL == choiceFilterParameter) { return; }
       frmLayout->setWidget(optIndex, QFormLayout::LabelRole, label);
       QComboBox* cb = new QComboBox(this);
+      cb->setEditable(choiceFilterParameter->getEditable());
       cb->setObjectName(QString::fromStdString(option->getPropertyName()));
       std::vector<std::string> choices = choiceFilterParameter->getChoices();
       for(unsigned int i = 0; i < choices.size(); ++i)
@@ -610,7 +676,17 @@ void QFilterWidget::setupGui()
         cb->addItem(QString::fromStdString(choices[i]));
       }
       frmLayout->setWidget(optIndex, QFormLayout::FieldRole, cb);
-      connect(cb, SIGNAL( currentIndexChanged(int)), this, SLOT(updateComboBoxValue(int)));
+      if (choiceFilterParameter->getValueType().compare("string") == 0
+          && choiceFilterParameter->getEditable() == true)
+      {
+        connect(cb, SIGNAL( editTextChanged ( const QString&  )), this, SLOT(updateArrayNameComboBoxValue(const QString&)));
+        connect(cb, SIGNAL( currentIndexChanged(int)), this, SLOT(updateArrayNameComboBoxValue(int)));
+      }
+      else
+      {
+        connect(cb, SIGNAL( currentIndexChanged(int)), this, SLOT(updateComboBoxValue(int)));
+      }
+
       QVariant v = property(option->getPropertyName().c_str());
       quint32 uintValue = v.toUInt(&ok);
       if (uintValue >= static_cast<quint32>(cb->count())  )
@@ -1249,6 +1325,26 @@ void QFilterWidget::updateArrayNameComboBoxValue(int v)
   {
     bool ok = false;
     QString text = cb->itemText(v);
+    ok = setProperty(whoSent->objectName().toStdString().c_str(), text);
+    if (true == ok) { }
+    else
+    {
+      std::cout << "QComboBox '" << title().toStdString() << "'Property: '" << whoSent->objectName().toStdString() << "' was NOT set." << std::endl;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void QFilterWidget::updateArrayNameComboBoxValue(const QString &text)
+{
+  QObject* whoSent = sender();
+  //  std::cout << "Filter: " << title().toStdString() << " Getting updated from whoSent Name: " << whoSent->objectName().toStdString() << std::endl;
+  QComboBox* cb = qobject_cast<QComboBox*>(whoSent);
+  if(cb)
+  {
+    bool ok = false;
     ok = setProperty(whoSent->objectName().toStdString().c_str(), text);
     if (true == ok) { }
     else
