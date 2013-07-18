@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
   sg1.setInputFile("Bar.txt");
 
   SegmentGrains sg2(sg0);
-  sg2.copy(sg1);
+  sg2.copyFrom(sg1);
 
   std::cout << "here" << std::endl;
 

@@ -37,7 +37,7 @@ class SegmentGrains
     DREAM3D_FILTER_PROPERTY_DECL(float, Misorientation)
     DREAM3D_FILTER_PROPERTY_DECL(QString, InputFile)
 
-    SegmentGrains copy(const SegmentGrains& rhs);
+    void copyFrom(const SegmentGrains& rhs);
 
   protected:
     QExplicitlySharedDataPointer<SegmentGrainsData> d_ptr;
