@@ -49,15 +49,19 @@ SegmentGrains::~SegmentGrains()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void SegmentGrains::copyInto(SegmentGrains& s)
+void SegmentGrains::deepCopy(SegmentGrains& s)
 {
-//  SegmentGrainsData* d = new SegmentGrainsData;
   s.d_ptr.detach();
-//  d->m_Misorientation = d_ptr->m_Misorientation;
-//  d->m_InputFile = d_ptr->m_InputFile;
-//  s.d_ptr = d;
+  s.d_ptr->m_Misorientation = d_ptr->m_Misorientation;
+  s.d_ptr->m_InputFile = d_ptr->m_InputFile;
 }
 
+SegmentGrains SegmentGrains::copy(const SegmentGrains& rhs)
+{
+
+
+
+}
 
 DREAM3D_FILTER_PROPERTY_DEFN(float, Misorientation, SegmentGrains)
 

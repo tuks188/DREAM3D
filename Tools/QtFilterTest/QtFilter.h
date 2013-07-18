@@ -32,18 +32,18 @@ class SegmentGrains
     SegmentGrains(const SegmentGrains &other);
     virtual ~SegmentGrains();
 
-    void copyInto(SegmentGrains& s);
+    void deepCopy(SegmentGrains& s);
 
     DREAM3D_FILTER_PROPERTY_DECL(float, Misorientation)
     DREAM3D_FILTER_PROPERTY_DECL(QString, InputFile)
 
-
+    SegmentGrains copy(const SegmentGrains& rhs);
 
   protected:
     QExplicitlySharedDataPointer<SegmentGrainsData> d_ptr;
 
-private:
-    void operator=(const SegmentGrains&); // Operator '=' Not Implemented
+//private:
+//    void operator=(const SegmentGrains&); // Operator '=' Not Implemented
 
 };
 

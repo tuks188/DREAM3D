@@ -45,14 +45,15 @@ int main(int argc, char *argv[])
   sg0.setMisorientation(1.0f);
   sg0.setInputFile(QString("/tmp/something.txt"));
 
-  SegmentGrains sg1 = sg0;
-  sg1.setMisorientation(10.0);
+  SegmentGrains sg1 = sg0; // Will always share the same data
+  sg1.setMisorientation(10.0); // this effects BOTH sg0 and sg1 objects
 
-  sg0.copyInto(sg1);
-
-
+  sg0.deepCopy(sg1);
   sg1.setMisorientation(-666);
+  sg1.setInputFile("Bar.txt");
 
+  SegmentGrains sg2(sg0);
+  sg2.copy(sg1);
 
   std::cout << "here" << std::endl;
 
