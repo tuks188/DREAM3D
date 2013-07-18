@@ -6,11 +6,12 @@
 class SegmentGrainsData : public QSharedData
 {
   public:
-    SegmentGrainsData() : QSharedData()
+    SegmentGrainsData()
+      : QSharedData(), m_Misorientation(0.0f), m_InputFile("Foo")
     { }
 
     SegmentGrainsData(const SegmentGrainsData &other)
-      : QSharedData(other)
+      : QSharedData(other), m_Misorientation(0.0f), m_InputFile("Foo")
     { }
 
     ~SegmentGrainsData() { }
@@ -35,6 +36,26 @@ SegmentGrains::SegmentGrains()
 SegmentGrains::SegmentGrains(const SegmentGrains &other)
   : d_ptr (other.d_ptr)
 {
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+SegmentGrains::~SegmentGrains()
+{
+
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void SegmentGrains::copyInto(SegmentGrains& s)
+{
+//  SegmentGrainsData* d = new SegmentGrainsData;
+  s.d_ptr.detach();
+//  d->m_Misorientation = d_ptr->m_Misorientation;
+//  d->m_InputFile = d_ptr->m_InputFile;
+//  s.d_ptr = d;
 }
 
 

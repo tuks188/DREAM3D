@@ -42,11 +42,16 @@ int main(int argc, char *argv[])
 
 
   SegmentGrains sg0;
-//  sg0.setMisorientation(1.0f);
-//  sg0.setInputFile(QString("/tmp/something.txt"));
+  sg0.setMisorientation(1.0f);
+  sg0.setInputFile(QString("/tmp/something.txt"));
 
-//  SegmentGrains sg1 = sg0;
+  SegmentGrains sg1 = sg0;
+  sg1.setMisorientation(10.0);
 
+  sg0.copyInto(sg1);
+
+
+  sg1.setMisorientation(-666);
 
 
   std::cout << "here" << std::endl;
