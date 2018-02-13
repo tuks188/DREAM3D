@@ -33,6 +33,7 @@ set(_PublicFilters
   FindVolFractions
   FitFeatureData
   GenerateEnsembleStatistics
+  FindGroupingDensity
 )
 
 
