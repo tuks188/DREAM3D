@@ -41,6 +41,7 @@ class StatsGenPlotWidget;
 class StatsGenODFWidget;
 class PrimaryStatsData;
 class PrecipitateStatsData;
+class QComboBox;
 
 /**
  * @brief The StatsGenFeatureSizeWidget class
@@ -195,6 +196,7 @@ public:
 
     }
   }
+  QComboBox* getDistributionTypeCombo();
 
 signals:
 
@@ -251,6 +253,8 @@ protected slots:
    * @brief userEditedPlotData
    */
   void userEditedPlotData();
+
+  virtual void on_distributionTypeCombo_currentIndexChanged(int index);
 
 private:
   QwtPlotCurve* m_SizeDistributionCurve = nullptr;

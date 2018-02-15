@@ -96,11 +96,13 @@ void StatsGenFeatureSizeWidget::setupGui()
 {
   QLocale loc = QLocale::system();
 
-  distributionTypeCombo->addItem(SIMPL::StringConstants::BetaDistribution.toLatin1().data());
+  getDistributionTypeCombo()->blockSignals(true);
   distributionTypeCombo->addItem(SIMPL::StringConstants::LogNormalDistribution.toLatin1().data());
-  distributionTypeCombo->addItem(SIMPL::StringConstants::PowerLawDistribution.toLatin1().data());
-  distributionTypeCombo->setCurrentIndex(SIMPL::DistributionType::LogNormal);
-  distributionTypeCombo->setVisible(false);
+  distributionTypeCombo->addItem(SIMPL::StringConstants::ParetoDistribution.toLatin1().data());
+  distributionTypeCombo->setCurrentIndex(0);
+  label_8->setVisible(false);
+  m_Xi_SizeDistribution->setVisible(false);
+  getDistributionTypeCombo()->blockSignals(false);
 
   m_MuValidator = new QDoubleValidator(m_Mu_SizeDistribution);
   m_MuValidator->setLocale(loc);
@@ -542,11 +544,29 @@ int StatsGenFeatureSizeWidget::computeBinsAndCutOffs(float mu, float sigma, floa
   int err = 0;
   int size = 250;
 
-  err = StatsGen::GenLogNormalPlotData<QwtArray<float>>(mu, sigma, x, y, size, minCutOff, maxCutOff);
-  if(err == 1)
+  QString disttype = distributionTypeCombo->currentText();
+
+  if (disttype == SIMPL::StringConstants::LogNormalDistribution)
   {
-    // TODO: Present Error Message
-    return -1;
+	  err = StatsGen::GenLogNormalPlotData<QwtArray<float>>(mu, sigma, x, y, size, minCutOff, maxCutOff);
+	  label_8->setVisible(false);
+	  m_Xi_SizeDistribution->setVisible(false);
+	  if (err == 1)
+	  {
+		  // TODO: Present Error Message
+		  return -1;
+	  }
+  }
+  else if (disttype == SIMPL::StringConstants::ParetoDistribution)
+  {
+	  err = StatsGen::GenParetoPlotData<QwtArray<float>>(mu, sigma, x, y, size, minCutOff, maxCutOff);
+	  label_8->setVisible(true);
+	  m_Xi_SizeDistribution->setVisible(true);
+	  if (err == 1)
+	  {
+		  // TODO: Present Error Message
+		  return -1;
+	  }
   }
 
   xMax = x.last();
@@ -847,7 +867,16 @@ int StatsGenFeatureSizeWidget::getStatisticsData(PrimaryStatsData* primaryStatsD
     d1->setValue(0, avglogdiam);
     d2->setValue(0, sdlogdiam);
     primaryStatsData->setFeatureSizeDistribution(data);
-    primaryStatsData->setFeatureSize_DistType(SIMPL::DistributionType::LogNormal);
+
+	QString disttype = distributionTypeCombo->currentText();
+	if (disttype == SIMPL::StringConstants::LogNormalDistribution)
+	{
+		primaryStatsData->setFeatureSize_DistType(SIMPL::DistributionType::LogNormal);
+	}
+	else if (disttype == SIMPL::StringConstants::ParetoDistribution)
+	{
+		primaryStatsData->setFeatureSize_DistType(SIMPL::DistributionType::Pareto);
+	}
   }
 
   return err;
@@ -928,3 +957,31 @@ float StatsGenFeatureSizeWidget::getBinStep()
   return f;
 }
 
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+QComboBox* StatsGenFeatureSizeWidget::getDistributionTypeCombo()
+{
+	return distributionTypeCombo;
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void StatsGenFeatureSizeWidget::on_distributionTypeCombo_currentIndexChanged(int index)
+{
+	Q_UNUSED(index)
+		if (!validateMuSigma())
+		{
+			return;
+		}
+	if (updateSizeDistributionPlot() < 0)
+	{
+		return;
+	}
+	if (calculateNumberOfBins() < 0)
+	{
+		return;
+	}
+	emit dataChanged();
+}

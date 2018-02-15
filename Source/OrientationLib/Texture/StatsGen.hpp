@@ -154,8 +154,10 @@ public:
       {
 	  int err = 0;
 	  float max, min;
-	  float stdDevSqr2 = sigma * sigma * 2.0f;
-	  float root2pi = powf((float)(M_2PI), 0.5);
+	  float xi = 1.0f;
+	  float oneOverSigma = 1 / sigma;
+	  float insideExpTerm = -(1 / (xi + 1));
+	  float expTerm = exp(insideExpTerm);
 	  x.resize(size);
 	  y.resize(size);
 	  min = exp(mu - (minCutOff * sigma));
@@ -166,13 +168,12 @@ public:
 
 	  for (int i = 0; i < size; i++)
 	  {
-		  float logNormIn = (i * mmSize) + mmSizeOver2 + min;
-		  float expTerm = log(logNormIn) - mu;
-		  expTerm = expTerm * expTerm;
-		  float logNormOut = (1.0 / (logNormIn * sigma * root2pi)) * exp(-(expTerm / stdDevSqr2));
-		  x[i] = logNormIn;
-		  y[i] = logNormOut * mmSize;
-		  if (logNormOut < 0)
+		  float paretoIn = (i * mmSize) + mmSizeOver2 + min;
+		  float z = (paretoIn - mu) / sigma;
+		  float paretoOut = oneOverSigma * (xi * z + 1) * expTerm;
+		  x[i] = paretoIn;
+		  y[i] = paretoOut * mmSize;
+		  if (paretoOut < 0)
 		  {
 			  err = 1;
 		  }
