@@ -141,6 +141,44 @@ public:
     }
     return err;
   }
+  /**
+  *@brief GenParetoPlotData Generates Pareto plot data that is normalized based on the "size" argument.
+	  * @param mu The location
+	  * @param sigma The scale
+	  * @param xi The shape
+	  * @param x The generated X values.Must conform to the STL vector API
+	  * @param y The generated Y values.Must conform to the STL vector API
+	  * @param size The number of values to create
+	  */
+	  template <typename Vector> static int GenParetoPlotData(float mu, float sigma, Vector& x, Vector& y, int size, float minCutOff = 5.0f, float maxCutOff = 5.0f)
+      {
+	  int err = 0;
+	  float max, min;
+	  float stdDevSqr2 = sigma * sigma * 2.0f;
+	  float root2pi = powf((float)(M_2PI), 0.5);
+	  x.resize(size);
+	  y.resize(size);
+	  min = exp(mu - (minCutOff * sigma));
+	  max = exp(mu + (maxCutOff * sigma));
+
+	  float mmSize = (max - min) / static_cast<float>(size);
+	  float mmSizeOver2 = mmSize * 0.5;
+
+	  for (int i = 0; i < size; i++)
+	  {
+		  float logNormIn = (i * mmSize) + mmSizeOver2 + min;
+		  float expTerm = log(logNormIn) - mu;
+		  expTerm = expTerm * expTerm;
+		  float logNormOut = (1.0 / (logNormIn * sigma * root2pi)) * exp(-(expTerm / stdDevSqr2));
+		  x[i] = logNormIn;
+		  y[i] = logNormOut * mmSize;
+		  if (logNormOut < 0)
+		  {
+			  err = 1;
+		  }
+	  }
+	  return err;
+  }
 
   /**
    * @brief GenPowerLawPlotData
