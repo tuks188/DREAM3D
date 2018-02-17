@@ -1197,23 +1197,37 @@ void PackPrimaryPhases::placeFeatures(Int32ArrayType::Pointer featureOwnersPtr)
     float input = 0.0f;
     float previoustotal = 0.0f;
     VectorOfFloatArray GSdist = pp->getFeatureSizeDistribution();
-    float avg = GSdist[0]->getValue(0);
-    float stdev = GSdist[1]->getValue(0);
-    float denominatorConst = 1.0f / sqrtf(2.0f * stdev * stdev); // Calculate it here rather than calculating the same thing multiple times below
-    size_t numFeatureSizeDist = m_FeatureSizeDist[i].size();
-    for(size_t j = 0; j < numFeatureSizeDist; j++)
-    {
-      input = (float(j + 1) * m_FeatureSizeDistStep[i]) + (pp->getMinFeatureDiameter() / 2.0f);
-      float logInput = logf(input);
-      if(logInput <= avg)
-      {
-        m_FeatureSizeDist[i][j] = 0.5f - 0.5f * (SIMPLibMath::erf((avg - logInput) * denominatorConst)) - previoustotal;
-      }
-      if(logInput > avg)
-      {
-        m_FeatureSizeDist[i][j] = 0.5f + 0.5f * (SIMPLibMath::erf((logInput - avg) * denominatorConst)) - previoustotal;
-      }
-      previoustotal = previoustotal + m_FeatureSizeDist[i][j];
+	size_t numFeatureSizeDist = m_FeatureSizeDist[i].size();
+	for (size_t j = 0; j < numFeatureSizeDist; j++)
+	{
+		input = (float(j + 1) * m_FeatureSizeDistStep[i]) + (pp->getMinFeatureDiameter() / 2.0f);
+		if (pp->getFeatureSize_DistType() == SIMPL::DistributionType::LogNormal)
+		{
+			float avg = GSdist[0]->getValue(0);
+			float stdev = GSdist[1]->getValue(0);
+			float denominatorConst = 1.0f / sqrtf(2.0f * stdev * stdev); // Calculate it here rather than calculating the same thing multiple times below
+
+			float logInput = logf(input);
+			if (logInput <= avg)
+			{
+				m_FeatureSizeDist[i][j] = 0.5f - 0.5f * (SIMPLibMath::erf((avg - logInput) * denominatorConst)) - previoustotal;
+			}
+			if (logInput > avg)
+			{
+				m_FeatureSizeDist[i][j] = 0.5f + 0.5f * (SIMPLibMath::erf((logInput - avg) * denominatorConst)) - previoustotal;
+			}
+		}
+		else if (pp->getFeatureSize_DistType() == SIMPL::DistributionType::Pareto)
+		{
+			float location = GSdist[0]->getValue(0);
+			float scale = GSdist[1]->getValue(0);
+			float shape = GSdist[2]->getValue(0);
+
+			float expTerm = -1.0f / shape;
+			float expBase = 1.0f + ((shape * (input - location)) / scale);
+			m_FeatureSizeDist[i][j] = 1.0f - powf(expBase, expTerm);
+		}
+		previoustotal = previoustotal + m_FeatureSizeDist[i][j];
     }
   }
 
@@ -1772,13 +1786,23 @@ void PackPrimaryPhases::generateFeature(int32_t phase, Feature_t* feature, uint3
   float fourThirdsPiOverEight = static_cast<float>(((4.0f / 3.0f) * (SIMPLib::Constants::k_Pi)) / 8.0f);
   PrimaryStatsData::Pointer pp = std::dynamic_pointer_cast<PrimaryStatsData>(statsDataArray[phase]);
   VectorOfFloatArray GSdist = pp->getFeatureSizeDistribution();
-  float avg = GSdist[0]->getValue(0);
-  float stdev = GSdist[1]->getValue(0);
   while(volgood == false)
   {
     volgood = true;
-    diam = static_cast<float>(rg.genrand_norm(avg, stdev));
-    diam = expf(diam);
+	if (pp->getFeatureSize_DistType() == SIMPL::DistributionType::LogNormal)
+	{
+		float avg = GSdist[0]->getValue(0);
+		float stdev = GSdist[1]->getValue(0);
+		diam = static_cast<float>(rg.genrand_norm(avg, stdev));
+		diam = expf(diam);
+	}
+	else if (pp->getFeatureSize_DistType() == SIMPL::DistributionType::Pareto)
+	{
+		float location = GSdist[0]->getValue(0);
+		float scale = GSdist[1]->getValue(0);
+		float shape = GSdist[2]->getValue(0);
+		diam = static_cast<float>(rg.genrand_pareto(location, scale, shape));
+	}
     if(diam >= pp->getMaxFeatureDiameter())
     {
       volgood = false;
@@ -3339,6 +3363,23 @@ int32_t PackPrimaryPhases::estimateNumFeatures(size_t xpoints, size_t ypoints, s
           }
           vol = (4.0f / 3.0f) * (M_PI) * ((diam * 0.5f) * (diam * 0.5f) * (diam * 0.5f));
         }
+		else if (pp->getFeatureSize_DistType() == SIMPL::DistributionType::Pareto)
+		{
+			float location = pp->getFeatureSizeDistribution().at(0)->getValue(0);
+			float scale = pp->getFeatureSizeDistribution().at(1)->getValue(0);
+			float shape = pp->getFeatureSizeDistribution().at(2)->getValue(0);
+			diam = rg.genrand_pareto(location, scale, shape);
+			if (diam >= pp->getMaxFeatureDiameter())
+			{
+				volgood = false;
+			}
+			if (diam < pp->getMinFeatureDiameter())
+			{
+				volgood = false;
+			}
+			vol = (4.0f / 3.0f) * (M_PI) * ((diam * 0.5f) * (diam * 0.5f) * (diam * 0.5f));
+		}
+
       }
       currentvol = currentvol + vol;
       gid++;

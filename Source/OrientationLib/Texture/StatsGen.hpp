@@ -150,27 +150,25 @@ public:
 	  * @param y The generated Y values.Must conform to the STL vector API
 	  * @param size The number of values to create
 	  */
-	  template <typename Vector> static int GenParetoPlotData(float mu, float sigma, Vector& x, Vector& y, int size, float minCutOff = 5.0f, float maxCutOff = 5.0f)
+	  template <typename Vector> static int GenParetoPlotData(float mu, float sigma, float xi, Vector& x, Vector& y, int size, float maxCutOff = 100.0f)
       {
 	  int err = 0;
 	  float max, min;
-	  float xi = 1.0f;
-	  float oneOverSigma = 1 / sigma;
-	  float insideExpTerm = -(1 / (xi + 1));
-	  float expTerm = exp(insideExpTerm);
+	  float oneOverSigma = 1.0f / sigma;
+	  float expTerm = -1.0f - (1.0f / xi);
 	  x.resize(size);
 	  y.resize(size);
-	  min = exp(mu - (minCutOff * sigma));
-	  max = exp(mu + (maxCutOff * sigma));
+	  min = mu;
+	  max = maxCutOff;
 
 	  float mmSize = (max - min) / static_cast<float>(size);
-	  float mmSizeOver2 = mmSize * 0.5;
+	  float mmSizeOver2 = mmSize * 0.5f;
 
 	  for (int i = 0; i < size; i++)
 	  {
 		  float paretoIn = (i * mmSize) + mmSizeOver2 + min;
-		  float z = (paretoIn - mu) / sigma;
-		  float paretoOut = oneOverSigma * (xi * z + 1) * expTerm;
+		  float baseTerm = 1.0f + xi * ((paretoIn - mu) / sigma);
+		  float paretoOut = oneOverSigma * powf(baseTerm, expTerm);
 		  x[i] = paretoIn;
 		  y[i] = paretoOut * mmSize;
 		  if (paretoOut < 0)
@@ -231,6 +229,20 @@ public:
   }
 
   /**
+  * @brief Calculates the number of bins using 64 bit floating point values
+  * @param mu
+  * @param binstep
+  * @param max
+  * @return
+  */
+  static int ComputeNumberOfBinsPareto(float mu, float maxCutOff, float binstep, float& max, float& min)
+  {
+	  max = maxCutOff;
+	  min = mu;
+	  return static_cast<int>((max - min) / binstep) + 1;
+  }
+
+  /**
    * @brief Generates the CutOff values
    * @param mu Must be (0.0, N] where N should be less than ?? (20)
    * @param sigma
@@ -268,6 +280,46 @@ public:
       binSizes[i] = min + (i * binstep);
     }
     return err;
+  }
+
+  /**
+  * @brief Generates the CutOff values
+  * @param mu Must be (0.0, N] where N should be less than ?? (20)
+  * @param sigma
+  * @param cutoff
+  * @param binstep
+  * @param x Type that adheres to the QVector API. Will be resize to 2 elements
+  * @param y Type that adheres to the QVector API. Will be resize to 2 elements
+  * @param yMax
+  * @param numsizebins Will be set to the number of bins
+  * @param binsizes Type that adheres to the QVector API. Will be resized to numsizebins and filled with the lower value of each bin.
+  * @return
+  */
+  template <typename J, typename Vector> static int GenCutOffPareto(J mu, J maxCutOff, J binstep, Vector& x, Vector& y, J yMax, int& numSizeBins, Vector& binSizes)
+  {
+	  J max, min;
+	  numSizeBins = StatsGen::ComputeNumberOfBinsPareto(mu, maxCutOff, binstep, max, min);
+	  if (numSizeBins < 0)
+	  {
+		  numSizeBins = 0;
+		  return -1;
+	  }
+	  int err = 0;
+	  x.resize(2);
+	  y.resize(2);
+
+	  x[0] = min;
+	  x[1] = max;
+
+	  y[0] = 0.0;
+	  y[1] = yMax;
+
+	  binSizes.resize(numSizeBins);
+	  for (int i = 0; i < numSizeBins; i++)
+	  {
+		  binSizes[i] = min + (i * binstep);
+	  }
+	  return err;
   }
 
   /**

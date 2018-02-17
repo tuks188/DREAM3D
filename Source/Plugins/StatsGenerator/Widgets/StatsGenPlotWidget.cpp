@@ -74,6 +74,7 @@
 #include "StatsGenerator/Widgets/Presets/AbstractMicrostructurePreset.h"
 #include "StatsGenerator/Widgets/TableModels/SGBetaTableModel.h"
 #include "StatsGenerator/Widgets/TableModels/SGLogNormalTableModel.h"
+#include "StatsGenerator/Widgets/TableModels/SGParetoTableModel.h"
 #include "StatsGenerator/Widgets/TableModels/SGPowerLawTableModel.h"
 
 #include "OrientationLib/Texture/StatsGen.hpp"
@@ -240,7 +241,15 @@ VectorOfFloatArray StatsGenPlotWidget::getStatisticsData()
     data.push_back(col0);
     data.push_back(col1);
     break;
-  //    case SIMPL::DistributionType::Power:
+  case SIMPL::DistributionType::Pareto:
+	v0 = m_TableModel->getData(SGParetoTableModel::Average);
+	v1 = m_TableModel->getData(SGParetoTableModel::StdDev);
+	col0 = FloatArrayType::FromQVector(v0, SIMPL::StringConstants::Average);
+	col1 = FloatArrayType::FromQVector(v1, SIMPL::StringConstants::StandardDeviation);
+	data.push_back(col0);
+	data.push_back(col1);
+	break;
+	  //    case SIMPL::DistributionType::Power:
   //      v0 = m_TableModel->getData(SGPowerLawTableModel::Alpha);
   //      v1 = m_TableModel->getData(SGPowerLawTableModel::K);
   //      v2 = m_TableModel->getData(SGPowerLawTableModel::Beta);
@@ -279,7 +288,10 @@ void StatsGenPlotWidget::resetTableModel()
   case SIMPL::DistributionType::LogNormal:
     m_TableModel = new SGLogNormalTableModel;
     break;
-  //    case SIMPL::DistributionType::Power:
+  case SIMPL::DistributionType::Pareto:
+	  m_TableModel = new SGParetoTableModel;
+	  break;
+	  //    case SIMPL::DistributionType::Power:
   //      m_TableModel = new SGPowerLawTableModel;
   //      break;
 
@@ -579,7 +591,10 @@ void StatsGenPlotWidget::updatePlotCurves()
     case SIMPL::DistributionType::LogNormal:
       createLogNormalCurve(r, xMax, yMax);
       break;
-    //      case SIMPL::DistributionType::Power:
+	case SIMPL::DistributionType::Pareto:
+		createParetoCurve(r, xMax, yMax);
+		break;
+		//      case SIMPL::DistributionType::Power:
     //        createPowerCurve(r, xMax, yMax);
     //        break;
     default:
@@ -679,6 +694,48 @@ void StatsGenPlotWidget::createLogNormalCurve(int tableRow, float& xMax, float& 
 
   m_PlotView->setAxisScale(QwtPlot::yLeft, 0.0, yMax * 1.05);
   m_PlotView->setAxisScale(QwtPlot::xBottom, 0.0, xMax);
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void StatsGenPlotWidget::createParetoCurve(int tableRow, float& xMax, float& yMax)
+{
+	QwtPlotCurve* curve = m_PlotCurves[tableRow];
+	int err = 0;
+	float avg = m_TableModel->getDataValue(SGParetoTableModel::Average, tableRow);
+	float stdDev = m_TableModel->getDataValue(SGParetoTableModel::StdDev, tableRow);
+	int size = 256;
+	QwtArray<float> x;
+	QwtArray<float> y;
+
+	err = StatsGen::GenParetoPlotData<QwtArray<float>>(avg, stdDev, stdDev, x, y, size);
+	if (err == 1)
+	{
+		// TODO: Present Error Message
+		return;
+	}
+
+	QwtArray<double> xD(size);
+	QwtArray<double> yD(size);
+	for (int i = 0; i < size; ++i)
+	{
+		//   qDebug() << x[i] << "  " << y[i] << "\n";
+		if (x[i] > xMax)
+		{
+			xMax = x[i];
+		}
+		if (y[i] > yMax)
+		{
+			yMax = y[i];
+		}
+		xD[i] = static_cast<double>(x[i]);
+		yD[i] = static_cast<double>(y[i]);
+	}
+	curve->setSamples(xD, yD);
+
+	m_PlotView->setAxisScale(QwtPlot::yLeft, 0.0, yMax * 1.05);
+	m_PlotView->setAxisScale(QwtPlot::xBottom, 0.0, xMax);
 }
 
 // -----------------------------------------------------------------------------

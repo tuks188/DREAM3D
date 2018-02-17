@@ -434,7 +434,7 @@ void PrimaryPhaseWidget::setupGui()
   w->setXAxisName(QString("Number of Features (within 1 diameter)"));
   w->setYAxisName(QString("Frequency"));
   w->setDataTitle(QString("Edit Neighbor Distribution Values"));
-  w->setDistributionType(SIMPL::DistributionType::LogNormal);
+  w->setDistributionType(SIMPL::DistributionType::Pareto);
   w->setStatisticsType(SIMPL::StatisticsType::Feature_SizeVNeighbors);
   w->blockDistributionTypeChanges(true);
   w->setRowOperationEnabled(false);

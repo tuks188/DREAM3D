@@ -55,6 +55,7 @@ public:
 
   float getMu();
   float getSigma();
+  float getXi();
   float getMinCutOff();
   float getMaxCutOff();
   float getBinStep();
@@ -92,7 +93,7 @@ public:
    * @param y
    * @return
    */
-  int computeBinsAndCutOffs(float mu, float sigma, float minCutOff, float maxCutOff, float binStepSize, QwtArray<float>& binsizes, QwtArray<float>& xCo, QwtArray<float>& yCo, float& xMax, float& yMax,
+  int computeBinsAndCutOffs(float mu, float sigma, float xi, float minCutOff, float maxCutOff, float binStepSize, QwtArray<float>& binsizes, QwtArray<float>& xCo, QwtArray<float>& yCo, float& xMax, float& yMax,
                             QwtArray<float>& x, QwtArray<float>& y);
 
   /**
@@ -105,23 +106,25 @@ public:
    * @brief calculateNumberOfBins
    * @param mu
    * @param sigma
+   * @param xi
    * @param minCutOff
    * @param maxCutOff
    * @param stepSize
    * @return
    */
-  int calculateNumberOfBins(float mu, float sigma, float minCutOff, float maxCutOff, float stepSize);
+  int calculateNumberOfBins(float mu, float sigma, float xi, float minCutOff, float maxCutOff, float stepSize);
 
   /**
    * @brief gatherSizeDistributionFromGui
    * @param mu
    * @param sigma
+   * @param xi
    * @param minCutOff
    * @param maxCutOff
    * @param stepSize
    * @return
    */
-  int gatherSizeDistributionFromGui(float& mu, float& sigma, float& minCutOff, float& maxCutOff, float& stepSize);
+  int gatherSizeDistributionFromGui(float& mu, float& sigma, float& xi, float& minCutOff, float& maxCutOff, float& stepSize);
 
   /**
    * @brief getStatisticsData
@@ -147,8 +150,9 @@ public:
     float binStepSize = 0.0f;
     float maxFeatureSize = 0.0f, minFeatureSize = 0.0f;
     float mu = 0.0f;
-    float sigma = 0.0f;
-    float minCutOff = 0.0f;
+	float sigma = 0.0f;
+	float xi = 0.0f;
+	float minCutOff = 0.0f;
     float maxCutOff = 0.0f;
 
     QLocale loc = QLocale::system();
@@ -164,7 +168,7 @@ public:
     /* Set the Feature_Size_Distribution Data */
     VectorOfFloatArray distData = statsData->getFeatureSizeDistribution();
     mu = distData[0]->getValue(0);
-    sigma = distData[1]->getValue(0);
+	sigma = distData[1]->getValue(0);
 
     m_Sigma_SizeDistribution->blockSignals(true);
     m_FeatureESD->blockSignals(true);
@@ -224,7 +228,7 @@ protected:
   * @brief validateMuSigma
   * @return
   */
-  bool validateMuSigma();
+  bool validateMuSigmaXi();
 
   /**
   * @brief mousePressEvent
@@ -232,10 +236,21 @@ protected:
   */
   void mousePressEvent(QMouseEvent* event);
 
-protected slots:
+  /**
+  * @brief update_ESD_Pareto
+  */
+  void update_ESD_Pareto();
+
+  /**
+  * @brief update_ESD_Lognormal
+  */
+  void update_ESD_Lognormal();
+
+  protected slots:
 
   void on_m_Mu_SizeDistribution_textChanged(const QString& text);
   void on_m_Sigma_SizeDistribution_textChanged(const QString& text);
+  void on_m_Xi_SizeDistribution_textChanged(const QString& text);
 
   void on_m_MinSigmaCutOff_textChanged(const QString& text);
   void on_m_MaxSigmaCutOff_textChanged(const QString& text);
@@ -265,6 +280,7 @@ private:
 
   QDoubleValidator* m_MuValidator = nullptr;
   QDoubleValidator* m_SigmaValidator = nullptr;
+  QDoubleValidator* m_XiValidator = nullptr;
   QDoubleValidator* m_MinCutoffValidator = nullptr;
   QDoubleValidator* m_MaxCutoffValidator = nullptr;
   bool m_EsdUpdated = false;

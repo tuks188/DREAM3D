@@ -89,8 +89,9 @@ class StatsGenPlotWidget : public QWidget, private Ui::StatsGenPlotWidget
     void setupGui();
 
     void createBetaCurve(int tableRow, float& xMax, float& yMax);
-    void createLogNormalCurve(int tableRow, float& xMax, float& yMax);
-    void createPowerCurve(int tableRow, float& xMax, float& yMax);
+	void createLogNormalCurve(int tableRow, float& xMax, float& yMax);
+	void createParetoCurve(int tableRow, float& xMax, float& yMax);
+	void createPowerCurve(int tableRow, float& xMax, float& yMax);
     SGAbstractTableModel* tableModel();
 
 //    void setBins(QVector<float> &binValues);

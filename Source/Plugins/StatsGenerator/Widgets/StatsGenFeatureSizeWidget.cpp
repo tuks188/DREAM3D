@@ -114,6 +114,11 @@ void StatsGenFeatureSizeWidget::setupGui()
   m_SigmaValidator->setRange(0.0000, 10.0, 6);
   m_Sigma_SizeDistribution->setValidator(m_SigmaValidator);
 
+  m_XiValidator = new QDoubleValidator(m_Xi_SizeDistribution);
+  m_XiValidator->setLocale(loc);
+  m_XiValidator->setRange(0.0000, 1000000, 6);
+  m_Xi_SizeDistribution->setValidator(m_XiValidator);
+
   m_MinCutoffValidator = new QDoubleValidator(0.000, std::numeric_limits<double>::infinity(), 6, m_MinSigmaCutOff);
   m_MinCutoffValidator->setLocale(loc);
   m_MinSigmaCutOff->setValidator(m_MinCutoffValidator);
@@ -205,6 +210,7 @@ void StatsGenFeatureSizeWidget::userEditedPlotData()
 {
   m_Mu_SizeDistribution->setEnabled(false);
   m_Sigma_SizeDistribution->setEnabled(false);
+  m_Xi_SizeDistribution->setEnabled(false);
   m_MinSigmaCutOff->setEnabled(false);
   m_MaxSigmaCutOff->setEnabled(false);
   m_BinStepSize->setEnabled(false);
@@ -230,6 +236,7 @@ void StatsGenFeatureSizeWidget::resetUI()
   this->blockSignals(true);
   m_Mu_SizeDistribution->setText(loc.toString(StatsGeneratorConstants::k_Mu));
   m_Sigma_SizeDistribution->setText(loc.toString(StatsGeneratorConstants::k_Sigma));
+  m_Xi_SizeDistribution->setText(loc.toString(StatsGeneratorConstants::k_Xi));
   m_MinSigmaCutOff->setText("5.0");
   m_MaxSigmaCutOff->setText("5.0");
   distributionTypeCombo->setCurrentIndex(0);
@@ -248,9 +255,11 @@ void StatsGenFeatureSizeWidget::mousePressEvent(QMouseEvent* event)
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-int StatsGenFeatureSizeWidget::gatherSizeDistributionFromGui(float& mu, float& sigma, float& minCutOff, float& maxCutOff, float& stepSize)
+int StatsGenFeatureSizeWidget::gatherSizeDistributionFromGui(float& mu, float& sigma, float& xi, float& minCutOff, float& maxCutOff, float& stepSize)
 {
   QLocale loc = QLocale::system();
+
+  QString disttype = distributionTypeCombo->currentText();
 
   bool ok = false;
   mu = loc.toFloat(m_Mu_SizeDistribution->text(), &ok);
@@ -263,20 +272,32 @@ int StatsGenFeatureSizeWidget::gatherSizeDistributionFromGui(float& mu, float& s
   {
     return 0;
   }
-  minCutOff = loc.toFloat(m_MinSigmaCutOff->text(), &ok);
-  if(ok == false)
+
+  if (disttype == SIMPL::StringConstants::LogNormalDistribution)
   {
-    return 0;
+	 minCutOff = loc.toFloat(m_MinSigmaCutOff->text(), &ok);
+	 if (ok == false)
+	 {
+		 return 0;
+	 }
   }
-  maxCutOff = loc.toFloat(m_MaxSigmaCutOff->text(), &ok);
-  if(ok == false)
+  if (disttype == SIMPL::StringConstants::ParetoDistribution)
   {
-    return 0;
+	 xi = loc.toFloat(m_Xi_SizeDistribution->text(), &ok);
+	 if (ok == false)
+	 {
+		return 0;
+	 }
+   }
+  maxCutOff = loc.toFloat(m_MaxSigmaCutOff->text(), &ok);
+  if (ok == false)
+  {
+	  return 0;
   }
   stepSize = loc.toFloat(m_BinStepSize->text(), &ok);
-  if(ok == false)
+  if (ok == false)
   {
-    return 0;
+	  return 0;
   }
   return 1;
 }
@@ -304,8 +325,9 @@ bool StatsGenFeatureSizeWidget::validateValue(QDoubleValidator* val, QLineEdit* 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-bool StatsGenFeatureSizeWidget::validateMuSigma()
+bool StatsGenFeatureSizeWidget::validateMuSigmaXi()
 {
+  QString disttype = distributionTypeCombo->currentText();
   bool muValid = validateValue(m_MuValidator, m_Mu_SizeDistribution);
   if(!muValid)
   {
@@ -320,12 +342,27 @@ bool StatsGenFeatureSizeWidget::validateMuSigma()
     emit userEnteredValidData(false);
     return false;
   }
-  bool minValid = validateValue(m_MinCutoffValidator, m_MinSigmaCutOff);
-  if(!minValid)
+  bool xiValid = false;
+  if (disttype == SIMPL::StringConstants::ParetoDistribution)
   {
-    m_NumberBinsGenerated->setText("Error: Min Cutoff not valid");
-    emit userEnteredValidData(false);
-    return false;
+	xiValid = validateValue(m_XiValidator, m_Xi_SizeDistribution);
+	if (!xiValid)
+	{
+	  m_NumberBinsGenerated->setText("Error: Xi not valid");
+	  emit userEnteredValidData(false);
+	  return false;
+	}
+  }
+  bool minValid = false;
+  if (disttype == SIMPL::StringConstants::LogNormalDistribution)
+  {
+	  minValid = validateValue(m_MinCutoffValidator, m_MinSigmaCutOff);
+	  if (!minValid)
+	  {
+	    m_NumberBinsGenerated->setText("Error: Min Cutoff not valid");
+		emit userEnteredValidData(false);
+		return false;
+	  }
   }
   bool maxValid = validateValue(m_MaxCutoffValidator, m_MaxSigmaCutOff);
   if(!maxValid)
@@ -335,7 +372,7 @@ bool StatsGenFeatureSizeWidget::validateMuSigma()
     return false;
   }
 
-  if(muValid && sigmaValid && minValid && maxValid)
+  if((disttype == SIMPL::StringConstants::LogNormalDistribution && muValid && sigmaValid && minValid && maxValid) || (disttype == SIMPL::StringConstants::ParetoDistribution && muValid && sigmaValid && xiValid && maxValid))
   {
     emit userEnteredValidData(true);
     return true;
@@ -366,21 +403,23 @@ bool StatsGenFeatureSizeWidget::validateMuSigma()
 void StatsGenFeatureSizeWidget::on_m_Mu_SizeDistribution_textChanged(const QString& text)
 {
   Q_UNUSED(text)
-  if(!validateMuSigma())
+  if(!validateMuSigmaXi())
   {
     return;
   }
 
   if(!m_EsdUpdated)
   {
-    QLocale loc = QLocale::system();
-    m_FeatureESD->blockSignals(true);
-    bool ok = false;
-    float sigma = loc.toFloat(m_Sigma_SizeDistribution->text(), &ok);
-    float mu = loc.toFloat(m_Mu_SizeDistribution->text(), &ok);
-    float esd = std::exp(mu + (sigma*sigma)/2.0f);
-    m_FeatureESD->setText(loc.toString(esd));
-    m_FeatureESD->blockSignals(false);
+	  QString disttype = distributionTypeCombo->currentText();
+
+	  if (disttype == SIMPL::StringConstants::LogNormalDistribution)
+	  {
+		  update_ESD_Lognormal();
+	  }
+	  else if (disttype == SIMPL::StringConstants::ParetoDistribution)
+	  {
+		  update_ESD_Pareto();
+	  }
   }
 
   if(updateSizeDistributionPlot() < 0)
@@ -400,21 +439,23 @@ void StatsGenFeatureSizeWidget::on_m_Mu_SizeDistribution_textChanged(const QStri
 void StatsGenFeatureSizeWidget::on_m_Sigma_SizeDistribution_textChanged(const QString& text)
 {
   Q_UNUSED(text)
-  if(!validateMuSigma())
+  if(!validateMuSigmaXi())
   {
     return;
   }
 
   if(!m_EsdUpdated)
   {
-    QLocale loc = QLocale::system();
-    m_FeatureESD->blockSignals(true);
-    bool ok = false;
-    float sigma = loc.toFloat(m_Sigma_SizeDistribution->text(), &ok);
-    float mu = loc.toFloat(m_Mu_SizeDistribution->text(), &ok);
-    float esd = std::exp(mu + (sigma*sigma)/2.0f);
-    m_FeatureESD->setText(loc.toString(esd));
-    m_FeatureESD->blockSignals(false);
+	  QString disttype = distributionTypeCombo->currentText();
+
+	  if (disttype == SIMPL::StringConstants::LogNormalDistribution)
+	  {
+		  update_ESD_Lognormal();
+	  }
+	  else if (disttype == SIMPL::StringConstants::ParetoDistribution)
+	  {
+		  update_ESD_Pareto();
+	  }
   }
 
   if(updateSizeDistributionPlot() < 0)
@@ -432,10 +473,38 @@ void StatsGenFeatureSizeWidget::on_m_Sigma_SizeDistribution_textChanged(const QS
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
+void StatsGenFeatureSizeWidget::on_m_Xi_SizeDistribution_textChanged(const QString& text)
+{
+	Q_UNUSED(text)
+		if (!validateMuSigmaXi())
+		{
+			return;
+		}
+
+	if (!m_EsdUpdated)
+	{
+		update_ESD_Pareto();
+	}
+
+	if (updateSizeDistributionPlot() < 0)
+	{
+		return;
+	}
+	m_Xi_SizeDistribution->setFocus();
+	if (calculateNumberOfBins() < 0)
+	{
+		return;
+	}
+	emit dataChanged();
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
 void StatsGenFeatureSizeWidget::on_m_MinSigmaCutOff_textChanged(const QString& text)
 {
   Q_UNUSED(text)
-  if(!validateMuSigma())
+  if(!validateMuSigmaXi())
   {
     return;
   }
@@ -457,7 +526,7 @@ void StatsGenFeatureSizeWidget::on_m_MinSigmaCutOff_textChanged(const QString& t
 void StatsGenFeatureSizeWidget::on_m_MaxSigmaCutOff_textChanged(const QString& text)
 {
   Q_UNUSED(text)
-  if(!validateMuSigma())
+  if(!validateMuSigmaXi())
   {
     return;
   }
@@ -479,7 +548,7 @@ void StatsGenFeatureSizeWidget::on_m_MaxSigmaCutOff_textChanged(const QString& t
 void StatsGenFeatureSizeWidget::on_m_BinStepSize_valueChanged(double v)
 {
   Q_UNUSED(v)
-  if(!validateMuSigma())
+  if(!validateMuSigmaXi())
   {
     return;
   }
@@ -501,17 +570,28 @@ int StatsGenFeatureSizeWidget::calculateNumberOfBins()
 {
   float mu = 1.0;
   float sigma = 1.0;
+  float xi = 1.0;
   float minCutOff = 1.0;
   float maxCutOff = 1.0;
   float stepSize = 1.0;
   float max, min;
-  int err = gatherSizeDistributionFromGui(mu, sigma, minCutOff, maxCutOff, stepSize);
+  int n = -1;
+  int err = gatherSizeDistributionFromGui(mu, sigma, xi, minCutOff, maxCutOff, stepSize);
   if(err < 0)
   {
     return err;
   }
 
-  int n = StatsGen::ComputeNumberOfBins(mu, sigma, minCutOff, maxCutOff, stepSize, max, min);
+  QString disttype = distributionTypeCombo->currentText();
+
+  if (disttype == SIMPL::StringConstants::LogNormalDistribution)
+  {
+    n = StatsGen::ComputeNumberOfBins(mu, sigma, minCutOff, maxCutOff, stepSize, max, min);
+  }
+  else if (disttype == SIMPL::StringConstants::ParetoDistribution)
+  {
+    n = StatsGen::ComputeNumberOfBinsPareto(mu, maxCutOff, stepSize, max, min);
+  }
   if(n < 0)
   {
     m_NumberBinsGenerated->setText("Error");
@@ -528,17 +608,26 @@ int StatsGenFeatureSizeWidget::calculateNumberOfBins()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-int StatsGenFeatureSizeWidget::calculateNumberOfBins(float mu, float sigma, float minCutOff, float maxCutOff, float stepSize)
+int StatsGenFeatureSizeWidget::calculateNumberOfBins(float mu, float sigma, float xi, float minCutOff, float maxCutOff, float stepSize)
 {
   float max, min; // Only needed for the method. Not used otherwise.
 
-  return StatsGen::ComputeNumberOfBins(mu, sigma, minCutOff, maxCutOff, stepSize, max, min);
+  QString disttype = distributionTypeCombo->currentText();
+
+  if (disttype == SIMPL::StringConstants::LogNormalDistribution)
+  {
+	  return StatsGen::ComputeNumberOfBins(mu, sigma, minCutOff, maxCutOff, stepSize, max, min);
+  }
+  else
+  {
+	  return StatsGen::ComputeNumberOfBinsPareto(mu, maxCutOff, stepSize, max, min);
+  }
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-int StatsGenFeatureSizeWidget::computeBinsAndCutOffs(float mu, float sigma, float minCutOff, float maxCutOff, float binStepSize, QwtArray<float>& binsizes, QwtArray<float>& xCo, QwtArray<float>& yCo,
+int StatsGenFeatureSizeWidget::computeBinsAndCutOffs(float mu, float sigma, float xi, float minCutOff, float maxCutOff, float binStepSize, QwtArray<float>& binsizes, QwtArray<float>& xCo, QwtArray<float>& yCo,
                                                      float& xMax, float& yMax, QwtArray<float>& x, QwtArray<float>& y)
 {
   int err = 0;
@@ -549,8 +638,6 @@ int StatsGenFeatureSizeWidget::computeBinsAndCutOffs(float mu, float sigma, floa
   if (disttype == SIMPL::StringConstants::LogNormalDistribution)
   {
 	  err = StatsGen::GenLogNormalPlotData<QwtArray<float>>(mu, sigma, x, y, size, minCutOff, maxCutOff);
-	  label_8->setVisible(false);
-	  m_Xi_SizeDistribution->setVisible(false);
 	  if (err == 1)
 	  {
 		  // TODO: Present Error Message
@@ -559,9 +646,7 @@ int StatsGenFeatureSizeWidget::computeBinsAndCutOffs(float mu, float sigma, floa
   }
   else if (disttype == SIMPL::StringConstants::ParetoDistribution)
   {
-	  err = StatsGen::GenParetoPlotData<QwtArray<float>>(mu, sigma, x, y, size, minCutOff, maxCutOff);
-	  label_8->setVisible(true);
-	  m_Xi_SizeDistribution->setVisible(true);
+	  err = StatsGen::GenParetoPlotData<QwtArray<float>>(mu, sigma, xi, x, y, size, maxCutOff);
 	  if (err == 1)
 	  {
 		  // TODO: Present Error Message
@@ -582,9 +667,16 @@ int StatsGenFeatureSizeWidget::computeBinsAndCutOffs(float mu, float sigma, floa
   yCo.clear();
   int numsizebins = 1;
   binsizes.clear();
-  err = StatsGen::GenCutOff<float, QwtArray<float>>(mu, sigma, minCutOff, maxCutOff, binStepSize, xCo, yCo, yMax, numsizebins, binsizes);
 
-  return err;
+  if (disttype == SIMPL::StringConstants::LogNormalDistribution)
+  {
+	  err = StatsGen::GenCutOff<float, QwtArray<float>>(mu, sigma, minCutOff, maxCutOff, binStepSize, xCo, yCo, yMax, numsizebins, binsizes);
+  }
+  else if (disttype == SIMPL::StringConstants::ParetoDistribution)
+  {
+	  err = StatsGen::GenCutOffPareto<float, QwtArray<float>>(mu, maxCutOff, binStepSize, xCo, yCo, yMax, numsizebins, binsizes);
+  }
+	  return err;
 }
 
 // -----------------------------------------------------------------------------
@@ -594,10 +686,11 @@ int StatsGenFeatureSizeWidget::updateSizeDistributionPlot()
 {
   float mu = 1.0;
   float sigma = 1.0;
+  float xi = 1.0;
   float minCutOff = 1.0;
   float maxCutOff = 1.0;
   float stepSize = 1.0;
-  int err = gatherSizeDistributionFromGui(mu, sigma, minCutOff, maxCutOff, stepSize);
+  int err = gatherSizeDistributionFromGui(mu, sigma, xi, minCutOff, maxCutOff, stepSize);
   if(err < 0)
   {
     return err;
@@ -610,7 +703,7 @@ int StatsGenFeatureSizeWidget::updateSizeDistributionPlot()
   float yMax = std::numeric_limits<float>::min();
   QwtArray<float> x;
   QwtArray<float> y;
-  err = computeBinsAndCutOffs(mu, sigma, minCutOff, maxCutOff, stepSize, binsizes, xCo, yCo, xMax, yMax, x, y);
+  err = computeBinsAndCutOffs(mu, sigma, xi, minCutOff, maxCutOff, stepSize, binsizes, xCo, yCo, xMax, yMax, x, y);
 
   // Adjust the BinStepSize so that there are at least 2x as many x points as bins.
   while(binsizes.size() > x.size() / 2)
@@ -618,8 +711,8 @@ int StatsGenFeatureSizeWidget::updateSizeDistributionPlot()
     m_BinStepSize->blockSignals(true);
     m_BinStepSize->stepUp();
     m_BinStepSize->blockSignals(false);
-    int err = gatherSizeDistributionFromGui(mu, sigma, minCutOff, maxCutOff, stepSize);
-    err = computeBinsAndCutOffs(mu, sigma, minCutOff, maxCutOff, stepSize, binsizes, xCo, yCo, xMax, yMax, x, y);
+    int err = gatherSizeDistributionFromGui(mu, sigma, xi, minCutOff, maxCutOff, stepSize);
+    err = computeBinsAndCutOffs(mu, sigma, xi, minCutOff, maxCutOff, stepSize, binsizes, xCo, yCo, xMax, yMax, x, y);
   }
 
   if(err < 0)
@@ -795,10 +888,11 @@ void StatsGenFeatureSizeWidget::plotSizeDistribution()
 {
   float mu = 1.0;
   float sigma = 1.0;
+  float xi = 1.0;
   float minCutOff = 1.0;
   float maxCutOff = 1.0;
   float stepSize = 1.0;
-  int err = gatherSizeDistributionFromGui(mu, sigma, minCutOff, maxCutOff, stepSize);
+  int err = gatherSizeDistributionFromGui(mu, sigma, xi, minCutOff, maxCutOff, stepSize);
   if(err == 0)
   {
     return;
@@ -811,7 +905,7 @@ void StatsGenFeatureSizeWidget::plotSizeDistribution()
   float yMax = std::numeric_limits<float>::min();
   QwtArray<float> x;
   QwtArray<float> y;
-  err = computeBinsAndCutOffs(mu, sigma, minCutOff, maxCutOff, stepSize, binSizes, xCo, yCo, xMax, yMax, x, y);
+  err = computeBinsAndCutOffs(mu, sigma, xi, minCutOff, maxCutOff, stepSize, binSizes, xCo, yCo, xMax, yMax, x, y);
   if(err < 0)
   {
     return;
@@ -828,10 +922,11 @@ int StatsGenFeatureSizeWidget::getStatisticsData(PrimaryStatsData* primaryStatsD
 
   float mu = 1.0f;
   float sigma = 1.0f;
+  float xi = 1.0f;
   float minCutOff = 1.0f;
   float maxCutOff = 1.0f;
   float binStep = 1.0f;
-  gatherSizeDistributionFromGui(mu, sigma, minCutOff, maxCutOff, binStep);
+  gatherSizeDistributionFromGui(mu, sigma, xi, minCutOff, maxCutOff, binStep);
 
   QwtArray<float> xCo;
   QwtArray<float> yCo;
@@ -840,7 +935,7 @@ int StatsGenFeatureSizeWidget::getStatisticsData(PrimaryStatsData* primaryStatsD
   float yMax = std::numeric_limits<float>::min();
   QwtArray<float> x;
   QwtArray<float> y;
-  int err = computeBinsAndCutOffs(mu, sigma, minCutOff, maxCutOff, binStep, binsizes, xCo, yCo, xMax, yMax, x, y);
+  int err = computeBinsAndCutOffs(mu, sigma, xi, minCutOff, maxCutOff, binStep, binsizes, xCo, yCo, xMax, yMax, x, y);
   if(err < 0)
   {
     return err;
@@ -849,8 +944,6 @@ int StatsGenFeatureSizeWidget::getStatisticsData(PrimaryStatsData* primaryStatsD
   // We need to compute the Max and Min Diameter Bin Values
   float mindiameter = xCo[0];
   float maxdiameter = xCo[1];
-  float avglogdiam = mu;
-  float sdlogdiam = sigma;
   float stepSize = binStep;
 
   // Feature Diameter Info
@@ -860,15 +953,36 @@ int StatsGenFeatureSizeWidget::getStatisticsData(PrimaryStatsData* primaryStatsD
   // Feature Size Distribution
   {
     VectorOfFloatArray data;
-    FloatArrayType::Pointer d1 = FloatArrayType::CreateArray(1, SIMPL::StringConstants::Average);
-    FloatArrayType::Pointer d2 = FloatArrayType::CreateArray(1, SIMPL::StringConstants::StandardDeviation);
-    data.push_back(d1);
-    data.push_back(d2);
-    d1->setValue(0, avglogdiam);
-    d2->setValue(0, sdlogdiam);
-    primaryStatsData->setFeatureSizeDistribution(data);
 
 	QString disttype = distributionTypeCombo->currentText();
+	if (disttype == SIMPL::StringConstants::LogNormalDistribution)
+	{
+		float avglogdiam = mu;
+		float sdlogdiam = sigma;
+		FloatArrayType::Pointer d1 = FloatArrayType::CreateArray(1, SIMPL::StringConstants::Average);
+		FloatArrayType::Pointer d2 = FloatArrayType::CreateArray(1, SIMPL::StringConstants::StandardDeviation);
+		data.push_back(d1);
+		data.push_back(d2);
+		d1->setValue(0, avglogdiam);
+		d2->setValue(0, sdlogdiam);
+	}
+	else if (disttype == SIMPL::StringConstants::ParetoDistribution)
+	{
+		float locationparetodiam = mu;
+		float scaleparetodiam = sigma;
+		float shapeparetodiam = xi;
+		FloatArrayType::Pointer d1 = FloatArrayType::CreateArray(1, SIMPL::StringConstants::Location);
+		FloatArrayType::Pointer d2 = FloatArrayType::CreateArray(1, SIMPL::StringConstants::Scale);
+		FloatArrayType::Pointer d3 = FloatArrayType::CreateArray(1, SIMPL::StringConstants::Shape);
+		data.push_back(d1);
+		data.push_back(d2);
+		data.push_back(d3);
+		d1->setValue(0, locationparetodiam);
+		d2->setValue(0, scaleparetodiam);
+		d3->setValue(0, shapeparetodiam);
+	}
+	primaryStatsData->setFeatureSizeDistribution(data);
+
 	if (disttype == SIMPL::StringConstants::LogNormalDistribution)
 	{
 		primaryStatsData->setFeatureSize_DistType(SIMPL::DistributionType::LogNormal);
@@ -971,10 +1085,40 @@ QComboBox* StatsGenFeatureSizeWidget::getDistributionTypeCombo()
 void StatsGenFeatureSizeWidget::on_distributionTypeCombo_currentIndexChanged(int index)
 {
 	Q_UNUSED(index)
-		if (!validateMuSigma())
-		{
-			return;
-		}
+	QString disttype = distributionTypeCombo->currentText();
+
+	if (disttype == SIMPL::StringConstants::LogNormalDistribution)
+	{
+		label_7->setVisible(true);
+		label_8->setVisible(false);
+		label_11->setText("Mean Feature ESD");
+		m_Xi_SizeDistribution->setVisible(false);
+		m_MinSigmaCutOff->setVisible(true);
+		m_MaxSigmaCutOff->setText("5");
+		m_Mu_SizeDistribution->setText("1.0");
+		m_Sigma_SizeDistribution->setText("0.1");
+		m_BinStepSize->setValue(0.5f);
+		update_ESD_Lognormal();
+	}
+	else if (disttype == SIMPL::StringConstants::ParetoDistribution)
+	{
+		label_7->setVisible(false);
+		label_8->setVisible(true);
+		label_11->setText("Median Feature ESD");
+		m_Xi_SizeDistribution->setVisible(true);
+		m_MinSigmaCutOff->setVisible(false);
+		m_MaxSigmaCutOff->setText("15.0");
+		m_Mu_SizeDistribution->setText("5.0");
+		m_Sigma_SizeDistribution->setText("1.0");
+		m_Xi_SizeDistribution->setText("0.1");
+		m_BinStepSize->setValue(0.5f);
+		update_ESD_Pareto();
+	}
+
+	if (!validateMuSigmaXi())
+	{
+		return;
+	}
 	if (updateSizeDistributionPlot() < 0)
 	{
 		return;
@@ -983,5 +1127,52 @@ void StatsGenFeatureSizeWidget::on_distributionTypeCombo_currentIndexChanged(int
 	{
 		return;
 	}
+
 	emit dataChanged();
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+float StatsGenFeatureSizeWidget::getXi()
+{
+	QLocale loc = QLocale::system();
+	bool ok = false;
+	float f = loc.toFloat(m_Xi_SizeDistribution->text(), &ok);
+	if (!ok)
+	{
+		f = std::numeric_limits<float>::quiet_NaN();
+	}
+	return f;
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void StatsGenFeatureSizeWidget::update_ESD_Pareto()
+{
+	QLocale loc = QLocale::system();
+	m_FeatureESD->blockSignals(true);
+	bool ok = false;
+	float sigma = loc.toFloat(m_Sigma_SizeDistribution->text(), &ok);
+	float mu = loc.toFloat(m_Mu_SizeDistribution->text(), &ok);
+	float xi = loc.toFloat(m_Xi_SizeDistribution->text(), &ok);
+	float esd = mu + (sigma * (powf(2, xi) - 1)) / xi;
+	m_FeatureESD->setText(loc.toString(esd));
+	m_FeatureESD->blockSignals(false);
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void StatsGenFeatureSizeWidget::update_ESD_Lognormal()
+{
+	QLocale loc = QLocale::system();
+	m_FeatureESD->blockSignals(true);
+	bool ok = false;
+	float sigma = loc.toFloat(m_Sigma_SizeDistribution->text(), &ok);
+	float mu = loc.toFloat(m_Mu_SizeDistribution->text(), &ok);
+	float esd = std::exp(mu + (sigma*sigma) / 2.0f);
+	m_FeatureESD->setText(loc.toString(esd));
+	m_FeatureESD->blockSignals(false);
 }

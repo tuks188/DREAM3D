@@ -480,6 +480,33 @@ QString InitializeSyntheticVolume::estimateNumFeatures(IntVec3_t dims, FloatVec3
           }
           vol = (4.0f / 3.0f) * (M_PI) * ((diam * 0.5f) * (diam * 0.5f) * (diam * 0.5f));
         }
+		else if (pp->getFeatureSize_DistType() == SIMPL::DistributionType::Pareto)
+		{
+			VectorOfFloatArray fsdist = pp->getFeatureSizeDistribution();
+			float location = 5.0f;
+			float scale = 01.0f;
+			float shape = 0.1f;
+			if (fsdist.size() >= 3)
+			{
+				location = pp->getFeatureSizeDistribution().at(0)->getValue(0);
+				scale = pp->getFeatureSizeDistribution().at(1)->getValue(0);
+				shape = pp->getFeatureSizeDistribution().at(2)->getValue(0);
+			}
+			else
+			{
+				return QString("-1");
+			}
+			diam = rg.genrand_pareto(location, scale, shape);
+			if (diam >= pp->getMaxFeatureDiameter())
+			{
+				volgood = false;
+			}
+			if (diam < pp->getMinFeatureDiameter())
+			{
+				volgood = false;
+			}
+			vol = (4.0f / 3.0f) * (M_PI) * ((diam * 0.5f) * (diam * 0.5f) * (diam * 0.5f));
+		}
       }
       currentvol = currentvol + vol;
       gid++;

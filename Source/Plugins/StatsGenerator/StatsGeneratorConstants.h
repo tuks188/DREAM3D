@@ -22,6 +22,7 @@ namespace StatsGeneratorConstants
 
   static const float k_Mu = 1.0f;
   static const float k_Sigma = 0.1f;
+  static const float k_Xi = 1.0f;
 }
 
 /**

@@ -307,6 +307,7 @@ int PrecipitatePhaseWidget::gatherStatsData(AttributeMatrix::Pointer attrMat, bo
   int err = 0;
   float mu = getFeatureSizeWidget()->getMu();
   float sigma = getFeatureSizeWidget()->getSigma();
+  float xi = getFeatureSizeWidget()->getXi();
   float minCutOff = getFeatureSizeWidget()->getMinCutOff();
   float maxCutOff = getFeatureSizeWidget()->getMaxCutOff();
   float binStep = getFeatureSizeWidget()->getBinStep();
@@ -320,7 +321,7 @@ int PrecipitatePhaseWidget::gatherStatsData(AttributeMatrix::Pointer attrMat, bo
   float yMax = std::numeric_limits<float>::min();
   QwtArray<float> x;
   QwtArray<float> y;
-  err = getFeatureSizeWidget()->computeBinsAndCutOffs(mu, sigma, minCutOff, maxCutOff, binStep, binsizes, xCo, yCo, xMax, yMax, x, y);
+  err = getFeatureSizeWidget()->computeBinsAndCutOffs(mu, sigma, xi, minCutOff, maxCutOff, binStep, binsizes, xCo, yCo, xMax, yMax, x, y);
   if(err < 0)
   {
     return err;
@@ -458,6 +459,7 @@ void PrecipitatePhaseWidget::extractStatsData(AttributeMatrix::Pointer attrMat, 
 
   float mu = getFeatureSizeWidget()->getMu();
   float sigma = getFeatureSizeWidget()->getSigma();
+  float xi = getFeatureSizeWidget()->getXi();
   float minCutOff = getFeatureSizeWidget()->getMinCutOff();
   float maxCutOff = getFeatureSizeWidget()->getMaxCutOff();
   float binStepSize = getFeatureSizeWidget()->getBinStep();
