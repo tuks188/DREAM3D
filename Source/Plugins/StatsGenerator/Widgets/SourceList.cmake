@@ -56,6 +56,7 @@ set(${PLUGIN_NAME}_Widgets_MISC_HDRS
 set(StatsGenerator_DELEGATE_SRCS
     ${StatsGenerator_SOURCE_DIR}/Widgets/Delegates/SGBetaItemDelegate.cpp
     ${StatsGenerator_SOURCE_DIR}/Widgets/Delegates/SGLogNormalItemDelegate.cpp
+    ${StatsGenerator_SOURCE_DIR}/Widgets/Delegates/SGParetoItemDelegate.cpp
     ${StatsGenerator_SOURCE_DIR}/Widgets/Delegates/SGPowerLawItemDelegate.cpp
     ${StatsGenerator_SOURCE_DIR}/Widgets/Delegates/SGODFItemDelegate.cpp
     ${StatsGenerator_SOURCE_DIR}/Widgets/Delegates/SGMDFItemDelegate.cpp
@@ -64,6 +65,7 @@ set(StatsGenerator_DELEGATE_SRCS
 set(StatsGenerator_DELEGATE_MOC_HDRS
     ${StatsGenerator_SOURCE_DIR}/Widgets/Delegates/SGBetaItemDelegate.h
     ${StatsGenerator_SOURCE_DIR}/Widgets/Delegates/SGLogNormalItemDelegate.h
+    ${StatsGenerator_SOURCE_DIR}/Widgets/Delegates/SGParetoItemDelegate.h
     ${StatsGenerator_SOURCE_DIR}/Widgets/Delegates/SGPowerLawItemDelegate.h
     ${StatsGenerator_SOURCE_DIR}/Widgets/Delegates/SGODFItemDelegate.h
     ${StatsGenerator_SOURCE_DIR}/Widgets/Delegates/SGMDFItemDelegate.h
@@ -74,6 +76,7 @@ cmp_IDE_SOURCE_PROPERTIES( "StatsGenerator/Delegates" "${StatsGenerator_DELEGATE
 set(StatsGenerator_TABLEMODEL_SRCS
     ${StatsGenerator_SOURCE_DIR}/Widgets/TableModels/SGAbstractTableModel.cpp
     ${StatsGenerator_SOURCE_DIR}/Widgets/TableModels/SGBetaTableModel.cpp
+    ${StatsGenerator_SOURCE_DIR}/Widgets/TableModels/SGParetoTableModel.cpp
     ${StatsGenerator_SOURCE_DIR}/Widgets/TableModels/SGPowerLawTableModel.cpp
     ${StatsGenerator_SOURCE_DIR}/Widgets/TableModels/SGLogNormalTableModel.cpp
     ${StatsGenerator_SOURCE_DIR}/Widgets/TableModels/SGODFTableModel.cpp
@@ -84,6 +87,7 @@ set(StatsGenerator_TABLEMODEL_SRCS
 set(StatsGenerator_TABLEMODEL_MOC_HDRS
     ${StatsGenerator_SOURCE_DIR}/Widgets/TableModels/SGAbstractTableModel.h
     ${StatsGenerator_SOURCE_DIR}/Widgets/TableModels/SGBetaTableModel.h
+    ${StatsGenerator_SOURCE_DIR}/Widgets/TableModels/SGParetoTableModel.h
     ${StatsGenerator_SOURCE_DIR}/Widgets/TableModels/SGPowerLawTableModel.h
     ${StatsGenerator_SOURCE_DIR}/Widgets/TableModels/SGLogNormalTableModel.h
     ${StatsGenerator_SOURCE_DIR}/Widgets/TableModels/SGODFTableModel.h
