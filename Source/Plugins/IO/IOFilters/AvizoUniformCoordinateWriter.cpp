@@ -55,15 +55,13 @@
 //
 // -----------------------------------------------------------------------------
 AvizoUniformCoordinateWriter::AvizoUniformCoordinateWriter()
-: AbstractFilter()
-, m_OutputFile("")
+: m_OutputFile("")
 , m_WriteBinaryFile(false)
 , m_Units("microns")
 , m_WriteFeatureIds(true)
 , m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
 , m_FeatureIds(nullptr)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -137,7 +135,7 @@ void AvizoUniformCoordinateWriter::dataCheck()
     QVector<size_t> dims(1, 1);
     m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                           dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-    if(nullptr != m_FeatureIdsPtr.lock().get())                                                                  /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+    if(nullptr != m_FeatureIdsPtr.lock())                                                                        /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
     {
       m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -222,7 +220,7 @@ void AvizoUniformCoordinateWriter::generateHeader(FILE* f)
   fprintf(f, "\n");
   fprintf(f, "# Dimensions in x-, y-, and z-direction\n");
   size_t x = 0, y = 0, z = 0;
-  getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName())->getGeometryAs<ImageGeom>()->getDimensions(x, y, z);
+  std::tie(x, y, z) = getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName())->getGeometryAs<ImageGeom>()->getDimensions();
 
   fprintf(f, "define Lattice %llu %llu %llu\n", static_cast<unsigned long long>(x), static_cast<unsigned long long>(y), static_cast<unsigned long long>(z));
 

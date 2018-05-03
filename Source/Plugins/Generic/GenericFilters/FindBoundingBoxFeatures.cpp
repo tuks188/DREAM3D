@@ -51,8 +51,7 @@
 //
 // -----------------------------------------------------------------------------
 FindBoundingBoxFeatures::FindBoundingBoxFeatures()
-: AbstractFilter()
-, m_CalcByPhase(false)
+: m_CalcByPhase(false)
 , m_CentroidsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, SIMPL::FeatureData::Centroids)
 , m_PhasesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, SIMPL::FeatureData::Phases)
 , m_SurfaceFeaturesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, SIMPL::FeatureData::SurfaceFeatures)
@@ -62,7 +61,6 @@ FindBoundingBoxFeatures::FindBoundingBoxFeatures()
 , m_SurfaceFeatures(nullptr)
 , m_BiasedFeatures(nullptr)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -137,7 +135,7 @@ void FindBoundingBoxFeatures::dataCheck()
   QVector<size_t> cDims(1, 3);
   m_CentroidsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getCentroidsArrayPath(),
                                                                                                      cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_CentroidsPtr.lock().get())                                                                 /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_CentroidsPtr.lock())                                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Centroids = m_CentroidsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -149,7 +147,7 @@ void FindBoundingBoxFeatures::dataCheck()
   cDims[0] = 1;
   m_SurfaceFeaturesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getSurfaceFeaturesArrayPath(),
                                                                                                           cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_SurfaceFeaturesPtr.lock().get())                                                                /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_SurfaceFeaturesPtr.lock())                                                                      /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceFeatures = m_SurfaceFeaturesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -161,7 +159,7 @@ void FindBoundingBoxFeatures::dataCheck()
   tempPath.update(getCentroidsArrayPath().getDataContainerName(), getCentroidsArrayPath().getAttributeMatrixName(), getBiasedFeaturesArrayName());
   m_BiasedFeaturesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<bool>, AbstractFilter, bool>(this, tempPath, false,
                                                                                                                      cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_BiasedFeaturesPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_BiasedFeaturesPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_BiasedFeatures = m_BiasedFeaturesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -170,7 +168,7 @@ void FindBoundingBoxFeatures::dataCheck()
   {
     m_PhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getPhasesArrayPath(),
                                                                                                       cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-    if(nullptr != m_PhasesPtr.lock().get())                                                                   /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+    if(nullptr != m_PhasesPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
     {
       m_Phases = m_PhasesPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -348,30 +346,25 @@ void FindBoundingBoxFeatures::find_boundingboxfeatures2D()
   int32_t move = 0;
 
   int32_t xPoints = 0, yPoints = 0;
-  float xRes = 0.0f, yRes = 0.0f;
-
-
+  float xRes = 0.0f, yRes = 0.0f, zRes = 0.0f;
 
   if(imageGeom->getXPoints() == 1)
   {
     xPoints = imageGeom->getYPoints();
-    xRes = imageGeom->getYRes();
     yPoints = imageGeom->getZPoints();
-    yRes = imageGeom->getZRes();
+    std::tie(zRes, xRes, yRes) = imageGeom->getResolution();
   }
   if(imageGeom->getYPoints() == 1)
   {
     xPoints = imageGeom->getXPoints();
-    xRes = imageGeom->getXRes();
     yPoints = imageGeom->getZPoints();
-    yRes = imageGeom->getZRes();
+    std::tie(xRes, zRes, yRes) = imageGeom->getResolution();
   }
   if(imageGeom->getZPoints() == 1)
   {
     xPoints = imageGeom->getXPoints();
-    xRes = imageGeom->getXRes();
     yPoints = imageGeom->getYPoints();
-    yRes = imageGeom->getYRes();
+    std::tie(xRes, yRes, zRes) = imageGeom->getResolution();
   }
 
   boundbox[0] = xOrigin;

@@ -55,8 +55,7 @@
 //
 // -----------------------------------------------------------------------------
 CropImageGeometry::CropImageGeometry()
-: AbstractFilter()
-, m_NewDataContainerName(SIMPL::Defaults::NewImageDataContainerName)
+: m_NewDataContainerName(SIMPL::Defaults::NewImageDataContainerName)
 , m_CellAttributeMatrixPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, "")
 , m_CellFeatureAttributeMatrixPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "")
 , m_XMin(0)
@@ -71,7 +70,6 @@ CropImageGeometry::CropImageGeometry()
 , m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
 , m_FeatureIds(nullptr)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -341,7 +339,7 @@ void CropImageGeometry::dataCheck()
   {
     QVector<size_t> cDims(1, 1);
     m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(nullptr, getFeatureIdsArrayPath(), cDims);
-    if(nullptr != m_FeatureIdsPtr.lock().get())
+    if(nullptr != m_FeatureIdsPtr.lock())
     {
       m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
     }
@@ -427,7 +425,7 @@ void CropImageGeometry::execute()
   int64_t totalPoints = cellAttrMat->getNumberOfTuples();
 
   size_t udims[3] = {0, 0, 0};
-  srcCellDataContainer->getGeometryAs<ImageGeom>()->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = srcCellDataContainer->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -488,6 +486,7 @@ void CropImageGeometry::execute()
   QList<QString> voxelArrayNames = cellAttrMat->getAttributeArrayNames();
   for(int64_t i = 0; i < ZP; i++)
   {
+    if(getCancel()) { break; }
     QString ss = QObject::tr("Cropping Volume || Slice %1 of %2 Complete").arg(i).arg(ZP);
     notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
     planeold = (i + m_ZMin) * (srcCellDataContainer->getGeometryAs<ImageGeom>()->getXPoints() * srcCellDataContainer->getGeometryAs<ImageGeom>()->getYPoints());
@@ -510,6 +509,7 @@ void CropImageGeometry::execute()
       }
     }
   }
+  if(getCancel()) { return; }
   destCellDataContainer->getGeometryAs<ImageGeom>()->setDimensions(static_cast<size_t>(XP), static_cast<size_t>(YP), static_cast<size_t>(ZP));
   totalPoints = destCellDataContainer->getGeometryAs<ImageGeom>()->getNumberOfElements();
   QVector<size_t> tDims(3, 0);
@@ -540,7 +540,7 @@ void CropImageGeometry::execute()
       dap.setDataContainerName(getNewDataContainerName());
     }
     m_FeatureIdsPtr = cellAttrMat->getAttributeArrayAs<Int32ArrayType>(dap.getDataArrayName()); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-    if(nullptr != m_FeatureIdsPtr.lock().get())                                                 /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+    if(nullptr != m_FeatureIdsPtr.lock())                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
     {
       m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -555,6 +555,8 @@ void CropImageGeometry::execute()
     // Find the unique set of feature ids
     for(int64_t i = 0; i < totalPoints; ++i)
     {
+      if(getCancel()) { break; }
+      
       int32_t currentFeatureId = m_FeatureIds[i];
       if(currentFeatureId < totalFeatures)
       {
@@ -639,9 +641,7 @@ FloatVec3_t CropImageGeometry::getCurrentVolumeDataContainerResolutions()
     ImageGeom::Pointer image = m->getGeometryAs<ImageGeom>();
     if(image.get() != nullptr)
     {
-      data.x = image->getXRes();
-      data.y = image->getYRes();
-      data.z = image->getZRes();
+      std::tie(data.x, data.y, data.z) = image->getResolution();
     }
     else
     {

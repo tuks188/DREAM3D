@@ -69,8 +69,7 @@ void delay(int seconds)
 //
 // -----------------------------------------------------------------------------
 InitializeData::InitializeData()
-: AbstractFilter()
-, m_XMin(0)
+: m_XMin(0)
 , m_YMin(0)
 , m_ZMin(0)
 , m_XMax(0)
@@ -79,7 +78,6 @@ InitializeData::InitializeData()
 , m_InitType(Manual)
 , m_InitValue(0)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -243,7 +241,7 @@ void InitializeData::dataCheck()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(attributeMatrixPath.getDataContainerName());
 
   size_t udims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   QString attrMatName = attributeMatrixPath.getAttributeMatrixName();
   QList<QString> voxelArrayNames = DataArrayPath::GetDataArrayNames(m_CellAttributeMatrixPaths);
@@ -377,7 +375,7 @@ void InitializeData::execute()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(attributeMatrixPath.getDataContainerName());
 
   size_t udims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),

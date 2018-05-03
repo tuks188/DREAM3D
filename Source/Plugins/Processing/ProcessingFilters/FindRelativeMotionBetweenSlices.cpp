@@ -35,7 +35,7 @@
 
 #include "FindRelativeMotionBetweenSlices.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/partitioner.h>
@@ -108,7 +108,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     convert(r.begin(), r.end());
@@ -128,8 +128,7 @@ private:
 //
 // -----------------------------------------------------------------------------
 FindRelativeMotionBetweenSlices::FindRelativeMotionBetweenSlices()
-: AbstractFilter()
-, m_SelectedArrayPath("", "", "")
+: m_SelectedArrayPath("", "", "")
 , m_Plane(0)
 , m_PSize1(0)
 , m_PSize2(0)
@@ -140,7 +139,6 @@ FindRelativeMotionBetweenSlices::FindRelativeMotionBetweenSlices()
 , m_InData(nullptr)
 , m_MotionDirection(nullptr)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -245,7 +243,7 @@ void FindRelativeMotionBetweenSlices::dataCheck()
   tempPath.update(m_SelectedArrayPath.getDataContainerName(), m_SelectedArrayPath.getAttributeMatrixName(), getMotionDirectionArrayName());
   m_MotionDirectionPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
       this, tempPath, 0, cDims);                   /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_MotionDirectionPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_MotionDirectionPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_MotionDirection = m_MotionDirectionPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -337,7 +335,7 @@ void FindRelativeMotionBetweenSlices::execute()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_SelectedArrayPath.getDataContainerName());
   ImageGeom::Pointer image = m->getGeometryAs<ImageGeom>();
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
 #endif
@@ -494,7 +492,7 @@ void FindRelativeMotionBetweenSlices::execute()
   {
     Int8ArrayType::Pointer cellArray = std::dynamic_pointer_cast<Int8ArrayType>(m_InDataPtr.lock());
     int8_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), CalcRelativeMotion<int8_t>(cPtr, m_MotionDirection, patchPoints, searchPoints, validPoints, numPatchPoints, numSearchPoints),
@@ -511,7 +509,7 @@ void FindRelativeMotionBetweenSlices::execute()
   {
     UInt8ArrayType::Pointer cellArray = std::dynamic_pointer_cast<UInt8ArrayType>(m_InDataPtr.lock());
     uint8_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), CalcRelativeMotion<uint8_t>(cPtr, m_MotionDirection, patchPoints, searchPoints, validPoints, numPatchPoints, numSearchPoints),
@@ -528,7 +526,7 @@ void FindRelativeMotionBetweenSlices::execute()
   {
     Int16ArrayType::Pointer cellArray = std::dynamic_pointer_cast<Int16ArrayType>(m_InDataPtr.lock());
     int16_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), CalcRelativeMotion<int16_t>(cPtr, m_MotionDirection, patchPoints, searchPoints, validPoints, numPatchPoints, numSearchPoints),
@@ -545,7 +543,7 @@ void FindRelativeMotionBetweenSlices::execute()
   {
     UInt16ArrayType::Pointer cellArray = std::dynamic_pointer_cast<UInt16ArrayType>(m_InDataPtr.lock());
     uint16_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), CalcRelativeMotion<uint16_t>(cPtr, m_MotionDirection, patchPoints, searchPoints, validPoints, numPatchPoints, numSearchPoints),
@@ -562,7 +560,7 @@ void FindRelativeMotionBetweenSlices::execute()
   {
     Int32ArrayType::Pointer cellArray = std::dynamic_pointer_cast<Int32ArrayType>(m_InDataPtr.lock());
     int32_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), CalcRelativeMotion<int32_t>(cPtr, m_MotionDirection, patchPoints, searchPoints, validPoints, numPatchPoints, numSearchPoints),
@@ -579,7 +577,7 @@ void FindRelativeMotionBetweenSlices::execute()
   {
     UInt32ArrayType::Pointer cellArray = std::dynamic_pointer_cast<UInt32ArrayType>(m_InDataPtr.lock());
     uint32_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), CalcRelativeMotion<uint32_t>(cPtr, m_MotionDirection, patchPoints, searchPoints, validPoints, numPatchPoints, numSearchPoints),
@@ -596,7 +594,7 @@ void FindRelativeMotionBetweenSlices::execute()
   {
     Int64ArrayType::Pointer cellArray = std::dynamic_pointer_cast<Int64ArrayType>(m_InDataPtr.lock());
     int64_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), CalcRelativeMotion<int64_t>(cPtr, m_MotionDirection, patchPoints, searchPoints, validPoints, numPatchPoints, numSearchPoints),
@@ -613,7 +611,7 @@ void FindRelativeMotionBetweenSlices::execute()
   {
     UInt64ArrayType::Pointer cellArray = std::dynamic_pointer_cast<UInt64ArrayType>(m_InDataPtr.lock());
     uint64_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), CalcRelativeMotion<uint64_t>(cPtr, m_MotionDirection, patchPoints, searchPoints, validPoints, numPatchPoints, numSearchPoints),
@@ -630,7 +628,7 @@ void FindRelativeMotionBetweenSlices::execute()
   {
     FloatArrayType::Pointer cellArray = std::dynamic_pointer_cast<FloatArrayType>(m_InDataPtr.lock());
     float* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), CalcRelativeMotion<float>(cPtr, m_MotionDirection, patchPoints, searchPoints, validPoints, numPatchPoints, numSearchPoints),
@@ -647,7 +645,7 @@ void FindRelativeMotionBetweenSlices::execute()
   {
     DoubleArrayType::Pointer cellArray = std::dynamic_pointer_cast<DoubleArrayType>(m_InDataPtr.lock());
     double* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), CalcRelativeMotion<double>(cPtr, m_MotionDirection, patchPoints, searchPoints, validPoints, numPatchPoints, numSearchPoints),
@@ -669,9 +667,11 @@ void FindRelativeMotionBetweenSlices::execute()
   }
 
   float v[3];
-  float xRes = m->getGeometryAs<ImageGeom>()->getXRes();
-  float yRes = m->getGeometryAs<ImageGeom>()->getYRes();
-  float zRes = m->getGeometryAs<ImageGeom>()->getZRes();
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
+
   for(size_t i = 0; i < totalPoints; i++)
   {
     v[0] = m_MotionDirection[3 * i + 0] * xRes;

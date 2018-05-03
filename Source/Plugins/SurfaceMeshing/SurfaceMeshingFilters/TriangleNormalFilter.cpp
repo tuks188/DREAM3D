@@ -42,7 +42,7 @@
 
 #include "SurfaceMeshing/SurfaceMeshingFilters/util/TriangleOps.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/partitioner.h>
@@ -93,7 +93,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   /**
    * @brief operator () This is called from the TBB stye of code
    * @param r The range to compute the values
@@ -109,11 +109,9 @@ public:
 //
 // -----------------------------------------------------------------------------
 TriangleNormalFilter::TriangleNormalFilter()
-: SurfaceMeshFilter()
-, m_SurfaceMeshTriangleNormalsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceNormals)
+: m_SurfaceMeshTriangleNormalsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceNormals)
 , m_SurfaceMeshTriangleNormals(nullptr)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -126,6 +124,7 @@ TriangleNormalFilter::~TriangleNormalFilter() = default;
 // -----------------------------------------------------------------------------
 void TriangleNormalFilter::setupFilterParameters()
 {
+  SurfaceMeshFilter::setupFilterParameters();
   FilterParameterVector parameters;
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::CreatedArray));
   {
@@ -172,7 +171,7 @@ void TriangleNormalFilter::dataCheck()
   QVector<size_t> cDims(1, 3);
   m_SurfaceMeshTriangleNormalsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<double>, AbstractFilter, double>(
       this, getSurfaceMeshTriangleNormalsArrayPath(), 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_SurfaceMeshTriangleNormalsPtr.lock().get())    /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_SurfaceMeshTriangleNormalsPtr.lock())          /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshTriangleNormals = m_SurfaceMeshTriangleNormalsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -214,11 +213,11 @@ void TriangleNormalFilter::execute()
 
   TriangleGeom::Pointer triangleGeom = sm->getGeometryAs<TriangleGeom>();
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   bool doParallel = true;
 #endif
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   if(doParallel == true)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, triangleGeom->getNumberOfTris()), CalculateNormalsImpl(triangleGeom->getVertices(), triangleGeom->getTriangles(), m_SurfaceMeshTriangleNormals),

@@ -55,15 +55,13 @@
 //
 // -----------------------------------------------------------------------------
 AbaqusHexahedronWriter::AbaqusHexahedronWriter()
-: AbstractFilter()
-, m_OutputPath("")
+: m_OutputPath("")
 , m_FilePrefix("")
 , m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
 , m_HourglassStiffness(250)
 , m_JobName("")
 , m_FeatureIds(nullptr)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -138,7 +136,7 @@ void AbaqusHexahedronWriter::dataCheck()
   QVector<size_t> cDims(1, 1); // The component dimensions of the needed array.
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_FeatureIdsPtr.lock().get())                                                                   /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -201,7 +199,7 @@ void AbaqusHexahedronWriter::execute()
   DataContainer::Pointer r = getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName());
 
   size_t cDims[3] = {0, 0, 0};
-  r->getGeometryAs<ImageGeom>()->getDimensions(cDims);
+  std::tie(cDims[0], cDims[1], cDims[2]) = r->getGeometryAs<ImageGeom>()->getDimensions();
   size_t pDims[3] = {cDims[0] + 1, cDims[1] + 1, cDims[2] + 1};
   float origin[3] = {0.0f, 0.0f, 0.0f};
   r->getGeometryAs<ImageGeom>()->getOrigin(origin);

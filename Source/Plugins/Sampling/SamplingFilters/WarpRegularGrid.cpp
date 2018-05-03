@@ -54,8 +54,7 @@
 //
 // -----------------------------------------------------------------------------
 WarpRegularGrid::WarpRegularGrid()
-: AbstractFilter()
-, m_NewDataContainerName(SIMPL::Defaults::NewImageDataContainerName)
+: m_NewDataContainerName(SIMPL::Defaults::NewImageDataContainerName)
 , m_CellAttributeMatrixPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, "")
 , m_PolyOrder(0)
 , m_SaveAsNewDataContainer(false)
@@ -83,7 +82,6 @@ WarpRegularGrid::WarpRegularGrid()
   m_FourthOrderBCoeff.c02 = 0.0f, m_FourthOrderBCoeff.c11 = 0.0f, m_FourthOrderBCoeff.c10 = 1.0f;
   m_FourthOrderBCoeff.c01 = 1.0f, m_FourthOrderBCoeff.c00 = 0.0f;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -240,7 +238,7 @@ void WarpRegularGrid::execute()
   AttributeMatrix::Pointer newCellAttrMat = cellAttrMat->deepCopy(false);
 
   size_t dims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(dims);
+  std::tie(dims[0], dims[1], dims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
   float res[3] = {0.0f, 0.0f, 0.0f};
   m->getGeometryAs<ImageGeom>()->getResolution(res);
   size_t totalPoints = m->getGeometryAs<ImageGeom>()->getNumberOfElements();

@@ -1,37 +1,37 @@
 /* ============================================================================
-* Copyright (c) 2009-2016 BlueQuartz Software, LLC
-*
-* Redistribution and use in source and binary forms, with or without modification,
-* are permitted provided that the following conditions are met:
-*
-* Redistributions of source code must retain the above copyright notice, this
-* list of conditions and the following disclaimer.
-*
-* Redistributions in binary form must reproduce the above copyright notice, this
-* list of conditions and the following disclaimer in the documentation and/or
-* other materials provided with the distribution.
-*
-* Neither the name of BlueQuartz Software, the US Air Force, nor the names of its
-* contributors may be used to endorse or promote products derived from this software
-* without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
-* USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-* The code contained herein was partially funded by the followig contracts:
-*    United States Air Force Prime Contract FA8650-07-D-5800
-*    United States Air Force Prime Contract FA8650-10-D-5210
-*    United States Prime Contract Navy N00173-07-C-2068
-*
-* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+ * Copyright (c) 2009-2016 BlueQuartz Software, LLC
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * Neither the name of BlueQuartz Software, the US Air Force, nor the names of its
+ * contributors may be used to endorse or promote products derived from this software
+ * without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+ * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The code contained herein was partially funded by the followig contracts:
+ *    United States Air Force Prime Contract FA8650-07-D-5800
+ *    United States Air Force Prime Contract FA8650-10-D-5210
+ *    United States Prime Contract Navy N00173-07-C-2068
+ *
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 #include "ImportImageStack.h"
 
@@ -56,15 +56,13 @@
 //
 // -----------------------------------------------------------------------------
 ImportImageStack::ImportImageStack()
-: AbstractFilter()
-, m_DataContainerName(SIMPL::Defaults::ImageDataContainerName)
+: m_DataContainerName(SIMPL::Defaults::ImageDataContainerName)
 , m_CellAttributeMatrixName(SIMPL::Defaults::CellAttributeMatrixName)
 , m_BoundsFile("")
 , m_GeometryType(0)
 , m_ImageDataArrayName(SIMPL::CellData::ImageData)
 {
   initialize();
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -142,6 +140,7 @@ void ImportImageStack::initialize()
   m_InputFileListInfo.FileExtension = QString("tif");
   m_InputFileListInfo.StartIndex = 0;
   m_InputFileListInfo.EndIndex = 0;
+  m_InputFileListInfo.IncrementIndex = 1;
   m_InputFileListInfo.PaddingDigits = 0;
 }
 
@@ -200,8 +199,9 @@ void ImportImageStack::dataCheck()
   }
 
   // Now generate all the file names the user is asking for and populate the table
-  QVector<QString> fileList = FilePathGenerator::GenerateFileList(m_InputFileListInfo.StartIndex, m_InputFileListInfo.EndIndex, hasMissingFiles, orderAscending, m_InputFileListInfo.InputPath,
-                                                                  m_InputFileListInfo.FilePrefix, m_InputFileListInfo.FileSuffix, m_InputFileListInfo.FileExtension, m_InputFileListInfo.PaddingDigits);
+  QVector<QString> fileList = FilePathGenerator::GenerateFileList(m_InputFileListInfo.StartIndex, m_InputFileListInfo.EndIndex, m_InputFileListInfo.IncrementIndex, hasMissingFiles, orderAscending,
+                                                                  m_InputFileListInfo.InputPath, m_InputFileListInfo.FilePrefix, m_InputFileListInfo.FileSuffix, m_InputFileListInfo.FileExtension,
+                                                                  m_InputFileListInfo.PaddingDigits);
   if(fileList.size() == 0)
   {
     ss.clear();
@@ -259,13 +259,13 @@ void ImportImageStack::dataCheck()
 
     if(m_GeometryType == 0)
     {
-      m->getGeometryAs<ImageGeom>()->setDimensions(static_cast<size_t>(dims[0]), static_cast<size_t>(dims[1]), static_cast<size_t>(dims[2]));
-      m->getGeometryAs<ImageGeom>()->setResolution(m_Resolution.x, m_Resolution.y, m_Resolution.z);
-      m->getGeometryAs<ImageGeom>()->setOrigin(m_Origin.x, m_Origin.y, m_Origin.z);
+      m->getGeometryAs<ImageGeom>()->setDimensions(std::make_tuple(static_cast<size_t>(dims[0]), static_cast<size_t>(dims[1]), static_cast<size_t>(dims[2])));
+      m->getGeometryAs<ImageGeom>()->setResolution(std::make_tuple(m_Resolution.x, m_Resolution.y, m_Resolution.z));
+      m->getGeometryAs<ImageGeom>()->setOrigin(std::make_tuple(m_Origin.x, m_Origin.y, m_Origin.z));
     }
     else if(m_GeometryType == 1)
     {
-      m->getGeometryAs<RectGridGeom>()->setDimensions(static_cast<size_t>(dims[0]), static_cast<size_t>(dims[1]), static_cast<size_t>(dims[2]));
+      m->getGeometryAs<RectGridGeom>()->setDimensions(std::make_tuple(static_cast<size_t>(dims[0]), static_cast<size_t>(dims[1]), static_cast<size_t>(dims[2])));
       if(!m_BoundsFile.isEmpty())
       {
         err = readBounds();
@@ -314,8 +314,8 @@ void ImportImageStack::dataCheck()
     // This would be for a gray scale image
     tempPath.update(getDataContainerName(), getCellAttributeMatrixName(), getImageDataArrayName());
     m_ImageDataPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<uint8_t>, AbstractFilter, uint8_t>(
-        this, tempPath, 0, cDims);             /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-    if(nullptr != m_ImageDataPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+        this, tempPath, 0, cDims);       /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+    if(nullptr != m_ImageDataPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
     {
       m_ImageData = m_ImageDataPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -352,8 +352,8 @@ void ImportImageStack::execute()
 
   if(m_GeometryType == 0)
   {
-    m->getGeometryAs<ImageGeom>()->setResolution(m_Resolution.x, m_Resolution.y, m_Resolution.z);
-    m->getGeometryAs<ImageGeom>()->setOrigin(m_Origin.x, m_Origin.y, m_Origin.z);
+    m->getGeometryAs<ImageGeom>()->setResolution(std::make_tuple(m_Resolution.x, m_Resolution.y, m_Resolution.z));
+    m->getGeometryAs<ImageGeom>()->setOrigin(std::make_tuple(m_Origin.x, m_Origin.y, m_Origin.z));
   }
   else if(m_GeometryType == 1)
   {
@@ -381,8 +381,9 @@ void ImportImageStack::execute()
   }
 
   // Now generate all the file names the user is asking for and populate the table
-  QVector<QString> fileList = FilePathGenerator::GenerateFileList(m_InputFileListInfo.StartIndex, m_InputFileListInfo.EndIndex, hasMissingFiles, orderAscending, m_InputFileListInfo.InputPath,
-                                                                  m_InputFileListInfo.FilePrefix, m_InputFileListInfo.FileSuffix, m_InputFileListInfo.FileExtension, m_InputFileListInfo.PaddingDigits);
+  QVector<QString> fileList = FilePathGenerator::GenerateFileList(m_InputFileListInfo.StartIndex, m_InputFileListInfo.EndIndex, m_InputFileListInfo.IncrementIndex, hasMissingFiles, orderAscending,
+                                                                  m_InputFileListInfo.InputPath, m_InputFileListInfo.FilePrefix, m_InputFileListInfo.FileSuffix, m_InputFileListInfo.FileExtension,
+                                                                  m_InputFileListInfo.PaddingDigits);
   if(fileList.size() == 0)
   {
     QString ss = QObject::tr("No files have been selected for import");
@@ -418,11 +419,11 @@ void ImportImageStack::execute()
     {
       if(m_GeometryType == 0)
       {
-        m->getGeometryAs<ImageGeom>()->setDimensions(width, height, fileList.size());
+        m->getGeometryAs<ImageGeom>()->setDimensions(std::make_tuple(width, height, fileList.size()));
       }
       else if(m_GeometryType == 1)
       {
-        m->getGeometryAs<RectGridGeom>()->setDimensions(width, height, fileList.size());
+        m->getGeometryAs<RectGridGeom>()->setDimensions(std::make_tuple(width, height, fileList.size()));
       }
 
       const QImage::Format format = reader.imageFormat();
@@ -483,9 +484,9 @@ void ImportImageStack::execute()
 // -----------------------------------------------------------------------------
 int ImportImageStack::readBounds()
 {
-  size_t dims[3];
+  size_t dims[3] = {0, 0, 0};
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getDataContainerName());
-  m->getGeometryAs<RectGridGeom>()->getDimensions(dims);
+  std::tie(dims[0], dims[1], dims[2]) = m->getGeometryAs<RectGridGeom>()->getDimensions();
 
   FloatArrayType::Pointer xbounds = FloatArrayType::CreateArray(dims[0] + 1, SIMPL::Geometry::xBoundsList);
   FloatArrayType::Pointer ybounds = FloatArrayType::CreateArray(dims[1] + 1, SIMPL::Geometry::yBoundsList);

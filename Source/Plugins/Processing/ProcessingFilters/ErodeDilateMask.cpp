@@ -51,8 +51,7 @@
 //
 // -----------------------------------------------------------------------------
 ErodeDilateMask::ErodeDilateMask()
-: AbstractFilter()
-, m_Direction(0)
+: m_Direction(0)
 , m_NumIterations(1)
 , m_XDirOn(true)
 , m_YDirOn(true)
@@ -61,7 +60,6 @@ ErodeDilateMask::ErodeDilateMask()
 , m_MaskCopy(nullptr)
 , m_Mask(nullptr)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -147,7 +145,7 @@ void ErodeDilateMask::dataCheck()
   QVector<size_t> cDims(1, 1);
   m_MaskPtr =
       getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getMaskArrayPath(), cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_MaskPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_MaskPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Mask = m_MaskPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -187,7 +185,7 @@ void ErodeDilateMask::execute()
   maskCopyPtr->initializeWithValue(false);
 
   size_t udims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),

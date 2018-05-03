@@ -1,4 +1,4 @@
-Find Feature Neighbors {#findneighbors}
+Find Feature Neighbors 
 =============
 
 ## Group (Subgroup) ##
@@ -51,7 +51,6 @@ Image
 + (02) Single Hexagonal Phase Equiaxed
 + (03) Single Cubic Phase Rolled
 + (05) Composite
-+ InsertTransformationPhase
 + (06) SmallIN100 Postsegmentation Processing
 + (01) Single Cubic Phase Equiaxed
 + (04) Two Phase Cubic Hexagonal Particles Equiaxed

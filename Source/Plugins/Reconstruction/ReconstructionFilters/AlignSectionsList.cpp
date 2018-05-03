@@ -53,12 +53,10 @@
 //
 // -----------------------------------------------------------------------------
 AlignSectionsList::AlignSectionsList()
-: AlignSections()
-, m_InputFile("")
+: m_InputFile("")
 , m_DREAM3DAlignmentFile(false)
 {
   // only setting up the child parameters because the parent constructor has already been called
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -72,6 +70,7 @@ AlignSectionsList::~AlignSectionsList() = default;
 void AlignSectionsList::setupFilterParameters()
 {
   // getting the current parameters that were set by the parent and adding to it before resetting it
+  AlignSections::setupFilterParameters();
   FilterParameterVector parameters;
   parameters.push_back(SIMPL_NEW_INPUT_FILE_FP("Input File", InputFile, FilterParameter::Parameter, AlignSectionsList, "*.txt"));
   parameters.push_back(SIMPL_NEW_BOOL_FP("DREAM3D Alignment File Format", DREAM3DAlignmentFile, FilterParameter::Parameter, AlignSectionsList));
@@ -165,7 +164,7 @@ void AlignSectionsList::find_shifts(std::vector<int64_t>& xshifts, std::vector<i
   ImageGeom::Pointer geom = m->getGeometryAs<ImageGeom>();
 
   size_t udims[3] = {0, 0, 0};
-  geom->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = geom->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),

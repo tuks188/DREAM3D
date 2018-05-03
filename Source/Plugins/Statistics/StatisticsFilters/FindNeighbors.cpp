@@ -53,8 +53,7 @@
 //
 // -----------------------------------------------------------------------------
 FindNeighbors::FindNeighbors()
-: AbstractFilter()
-, m_CellFeatureAttributeMatrixPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "")
+: m_CellFeatureAttributeMatrixPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "")
 , m_SharedSurfaceAreaListArrayName(SIMPL::FeatureData::SharedSurfaceAreaList)
 , m_NeighborListArrayName(SIMPL::FeatureData::NeighborList)
 , m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
@@ -71,7 +70,6 @@ FindNeighbors::FindNeighbors()
   m_NeighborList = NeighborList<int32_t>::NullPointer();
   m_SharedSurfaceAreaList = NeighborList<float>::NullPointer();
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -154,7 +152,7 @@ void FindNeighbors::dataCheck()
   QVector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_FeatureIdsPtr.lock().get())                                                                   /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -164,7 +162,7 @@ void FindNeighbors::dataCheck()
   {
     m_BoundaryCellsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int8_t>, AbstractFilter, int8_t>(
         this, tempPath, 0, cDims);                 /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-    if(nullptr != m_BoundaryCellsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+    if(nullptr != m_BoundaryCellsPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
     {
       m_BoundaryCells = m_BoundaryCellsPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -175,7 +173,7 @@ void FindNeighbors::dataCheck()
   tempPath.update(getCellFeatureAttributeMatrixPath().getDataContainerName(), getCellFeatureAttributeMatrixPath().getAttributeMatrixName(), getNumNeighborsArrayName());
   m_NumNeighborsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter, int32_t>(
       this, tempPath, 0, cDims);                /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_NumNeighborsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_NumNeighborsPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_NumNeighbors = m_NumNeighborsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -185,7 +183,7 @@ void FindNeighbors::dataCheck()
   {
     m_SurfaceFeaturesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<bool>, AbstractFilter, bool>(
         this, tempPath, false, cDims);               /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-    if(nullptr != m_SurfaceFeaturesPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+    if(nullptr != m_SurfaceFeaturesPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
     {
       m_SurfaceFeatures = m_SurfaceFeaturesPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -236,7 +234,7 @@ void FindNeighbors::execute()
   size_t totalFeatures = m_NumNeighborsPtr.lock()->getNumberOfTuples();
 
   size_t udims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -372,6 +370,11 @@ void FindNeighbors::execute()
     }
   }
 
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
+
   // We do this to create new set of NeighborList objects
   for(size_t i = 1; i < totalFeatures; i++)
   {
@@ -409,7 +412,7 @@ void FindNeighbors::execute()
     {
       int32_t neigh = iter.key();    // get the neighbor feature
       int32_t number = iter.value(); // get the number of voxels
-      float area = float(number) * m->getGeometryAs<ImageGeom>()->getXRes() * m->getGeometryAs<ImageGeom>()->getYRes();
+      float area = float(number) * xRes * yRes;
 
       // Push the neighbor feature id back onto the list so we stay synced up
       neighborlist[i].push_back(neigh);

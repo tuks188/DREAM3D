@@ -68,8 +68,7 @@ const QString PrecipitateSyntheticShapeParametersName("Synthetic Shape Parameter
 //
 // -----------------------------------------------------------------------------
 InsertPrecipitatePhases::InsertPrecipitatePhases()
-: AbstractFilter()
-, m_ClusteringListArrayName(SIMPL::FeatureData::ClusteringList)
+: m_ClusteringListArrayName(SIMPL::FeatureData::ClusteringList)
 , m_ErrorOutputFile("")
 , m_CsvOutputFile("")
 , m_MaskArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Mask)
@@ -115,7 +114,6 @@ InsertPrecipitatePhases::InsertPrecipitatePhases()
 {
 
   initialize();
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -263,35 +261,35 @@ void InsertPrecipitatePhases::updateFeatureInstancePointers()
 {
   setErrorCondition(0);
   setWarningCondition(0);
-  if(nullptr != m_FeaturePhasesPtr.lock().get())
+  if(nullptr != m_FeaturePhasesPtr.lock())
   {
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   }
-  if(nullptr != m_NumCellsPtr.lock().get())
+  if(nullptr != m_NumCellsPtr.lock())
   {
     m_NumCells = m_NumCellsPtr.lock()->getPointer(0);
   }
-  if(nullptr != m_EquivalentDiametersPtr.lock().get())
+  if(nullptr != m_EquivalentDiametersPtr.lock())
   {
     m_EquivalentDiameters = m_EquivalentDiametersPtr.lock()->getPointer(0);
   }
-  if(nullptr != m_VolumesPtr.lock().get())
+  if(nullptr != m_VolumesPtr.lock())
   {
     m_Volumes = m_VolumesPtr.lock()->getPointer(0);
   }
-  if(nullptr != m_Omega3sPtr.lock().get())
+  if(nullptr != m_Omega3sPtr.lock())
   {
     m_Omega3s = m_Omega3sPtr.lock()->getPointer(0);
   }
-  if(nullptr != m_CentroidsPtr.lock().get())
+  if(nullptr != m_CentroidsPtr.lock())
   {
     m_Centroids = m_CentroidsPtr.lock()->getPointer(0);
   }
-  if(nullptr != m_AxisEulerAnglesPtr.lock().get())
+  if(nullptr != m_AxisEulerAnglesPtr.lock())
   {
     m_AxisEulerAngles = m_AxisEulerAnglesPtr.lock()->getPointer(0);
   }
-  if(nullptr != m_AxisLengthsPtr.lock().get())
+  if(nullptr != m_AxisLengthsPtr.lock())
   {
     m_AxisLengths = m_AxisLengthsPtr.lock()->getPointer(0);
   }
@@ -367,7 +365,7 @@ void InsertPrecipitatePhases::dataCheck()
 
   QVector<size_t> cDims(1, 1);
   m_PhaseTypesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<uint32_t>, AbstractFilter>(this, getInputPhaseTypesArrayPath(), cDims);
-  if(nullptr != m_PhaseTypesPtr.lock().get())
+  if(nullptr != m_PhaseTypesPtr.lock())
   {
     m_PhaseTypes = m_PhaseTypesPtr.lock()->getPointer(0);
   }
@@ -377,7 +375,7 @@ void InsertPrecipitatePhases::dataCheck()
   }
 
   m_ShapeTypesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<uint32_t>, AbstractFilter>(this, getInputShapeTypesArrayPath(), cDims);
-  if(nullptr != m_ShapeTypesPtr.lock().get())
+  if(nullptr != m_ShapeTypesPtr.lock())
   {
     m_ShapeTypes = m_ShapeTypesPtr.lock()->getPointer(0);
   }
@@ -401,7 +399,7 @@ void InsertPrecipitatePhases::dataCheck()
   // Cell Data
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(), cDims);
 
-  if(nullptr != m_FeatureIdsPtr.lock().get())
+  if(nullptr != m_FeatureIdsPtr.lock())
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   }
@@ -412,7 +410,7 @@ void InsertPrecipitatePhases::dataCheck()
 
   m_CellPhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getCellPhasesArrayPath(), cDims);
 
-  if(nullptr != m_CellPhasesPtr.lock().get())
+  if(nullptr != m_CellPhasesPtr.lock())
   {
     m_CellPhases = m_CellPhasesPtr.lock()->getPointer(0);
   }
@@ -423,7 +421,7 @@ void InsertPrecipitatePhases::dataCheck()
 
   m_BoundaryCellsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int8_t>, AbstractFilter>(this, getBoundaryCellsArrayPath(), cDims);
 
-  if(nullptr != m_BoundaryCellsPtr.lock().get())
+  if(nullptr != m_BoundaryCellsPtr.lock())
   {
     m_BoundaryCells = m_BoundaryCellsPtr.lock()->getPointer(0);
   }
@@ -435,7 +433,7 @@ void InsertPrecipitatePhases::dataCheck()
   if(m_UseMask == true)
   {
     m_MaskPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getMaskArrayPath(), cDims);
-    if(nullptr != m_MaskPtr.lock().get())
+    if(nullptr != m_MaskPtr.lock())
     {
       m_Mask = m_MaskPtr.lock()->getPointer(0);
     }
@@ -466,7 +464,7 @@ void InsertPrecipitatePhases::dataCheck()
   // Feature Data
   m_FeaturePhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeaturePhasesArrayPath(), cDims);
 
-  if(nullptr != m_FeaturePhasesPtr.lock().get())
+  if(nullptr != m_FeaturePhasesPtr.lock())
   {
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   }
@@ -474,7 +472,7 @@ void InsertPrecipitatePhases::dataCheck()
   tempPath.update(getFeaturePhasesArrayPath().getDataContainerName(), getFeaturePhasesArrayPath().getAttributeMatrixName(), getNumCellsArrayName());
   m_NumCellsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter, int32_t>(this, tempPath, 0, cDims, getNumCellsArrayName());
 
-  if(nullptr != m_NumCellsPtr.lock().get())
+  if(nullptr != m_NumCellsPtr.lock())
   {
     m_NumCells = m_NumCellsPtr.lock()->getPointer(0);
   }
@@ -482,7 +480,7 @@ void InsertPrecipitatePhases::dataCheck()
   tempPath.update(getFeaturePhasesArrayPath().getDataContainerName(), getFeaturePhasesArrayPath().getAttributeMatrixName(), getEquivalentDiametersArrayName());
   m_EquivalentDiametersPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0, cDims, getEquivalentDiametersArrayName());
 
-  if(nullptr != m_EquivalentDiametersPtr.lock().get())
+  if(nullptr != m_EquivalentDiametersPtr.lock())
   {
     m_EquivalentDiameters = m_EquivalentDiametersPtr.lock()->getPointer(0);
   }
@@ -490,7 +488,7 @@ void InsertPrecipitatePhases::dataCheck()
   tempPath.update(getFeaturePhasesArrayPath().getDataContainerName(), getFeaturePhasesArrayPath().getAttributeMatrixName(), getVolumesArrayName());
   m_VolumesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0, cDims, getVolumesArrayName());
 
-  if(nullptr != m_VolumesPtr.lock().get())
+  if(nullptr != m_VolumesPtr.lock())
   {
     m_Volumes = m_VolumesPtr.lock()->getPointer(0);
   }
@@ -498,7 +496,7 @@ void InsertPrecipitatePhases::dataCheck()
   tempPath.update(getFeaturePhasesArrayPath().getDataContainerName(), getFeaturePhasesArrayPath().getAttributeMatrixName(), getOmega3sArrayName());
   m_Omega3sPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0, cDims, getOmega3sArrayName());
 
-  if(nullptr != m_Omega3sPtr.lock().get())
+  if(nullptr != m_Omega3sPtr.lock())
   {
     m_Omega3s = m_Omega3sPtr.lock()->getPointer(0);
   }
@@ -507,7 +505,7 @@ void InsertPrecipitatePhases::dataCheck()
   tempPath.update(getFeaturePhasesArrayPath().getDataContainerName(), getFeaturePhasesArrayPath().getAttributeMatrixName(), getCentroidsArrayName());
   m_CentroidsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0, cDims, getCentroidsArrayName());
 
-  if(nullptr != m_CentroidsPtr.lock().get())
+  if(nullptr != m_CentroidsPtr.lock())
   {
     m_Centroids = m_CentroidsPtr.lock()->getPointer(0);
   }
@@ -515,7 +513,7 @@ void InsertPrecipitatePhases::dataCheck()
   tempPath.update(getFeaturePhasesArrayPath().getDataContainerName(), getFeaturePhasesArrayPath().getAttributeMatrixName(), getAxisEulerAnglesArrayName());
   m_AxisEulerAnglesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0, cDims, getAxisEulerAnglesArrayName());
 
-  if(nullptr != m_AxisEulerAnglesPtr.lock().get())
+  if(nullptr != m_AxisEulerAnglesPtr.lock())
   {
     m_AxisEulerAngles = m_AxisEulerAnglesPtr.lock()->getPointer(0);
   }
@@ -523,7 +521,7 @@ void InsertPrecipitatePhases::dataCheck()
   tempPath.update(getFeaturePhasesArrayPath().getDataContainerName(), getFeaturePhasesArrayPath().getAttributeMatrixName(), getAxisLengthsArrayName());
   m_AxisLengthsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0, cDims, getAxisLengthsArrayName());
 
-  if(nullptr != m_AxisLengthsPtr.lock().get())
+  if(nullptr != m_AxisLengthsPtr.lock())
   {
     m_AxisLengths = m_AxisLengthsPtr.lock()->getPointer(0);
   }
@@ -532,7 +530,7 @@ void InsertPrecipitatePhases::dataCheck()
   cDims[0] = 1;
   m_NumFeaturesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getNumFeaturesArrayPath(), cDims);
 
-  if(nullptr != m_NumFeaturesPtr.lock().get())
+  if(nullptr != m_NumFeaturesPtr.lock())
   {
     m_NumFeatures = m_NumFeaturesPtr.lock()->getPointer(0);
   }
@@ -596,7 +594,7 @@ void InsertPrecipitatePhases::execute()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName());
 
   size_t udims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -754,7 +752,7 @@ void InsertPrecipitatePhases::place_precipitates(Int32ArrayType::Pointer exclusi
   StatsDataArray& statsDataArray = *(m_StatsDataArray.lock());
 
   size_t udims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -764,9 +762,9 @@ void InsertPrecipitatePhases::place_precipitates(Int32ArrayType::Pointer exclusi
   m_YPoints = static_cast<int64_t>(dims[1]);
   m_ZPoints = static_cast<int64_t>(dims[2]);
   m_TotalPoints = dims[0] * dims[1] * dims[2];
-  m_XRes = m->getGeometryAs<ImageGeom>()->getXRes();
-  m_YRes = m->getGeometryAs<ImageGeom>()->getYRes();
-  m_ZRes = m->getGeometryAs<ImageGeom>()->getZRes();
+
+  std::tie(m_XRes, m_YRes, m_ZRes) = m->getGeometryAs<ImageGeom>()->getResolution();
+
   m_SizeX = dims[0] * m_XRes;
   m_SizeY = dims[1] * m_YRes;
   m_SizeZ = dims[2] * m_ZRes;
@@ -1285,10 +1283,9 @@ void InsertPrecipitatePhases::place_precipitates(Int32ArrayType::Pointer exclusi
     boxdims[1] = m_SizeY;
     boxdims[2] = m_SizeZ;
 
-    std::vector<float> boxres(3);
-    boxres[0] = m->getGeometryAs<ImageGeom>()->getXRes();
-    boxres[1] = m->getGeometryAs<ImageGeom>()->getYRes();
-    boxres[2] = m->getGeometryAs<ImageGeom>()->getZRes();
+    std::vector<float> boxres = {0.0f, 0.0f, 0.0f};
+
+    std::tie(boxres.at(1), boxres.at(1), boxres.at(2)) = m->getGeometryAs<ImageGeom>()->getResolution();
 
     float max_box_distance = sqrtf((m_SizeX * m_SizeX) + (m_SizeY * m_SizeY) + (m_SizeZ * m_SizeZ));
 
@@ -2401,7 +2398,7 @@ void InsertPrecipitatePhases::assign_voxels()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName());
 
   size_t udims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -2410,9 +2407,10 @@ void InsertPrecipitatePhases::assign_voxels()
   int64_t index;
 
   float totalPoints = dims[0] * dims[1] * dims[2];
-  float xRes = m->getGeometryAs<ImageGeom>()->getXRes();
-  float yRes = m->getGeometryAs<ImageGeom>()->getYRes();
-  float zRes = m->getGeometryAs<ImageGeom>()->getZRes();
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
 
   int64_t column = 0, row = 0, plane = 0;
   float inside = 0.0f;
@@ -2805,8 +2803,12 @@ void InsertPrecipitatePhases::assign_gaps()
 float InsertPrecipitatePhases::find_xcoord(int64_t index)
 {
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName());
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
 
-  float x = m->getGeometryAs<ImageGeom>()->getXRes() * float(index % m->getGeometryAs<ImageGeom>()->getXPoints());
+  float x = xRes * static_cast<float>(index % m->getGeometryAs<ImageGeom>()->getXPoints());
   return x;
 }
 
@@ -2816,8 +2818,11 @@ float InsertPrecipitatePhases::find_xcoord(int64_t index)
 float InsertPrecipitatePhases::find_ycoord(int64_t index)
 {
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName());
-
-  float y = m->getGeometryAs<ImageGeom>()->getYRes() * float((index / m->getGeometryAs<ImageGeom>()->getXPoints()) % m->getGeometryAs<ImageGeom>()->getYPoints());
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
+  float y = yRes * static_cast<float>((index / m->getGeometryAs<ImageGeom>()->getXPoints()) % m->getGeometryAs<ImageGeom>()->getYPoints());
   return y;
 }
 
@@ -2827,8 +2832,12 @@ float InsertPrecipitatePhases::find_ycoord(int64_t index)
 float InsertPrecipitatePhases::find_zcoord(int64_t index)
 {
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName());
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
 
-  float z = m->getGeometryAs<ImageGeom>()->getZRes() * float(index / (m->getGeometryAs<ImageGeom>()->getXPoints() * m->getGeometryAs<ImageGeom>()->getYPoints()));
+  float z = zRes * static_cast<float>(index / (m->getGeometryAs<ImageGeom>()->getXPoints() * m->getGeometryAs<ImageGeom>()->getYPoints()));
   return z;
 }
 

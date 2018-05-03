@@ -35,7 +35,7 @@
 
 #include "FindProjectedImageStatistics.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/partitioner.h>
@@ -125,7 +125,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     convert(r.begin(), r.end());
@@ -147,8 +147,7 @@ private:
 //
 // -----------------------------------------------------------------------------
 FindProjectedImageStatistics::FindProjectedImageStatistics()
-: AbstractFilter()
-, m_SelectedArrayPath("", "", "")
+: m_SelectedArrayPath("", "", "")
 , m_Plane(0)
 , m_ProjectedImageMinArrayName(SIMPL::CellData::ProjectedImageMin)
 , m_ProjectedImageMaxArrayName(SIMPL::CellData::ProjectedImageMax)
@@ -162,7 +161,6 @@ FindProjectedImageStatistics::FindProjectedImageStatistics()
 , m_ProjectedImageStd(nullptr)
 , m_ProjectedImageVar(nullptr)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -264,7 +262,7 @@ void FindProjectedImageStatistics::dataCheck()
   tempPath.update(getSelectedArrayPath().getDataContainerName(), getSelectedArrayPath().getAttributeMatrixName(), getProjectedImageMinArrayName());
   m_ProjectedImageMinPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
       this, tempPath, 0, cDims);                     /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_ProjectedImageMinPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_ProjectedImageMinPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_ProjectedImageMin = m_ProjectedImageMinPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -272,7 +270,7 @@ void FindProjectedImageStatistics::dataCheck()
   tempPath.update(getSelectedArrayPath().getDataContainerName(), getSelectedArrayPath().getAttributeMatrixName(), getProjectedImageMaxArrayName());
   m_ProjectedImageMaxPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
       this, tempPath, 0, cDims);                     /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_ProjectedImageMaxPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_ProjectedImageMaxPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_ProjectedImageMax = m_ProjectedImageMaxPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -280,7 +278,7 @@ void FindProjectedImageStatistics::dataCheck()
   tempPath.update(getSelectedArrayPath().getDataContainerName(), getSelectedArrayPath().getAttributeMatrixName(), getProjectedImageAvgArrayName());
   m_ProjectedImageAvgPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
       this, tempPath, 0, cDims);                     /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_ProjectedImageAvgPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_ProjectedImageAvgPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_ProjectedImageAvg = m_ProjectedImageAvgPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -288,7 +286,7 @@ void FindProjectedImageStatistics::dataCheck()
   tempPath.update(getSelectedArrayPath().getDataContainerName(), getSelectedArrayPath().getAttributeMatrixName(), getProjectedImageStdArrayName());
   m_ProjectedImageStdPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
       this, tempPath, 0, cDims);                     /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_ProjectedImageStdPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_ProjectedImageStdPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_ProjectedImageStd = m_ProjectedImageStdPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -296,7 +294,7 @@ void FindProjectedImageStatistics::dataCheck()
   tempPath.update(getSelectedArrayPath().getDataContainerName(), getSelectedArrayPath().getAttributeMatrixName(), getProjectedImageVarArrayName());
   m_ProjectedImageVarPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
       this, tempPath, 0, cDims);                     /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_ProjectedImageVarPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_ProjectedImageVarPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_ProjectedImageVar = m_ProjectedImageVarPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -342,13 +340,13 @@ void FindProjectedImageStatistics::execute()
 
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getSelectedArrayPath().getDataContainerName());
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
 #endif
 
   size_t xP = 0, yP = 0, zP = 0;
-  m->getGeometryAs<ImageGeom>()->getDimensions(xP, yP, zP);
+  std::tie(xP, yP, zP) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   Int32ArrayType::Pointer startingPoints = Int32ArrayType::CreateArray(0, "_INTERNAL_USE_ONLY_startingPoints");
   int32_t* startPoints = nullptr;
@@ -416,7 +414,7 @@ void FindProjectedImageStatistics::execute()
   {
     Int8ArrayType::Pointer cellArray = std::dynamic_pointer_cast<Int8ArrayType>(m_InDataPtr.lock());
     int8_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, count),
@@ -434,7 +432,7 @@ void FindProjectedImageStatistics::execute()
   {
     UInt8ArrayType::Pointer cellArray = std::dynamic_pointer_cast<UInt8ArrayType>(m_InDataPtr.lock());
     uint8_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, count),
@@ -452,7 +450,7 @@ void FindProjectedImageStatistics::execute()
   {
     Int16ArrayType::Pointer cellArray = std::dynamic_pointer_cast<Int16ArrayType>(m_InDataPtr.lock());
     int16_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, count),
@@ -470,7 +468,7 @@ void FindProjectedImageStatistics::execute()
   {
     UInt16ArrayType::Pointer cellArray = std::dynamic_pointer_cast<UInt16ArrayType>(m_InDataPtr.lock());
     uint16_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, count),
@@ -488,7 +486,7 @@ void FindProjectedImageStatistics::execute()
   {
     Int32ArrayType::Pointer cellArray = std::dynamic_pointer_cast<Int32ArrayType>(m_InDataPtr.lock());
     int32_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, count),
@@ -506,7 +504,7 @@ void FindProjectedImageStatistics::execute()
   {
     UInt32ArrayType::Pointer cellArray = std::dynamic_pointer_cast<UInt32ArrayType>(m_InDataPtr.lock());
     uint32_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, count),
@@ -524,7 +522,7 @@ void FindProjectedImageStatistics::execute()
   {
     Int64ArrayType::Pointer cellArray = std::dynamic_pointer_cast<Int64ArrayType>(m_InDataPtr.lock());
     int64_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, count),
@@ -542,7 +540,7 @@ void FindProjectedImageStatistics::execute()
   {
     UInt64ArrayType::Pointer cellArray = std::dynamic_pointer_cast<UInt64ArrayType>(m_InDataPtr.lock());
     uint64_t* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, count),
@@ -560,7 +558,7 @@ void FindProjectedImageStatistics::execute()
   {
     FloatArrayType::Pointer cellArray = std::dynamic_pointer_cast<FloatArrayType>(m_InDataPtr.lock());
     float* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, count),
@@ -578,7 +576,7 @@ void FindProjectedImageStatistics::execute()
   {
     DoubleArrayType::Pointer cellArray = std::dynamic_pointer_cast<DoubleArrayType>(m_InDataPtr.lock());
     double* cPtr = cellArray->getPointer(0);
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, count),

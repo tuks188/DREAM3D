@@ -38,7 +38,7 @@
 
 #include "ConvertColorToGrayScale.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/partitioner.h>
@@ -85,7 +85,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     convert(r.begin(), r.end());
@@ -130,7 +130,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     convert(r.begin(), r.end());
@@ -181,7 +181,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     convert(r.begin(), r.end());
@@ -219,7 +219,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     convert(r.begin(), r.end());
@@ -236,8 +236,7 @@ private:
 //
 // -----------------------------------------------------------------------------
 ConvertColorToGrayScale::ConvertColorToGrayScale()
-: AbstractFilter()
-, m_ConversionAlgorithm(0)
+: m_ConversionAlgorithm(0)
 , m_ColorChannel(0)
 , m_CreateNewAttributeMatrix(false)
 , m_OutputAttributeMatrixName("GrayScaleData")
@@ -248,7 +247,6 @@ ConvertColorToGrayScale::ConvertColorToGrayScale()
   m_ColorWeights.y = 0.7154f;
   m_ColorWeights.z = 0.0721f;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -434,7 +432,7 @@ void ConvertColorToGrayScale::execute()
   QVector<DataArrayPath> inputArrayPaths = getInputDataArrayVector();
   qint32 size = inputArrayPaths.size();
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
 #endif
@@ -482,7 +480,7 @@ void ConvertColorToGrayScale::execute()
 
     if(ConversionType::Luminosity == convType)
     {
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
       if(doParallel == true)
       {
         tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), LuminosityImpl(inputColorData->getPointer(0), outputGrayData->getPointer(0), m_ColorWeights, comp), tbb::auto_partitioner());
@@ -496,7 +494,7 @@ void ConvertColorToGrayScale::execute()
     }
     else if(ConversionType::Average == convType)
     {
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
       if(doParallel == true)
       {
         tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), AverageImpl(inputColorData->getPointer(0), outputGrayData->getPointer(0), comp), tbb::auto_partitioner());
@@ -510,7 +508,7 @@ void ConvertColorToGrayScale::execute()
     }
     else if(ConversionType::Lightness == convType)
     {
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
       if(doParallel == true)
       {
         tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), LightnessImpl(inputColorData->getPointer(0), outputGrayData->getPointer(0), comp), tbb::auto_partitioner());
@@ -524,7 +522,7 @@ void ConvertColorToGrayScale::execute()
     }
     else if(ConversionType::SingleChannel == convType)
     {
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
       if(doParallel == true)
       {
         tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), SingleChannelImpl(inputColorData->getPointer(0), outputGrayData->getPointer(0), comp, getColorChannel()),
@@ -566,7 +564,7 @@ void ConvertColorToGrayScale::execute()
         Bfactor = 0.07f;
     }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     tbb::task_scheduler_init init;
     bool doParallel = true;
 #endif
@@ -574,7 +572,7 @@ void ConvertColorToGrayScale::execute()
     int32_t comp = m_ImageDataPtr.lock()->getNumberOfComponents();
 
     //  qDebug() << "ConvertColorToGrayScale: " << m_ConversionFactor << "\n";
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
         tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), ConvertColorToGrayScaleImpl(m_ImageData, m_FlatImageData, Rfactor, Gfactor, Bfactor, comp), tbb::auto_partitioner());

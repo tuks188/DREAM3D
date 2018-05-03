@@ -1,4 +1,4 @@
-Cropping Data {#tutorialcroppingdata}
+Cropping Data 
 ========
 
 Cropping data in DREAM.3D can help reduce the time for processing by removing data that the user decides should not be analyzed. The **Filter** that accomplishes this task is the [Crop Image Geometry](@ref cropimagegeometry) **Filter**. Note that since this **Filter** uses 3D voxel indices as the minimum and maximum values that define the region of interest, it will _only_ work on **Image Geometries**. The easiest way to work through cropping the data is to initially run a **Pipeline** that writes out a .dream3d file and then load the .xdmf file into [ParaView](http://www.paraview.org). In the _Information_ tab, ParaView will display the extents of the data. For this example, note that the data extent in voxels is [(0, 164), (0, 172), (0, 39)] and in real space units (microns) is [(0, 16.4), (0, 13.8), (0, 9.75)]. These units correspond to a resolution of (0.1, 0.08, 0.25).
@@ -6,7 +6,6 @@ Cropping data in DREAM.3D can help reduce the time for processing by removing da
 -----
 
 ![Region of Interest for Cropping](Images/Annotated_Small.png)
-@image latex Images/Annotated_Small.png "Region of Interest for Cropping" width=6in
 
 -----
 
@@ -15,7 +14,6 @@ Cropping data in DREAM.3D can help reduce the time for processing by removing da
 -------
 
 ![ParaView Data Properties](Images/ParaView_DataExtents.png)
-@image latex Images/ParaView_DataExtents.png "ParaView Data Properties" width=2in
 
 ------
 
@@ -38,7 +36,6 @@ These voxel values can then be entered into the [Crop Image Geometry](@ref cropi
 ------
 
 ![Crop Volume Filter](Images/CropData_Filter.png)
-@image latex Images/CropData_Filter.png "Crop Volume Filter" width=5in
 
 ------
 
@@ -46,5 +43,4 @@ After the **Filter** executes, the data from the volume of interest is cropped o
 
 
 ![Data Volume After Cropping](Images/Cropped_Data.png)
-@image latex Images/Cropped_Data.png "Data Volume After Cropping" width=3in
 

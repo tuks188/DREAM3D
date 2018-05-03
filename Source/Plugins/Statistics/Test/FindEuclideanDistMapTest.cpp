@@ -108,7 +108,8 @@ public:
     ImageGeom::Pointer geom = ImageGeom::CreateGeometry("ImageGeometry");
     m->setGeometry(geom);
     geom->setDimensions(tDims.data());
-    geom->setResolution(1.0f, 2.0f, 1.0f);
+    float res[3] = {1.0f, 2.0f, 1.0f};
+    geom->setResolution(res);
 
     // Create Attribute Matrices with different tDims to test validation of tuple compatibility
 
@@ -323,5 +324,5 @@ public:
 
 private:
   FindEuclideanDistMapTest(const FindEuclideanDistMapTest&); // Copy Constructor Not Implemented
-  void operator=(const FindEuclideanDistMapTest&);           // Operator '=' Not Implemented
+  void operator=(const FindEuclideanDistMapTest&);           // Move assignment Not Implemented
 };

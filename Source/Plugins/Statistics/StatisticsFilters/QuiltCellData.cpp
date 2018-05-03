@@ -49,8 +49,7 @@
 //
 // -----------------------------------------------------------------------------
 QuiltCellData::QuiltCellData()
-: AbstractFilter()
-, m_SelectedCellArrayPath("", "", "")
+: m_SelectedCellArrayPath("", "", "")
 , m_OutputDataContainerName(SIMPL::Defaults::NewImageDataContainerName)
 , m_OutputAttributeMatrixName(SIMPL::Defaults::CellAttributeMatrixName)
 , m_OutputArrayName("Quilt_Data")
@@ -64,7 +63,6 @@ QuiltCellData::QuiltCellData()
   m_PatchSize.y = 3;
   m_PatchSize.z = 3;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -191,9 +189,9 @@ void QuiltCellData::dataCheck()
 
   // Establish the dimensions, resolutions and origin of the new data container
   size_t dcDims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(dcDims[0], dcDims[1], dcDims[2]);
-  float res[3] = {m_QuiltStep.x * m->getGeometryAs<ImageGeom>()->getXRes(), m_QuiltStep.y * m->getGeometryAs<ImageGeom>()->getYRes(), m_QuiltStep.z * m->getGeometryAs<ImageGeom>()->getZRes()};
-
+  std::tie(dcDims[0], dcDims[1], dcDims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  float res[3] = {0.0f, 0.0f, 0.0f};
+  std::tie(res[0], res[1], res[2]) = m->getGeometryAs<ImageGeom>()->getResolution();
   // Create a new DataContainer
   DataContainer::Pointer m2 = getDataContainerArray()->createNonPrereqDataContainer<AbstractFilter>(this, getOutputDataContainerName());
   if(getErrorCondition() < 0)
@@ -240,7 +238,7 @@ void QuiltCellData::dataCheck()
   tempPath.update(getOutputDataContainerName(), getOutputAttributeMatrixName(), getOutputArrayName());
   m_OutputArrayPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0,
                                                                                                                     dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_OutputArrayPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_OutputArrayPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_OutputArray = m_OutputArrayPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -352,9 +350,9 @@ void QuiltCellData::execute()
   DataContainer::Pointer m2 = getDataContainerArray()->getDataContainer(getOutputDataContainerName());
 
   size_t dcDims[3];
-  m->getGeometryAs<ImageGeom>()->getDimensions(dcDims[0], dcDims[1], dcDims[2]);
+  std::tie(dcDims[0], dcDims[1], dcDims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
   size_t dc2Dims[3];
-  m2->getGeometryAs<ImageGeom>()->getDimensions(dc2Dims[0], dc2Dims[1], dc2Dims[2]);
+  std::tie(dc2Dims[0], dc2Dims[1], dc2Dims[2]) = m2->getGeometryAs<ImageGeom>()->getDimensions();
 
   IDataArray::Pointer inputData = m->getAttributeMatrix(m_SelectedCellArrayPath.getAttributeMatrixName())->getAttributeArray(m_SelectedCellArrayPath.getDataArrayName());
   if(nullptr == inputData.get())

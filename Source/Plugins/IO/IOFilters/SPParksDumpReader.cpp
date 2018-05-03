@@ -54,8 +54,7 @@
 //
 // -----------------------------------------------------------------------------
 SPParksDumpReader::SPParksDumpReader()
-: FileReader()
-, m_VolumeDataContainerName(SIMPL::Defaults::ImageDataContainerName)
+: m_VolumeDataContainerName(SIMPL::Defaults::ImageDataContainerName)
 , m_CellAttributeMatrixName(SIMPL::Defaults::CellAttributeMatrixName)
 , m_InputFile("")
 , m_OneBasedArrays(false)
@@ -69,7 +68,6 @@ SPParksDumpReader::SPParksDumpReader()
   m_Resolution.y = 1.0f;
   m_Resolution.z = 1.0f;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -82,6 +80,7 @@ SPParksDumpReader::~SPParksDumpReader() = default;
 // -----------------------------------------------------------------------------
 void SPParksDumpReader::setupFilterParameters()
 {
+  FileReader::setupFilterParameters();
   FilterParameterVector parameters;
   parameters.push_back(SIMPL_NEW_INPUT_FILE_FP("Input File", InputFile, FilterParameter::Parameter, SPParksDumpReader, "*.dump", "SPParks Dump File"));
   parameters.push_back(SIMPL_NEW_FLOAT_VEC3_FP("Origin", Origin, FilterParameter::Parameter, SPParksDumpReader));
@@ -120,7 +119,7 @@ void SPParksDumpReader::updateCellInstancePointers()
   setErrorCondition(0);
   setWarningCondition(0);
 
-  // if( nullptr != m_FeatureIdsPtr.lock().get() ) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  // if(nullptr != m_FeatureIdsPtr.lock() ) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   //{ m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0); } /* Now assign the raw pointer to data from the DataArray<T> object */
 }
 
@@ -374,11 +373,11 @@ int32_t SPParksDumpReader::readHeader()
   }
   
   m_CachedGeometry = m->getGeometryAs<ImageGeom>().get();
-  m_CachedGeometry->setDimensions(nx, ny, nz);
+  m_CachedGeometry->setDimensions(std::make_tuple(nx, ny, nz));
   FloatVec3_t res = getResolution();
-  m_CachedGeometry->setResolution(res.x, res.y, res.z);
+  m_CachedGeometry->setResolution(std::make_tuple(res.x, res.y, res.z));
   FloatVec3_t origin = getOrigin();
-  m_CachedGeometry->setOrigin(origin.x, origin.y, origin.z);
+  m_CachedGeometry->setOrigin(std::make_tuple(origin.x, origin.y, origin.z));
   
   return 0;
 }
@@ -511,8 +510,8 @@ int32_t SPParksDumpReader::readFile()
   }
 
   // Now set the Resolution and Origin that the user provided on the GUI or as parameters
-  m->getGeometryAs<ImageGeom>()->setResolution(m_Resolution.x, m_Resolution.y, m_Resolution.z);
-  m->getGeometryAs<ImageGeom>()->setOrigin(m_Origin.x, m_Origin.y, m_Origin.z);
+  m->getGeometryAs<ImageGeom>()->setResolution(std::make_tuple(m_Resolution.x, m_Resolution.y, m_Resolution.z));
+  m->getGeometryAs<ImageGeom>()->setOrigin(std::make_tuple(m_Origin.x, m_Origin.y, m_Origin.z));
 
   notifyStatusMessage(getHumanLabel(), "Complete");
   return 0;

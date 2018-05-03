@@ -23,17 +23,15 @@
 //
 // -----------------------------------------------------------------------------
 ComputeMomentInvariants2D::ComputeMomentInvariants2D()
-  : AbstractFilter()
-  , m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
-  , m_FeatureRectArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "FeatureRect")
-  , m_NormalizeMomentInvariants(true)
-  , m_Omega1ArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "Omega1")
-  , m_Omega2ArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "Omega2")
-  , m_SaveCentralMoments(false)
-  , m_CentralMomentsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "CentralMoments")
+: m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
+, m_FeatureRectArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "FeatureRect")
+, m_NormalizeMomentInvariants(true)
+, m_Omega1ArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "Omega1")
+, m_Omega2ArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "Omega2")
+, m_SaveCentralMoments(false)
+, m_CentralMomentsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "CentralMoments")
 {
   initialize();
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -106,7 +104,7 @@ void ComputeMomentInvariants2D::dataCheck()
   }
   ImageGeom::Pointer imageGeom = std::dynamic_pointer_cast<ImageGeom>(igeom);
   size_t imageDims[3] = { 0,0,0};
-  imageGeom->getDimensions(imageDims);
+  std::tie(imageDims[0], imageDims[1], imageDims[2]) = imageGeom->getDimensions();
   if (imageDims[2] != 1)
   {
     setErrorCondition(-73000);
@@ -116,26 +114,26 @@ void ComputeMomentInvariants2D::dataCheck()
 
   QVector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(), cDims);
-  if(nullptr != m_FeatureIdsPtr.lock().get())
+  if(nullptr != m_FeatureIdsPtr.lock())
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   }
 
   cDims[0] = 6;
   m_FeatureRectPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<uint32_t>, AbstractFilter>(this, getFeatureRectArrayPath(), cDims);
-  if(nullptr != m_FeatureRectPtr.lock().get())
+  if(nullptr != m_FeatureRectPtr.lock())
   {
     m_FeatureRect = m_FeatureRectPtr.lock()->getPointer(0);
   }
 
   cDims[0] = 1;
   m_Omega1Ptr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, getOmega1ArrayPath(), 0.0f, cDims);
-  if(nullptr != m_Omega1Ptr.lock().get())
+  if(nullptr != m_Omega1Ptr.lock())
   {
     m_Omega1 = m_Omega1Ptr.lock()->getPointer(0);
   }
   m_Omega2Ptr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, getOmega2ArrayPath(), 0.0f, cDims);
-  if(nullptr != m_Omega2Ptr.lock().get())
+  if(nullptr != m_Omega2Ptr.lock())
   {
     m_Omega2 = m_Omega2Ptr.lock()->getPointer(0);
   }
@@ -147,7 +145,7 @@ void ComputeMomentInvariants2D::dataCheck()
   {
     m_CentralMomentsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, getCentralMomentsArrayPath(), 0.0f, cDims);
   }
-  if(nullptr != m_CentralMomentsPtr.lock().get())
+  if(nullptr != m_CentralMomentsPtr.lock())
   {
     m_CentralMoments = m_CentralMomentsPtr.lock()->getPointer(0);
   }
@@ -188,7 +186,7 @@ void ComputeMomentInvariants2D::execute()
 
   ImageGeom::Pointer imageGeom = std::dynamic_pointer_cast<ImageGeom>(igeom);
   size_t volDims[3] = { 0, 0, 0 };
-  imageGeom->getDimensions(volDims);
+  std::tie(volDims[0], volDims[1], volDims[2]) = imageGeom->getDimensions();
 
   Int32ArrayType::Pointer featureIdArray = m_FeatureIdsPtr.lock();
   int32_t numFeatures = static_cast<int32_t>(m_FeatureRectPtr.lock()->getNumberOfTuples());

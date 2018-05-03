@@ -35,7 +35,7 @@
 
 #include "RotateSampleRefFrame.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range3d.h>
 #include <tbb/parallel_for.h>
 #include <tbb/partitioner.h>
@@ -152,7 +152,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range3d<int64_t, int64_t, int64_t>& r) const
   {
     convert(r.pages().begin(), r.pages().end(), r.rows().begin(), r.rows().end(), r.cols().begin(), r.cols().end());
@@ -166,8 +166,7 @@ private:
 //
 // -----------------------------------------------------------------------------
 RotateSampleRefFrame::RotateSampleRefFrame()
-: AbstractFilter()
-, m_CellAttributeMatrixPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, "")
+: m_CellAttributeMatrixPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, "")
 , m_RotationAngle(0.0)
 , m_SliceBySlice(false)
 {
@@ -175,7 +174,6 @@ RotateSampleRefFrame::RotateSampleRefFrame()
   m_RotationAxis.y = 0.0;
   m_RotationAxis.z = 1.0;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -267,11 +265,10 @@ void RotateSampleRefFrame::preflight()
   RotateSampleRefFrameImplArg_t params;
 
   xp = static_cast<int64_t>(m->getGeometryAs<ImageGeom>()->getXPoints());
-  xRes = m->getGeometryAs<ImageGeom>()->getXRes();
   yp = static_cast<int64_t>(m->getGeometryAs<ImageGeom>()->getYPoints());
-  yRes = m->getGeometryAs<ImageGeom>()->getYRes();
   zp = static_cast<int64_t>(m->getGeometryAs<ImageGeom>()->getZPoints());
-  zRes = m->getGeometryAs<ImageGeom>()->getZRes();
+
+  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
 
   params.xp = xp;
   params.xRes = xRes;
@@ -441,11 +438,10 @@ void RotateSampleRefFrame::execute()
   RotateSampleRefFrameImplArg_t params;
 
   xp = static_cast<int64_t>(m->getGeometryAs<ImageGeom>()->getXPoints());
-  xRes = m->getGeometryAs<ImageGeom>()->getXRes();
   yp = static_cast<int64_t>(m->getGeometryAs<ImageGeom>()->getYPoints());
-  yRes = m->getGeometryAs<ImageGeom>()->getYRes();
   zp = static_cast<int64_t>(m->getGeometryAs<ImageGeom>()->getZPoints());
-  zRes = m->getGeometryAs<ImageGeom>()->getZRes();
+
+  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
 
   params.xp = xp;
   params.xRes = xRes;
@@ -592,12 +588,12 @@ void RotateSampleRefFrame::execute()
   newIndiciesPtr->initializeWithValue(-1);
   int64_t* newindicies = newIndiciesPtr->getPointer(0);
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
 #endif
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   if(doParallel == true)
   {
     tbb::parallel_for(tbb::blocked_range3d<int64_t, int64_t, int64_t>(0, params.zpNew, 0, params.ypNew, 0, params.xpNew), RotateSampleRefFrameImpl(newIndiciesPtr, &params, rotMat, m_SliceBySlice),

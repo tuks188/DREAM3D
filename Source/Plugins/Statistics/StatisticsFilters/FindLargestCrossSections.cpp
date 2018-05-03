@@ -50,14 +50,12 @@
 //
 // -----------------------------------------------------------------------------
 FindLargestCrossSections::FindLargestCrossSections()
-: AbstractFilter()
-, m_Plane(0)
+: m_Plane(0)
 , m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
 , m_LargestCrossSectionsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, SIMPL::FeatureData::LargestCrossSections)
 , m_FeatureIds(nullptr)
 , m_LargestCrossSections(nullptr)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -128,14 +126,14 @@ void FindLargestCrossSections::dataCheck()
   QVector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_FeatureIdsPtr.lock().get())                                                                   /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
   m_LargestCrossSectionsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
       this, getLargestCrossSectionsArrayPath(), 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_LargestCrossSectionsPtr.lock().get())    /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_LargestCrossSectionsPtr.lock())          /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_LargestCrossSections = m_LargestCrossSectionsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -147,7 +145,7 @@ void FindLargestCrossSections::dataCheck()
   }
 
   size_t dims[3] = {0, 0, 0};
-  image->getDimensions(dims);
+  std::tie(dims[0], dims[1], dims[2]) = image->getDimensions();
 
   if(dims[0] <= 1 || dims[1] <= 1 || dims[2] <= 1)
   {
@@ -189,12 +187,18 @@ void FindLargestCrossSections::find_crosssections()
   size_t istride = 0, jstride = 0, kstride = 0;
   size_t point = 0, gnum = 0;
 
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
+
   if(m_Plane == 0)
   {
     outPlane = m->getGeometryAs<ImageGeom>()->getZPoints();
     inPlane1 = m->getGeometryAs<ImageGeom>()->getXPoints();
     inPlane2 = m->getGeometryAs<ImageGeom>()->getYPoints();
-    res_scalar = m->getGeometryAs<ImageGeom>()->getXRes() * m->getGeometryAs<ImageGeom>()->getYRes();
+
+    res_scalar = xRes * yRes;
     stride1 = inPlane1 * inPlane2;
     stride2 = 1;
     stride3 = inPlane1;
@@ -204,7 +208,7 @@ void FindLargestCrossSections::find_crosssections()
     outPlane = m->getGeometryAs<ImageGeom>()->getYPoints();
     inPlane1 = m->getGeometryAs<ImageGeom>()->getXPoints();
     inPlane2 = m->getGeometryAs<ImageGeom>()->getZPoints();
-    res_scalar = m->getGeometryAs<ImageGeom>()->getXRes() * m->getGeometryAs<ImageGeom>()->getZRes();
+    res_scalar = xRes * zRes;
     stride1 = inPlane1;
     stride2 = 1;
     stride3 = inPlane1 * inPlane2;
@@ -214,7 +218,7 @@ void FindLargestCrossSections::find_crosssections()
     outPlane = m->getGeometryAs<ImageGeom>()->getXPoints();
     inPlane1 = m->getGeometryAs<ImageGeom>()->getYPoints();
     inPlane2 = m->getGeometryAs<ImageGeom>()->getZPoints();
-    res_scalar = m->getGeometryAs<ImageGeom>()->getYRes() * m->getGeometryAs<ImageGeom>()->getZRes();
+    res_scalar = yRes * zRes;
     stride1 = 1;
     stride2 = inPlane1;
     stride3 = inPlane1 * inPlane2;

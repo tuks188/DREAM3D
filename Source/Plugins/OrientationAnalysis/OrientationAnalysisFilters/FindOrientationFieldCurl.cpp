@@ -35,7 +35,7 @@
 
 #include "FindOrientationFieldCurl.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/atomic.h>
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
@@ -97,7 +97,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     convert(r.begin(), r.end());
@@ -115,8 +115,7 @@ private:
 //
 // -----------------------------------------------------------------------------
 FindOrientationFieldCurl::FindOrientationFieldCurl()
-: AbstractFilter()
-, m_CellPhasesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Phases)
+: m_CellPhasesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Phases)
 , m_CrystalStructuresArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::CrystalStructures)
 , m_QuatsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Quats)
 , m_DislocationTensorsArrayName(SIMPL::CellData::DislocationTensors)
@@ -131,7 +130,6 @@ FindOrientationFieldCurl::FindOrientationFieldCurl()
   m_CurlSize.y = 1;
   m_CurlSize.z = 1;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -197,7 +195,7 @@ void FindOrientationFieldCurl::dataCheck()
   QVector<size_t> dims(1, 1);
   m_CellPhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getCellPhasesArrayPath(),
                                                                                                         dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_CellPhasesPtr.lock().get())                                                                  /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_CellPhasesPtr.lock())                                                                        /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_CellPhases = m_CellPhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -216,7 +214,7 @@ void FindOrientationFieldCurl::dataCheck()
   tempPath.update(m_CellPhasesArrayPath.getDataContainerName(), m_CellPhasesArrayPath.getAttributeMatrixName(), getDislocationTensorsArrayName());
   m_DislocationTensorsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
       this, tempPath, 0, dims);                       /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_DislocationTensorsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_DislocationTensorsPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_DislocationTensors = m_DislocationTensorsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -225,7 +223,7 @@ void FindOrientationFieldCurl::dataCheck()
   // typedef DataArray<unsigned int> XTalStructArrayType;
   m_CrystalStructuresPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<unsigned int>, AbstractFilter>(this, getCrystalStructuresArrayPath(),
                                                                                                                     dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_CrystalStructuresPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_CrystalStructuresPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_CrystalStructures = m_CrystalStructuresPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -233,7 +231,7 @@ void FindOrientationFieldCurl::dataCheck()
   dims[0] = 4;
   m_QuatsPtr =
       getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getQuatsArrayPath(), dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_QuatsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_QuatsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Quats = m_QuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -312,13 +310,13 @@ void FindOrientationFieldCurl::execute()
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
 #endif
 
 // first determine the misorientation vectors on all the voxel faces
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   if(doParallel == true)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, (xP * yP * zP)), FindMisorientationVectorsImpl(quats, misoVecs, neighbors, faceIds), tbb::auto_partitioner());
@@ -337,7 +335,7 @@ void FindOrientationFieldCurl::execute()
   //  unsigned int phase1 = Ebsd::CrystalStructure::UnknownCrystalStructure;
   //  unsigned int phase2 = Ebsd::CrystalStructure::UnknownCrystalStructure;
   size_t udims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t xPoints = static_cast<int64_t>(udims[0]);
   int64_t yPoints = static_cast<int64_t>(udims[1]);

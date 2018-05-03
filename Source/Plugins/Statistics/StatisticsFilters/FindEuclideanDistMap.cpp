@@ -35,7 +35,7 @@
 
 #include "FindEuclideanDistMap.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/atomic.h>
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
@@ -86,9 +86,7 @@ class ComputeDistanceMapImpl
     {
     }
 
-    virtual ~ComputeDistanceMapImpl()
-    {
-    }
+    virtual ~ComputeDistanceMapImpl() = default;
 
     void operator()() const
     {
@@ -103,9 +101,10 @@ class ComputeDistanceMapImpl
       int64_t xpoints = static_cast<int64_t>(imageGeom->getXPoints());
       int64_t ypoints = static_cast<int64_t>(imageGeom->getYPoints());
       int64_t zpoints = static_cast<int64_t>(imageGeom->getZPoints());
-      double resx = static_cast<double>(imageGeom->getXRes());
-      double resy = static_cast<double>(imageGeom->getYRes());
-      double resz = static_cast<double>(imageGeom->getZRes());
+      double resx = 0.0;
+      double resy = 0.0;
+      double resz = 0.0;
+      std::tie(resx, resy, resz) = imageGeom->getResolution();
 
       neighbors[0] = -xpoints * ypoints;
       neighbors[1] = -xpoints;
@@ -281,27 +280,25 @@ class ComputeDistanceMapImpl
 //
 // -----------------------------------------------------------------------------
 FindEuclideanDistMap::FindEuclideanDistMap()
-  : AbstractFilter()
-  , m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
-  , m_GBDistancesArrayName(SIMPL::CellData::GBManhattanDistances)
-  , m_TJDistancesArrayName(SIMPL::CellData::TJManhattanDistances)
-  , m_QPDistancesArrayName(SIMPL::CellData::QPManhattanDistances)
-  , m_NearestNeighborsArrayName(SIMPL::CellData::NearestNeighbors)
-  , m_DoBoundaries(true)
-  , m_DoTripleLines(false)
-  , m_DoQuadPoints(false)
-  , m_SaveNearestNeighbors(false)
-  , m_CalcManhattanDist(true)
-  , m_FeatureIds(nullptr)
-  , m_NearestNeighbors(nullptr)
-  , m_GBEuclideanDistances(nullptr)
-  , m_TJEuclideanDistances(nullptr)
-  , m_QPEuclideanDistances(nullptr)
-  , m_GBManhattanDistances(nullptr)
-  , m_TJManhattanDistances(nullptr)
-  , m_QPManhattanDistances(nullptr)
+: m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
+, m_GBDistancesArrayName(SIMPL::CellData::GBManhattanDistances)
+, m_TJDistancesArrayName(SIMPL::CellData::TJManhattanDistances)
+, m_QPDistancesArrayName(SIMPL::CellData::QPManhattanDistances)
+, m_NearestNeighborsArrayName(SIMPL::CellData::NearestNeighbors)
+, m_DoBoundaries(true)
+, m_DoTripleLines(false)
+, m_DoQuadPoints(false)
+, m_SaveNearestNeighbors(false)
+, m_CalcManhattanDist(true)
+, m_FeatureIds(nullptr)
+, m_NearestNeighbors(nullptr)
+, m_GBEuclideanDistances(nullptr)
+, m_TJEuclideanDistances(nullptr)
+, m_QPEuclideanDistances(nullptr)
+, m_GBManhattanDistances(nullptr)
+, m_TJManhattanDistances(nullptr)
+, m_QPManhattanDistances(nullptr)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -385,7 +382,7 @@ void FindEuclideanDistMap::dataCheck()
   QVector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_FeatureIdsPtr.lock().get())
+  if(nullptr != m_FeatureIdsPtr.lock())
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   }
@@ -396,7 +393,7 @@ void FindEuclideanDistMap::dataCheck()
     if (m_CalcManhattanDist == true)
     {
       m_GBManhattanDistancesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter, int32_t>(this, tempPath, -1, cDims);
-      if(nullptr != m_GBManhattanDistancesPtr.lock().get())
+      if(nullptr != m_GBManhattanDistancesPtr.lock())
       {
         m_GBManhattanDistances = m_GBManhattanDistancesPtr.lock()->getPointer(0);
       }
@@ -404,7 +401,7 @@ void FindEuclideanDistMap::dataCheck()
     else
     {
       m_GBEuclideanDistancesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, -1, cDims);
-      if(nullptr != m_GBEuclideanDistancesPtr.lock().get())
+      if(nullptr != m_GBEuclideanDistancesPtr.lock())
       {
         m_GBEuclideanDistances = m_GBEuclideanDistancesPtr.lock()->getPointer(0);
       }
@@ -417,7 +414,7 @@ void FindEuclideanDistMap::dataCheck()
     if (m_CalcManhattanDist == true)
     {
       m_TJManhattanDistancesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter, int32_t>(this, tempPath, -1, cDims);
-      if(nullptr != m_TJManhattanDistancesPtr.lock().get())
+      if(nullptr != m_TJManhattanDistancesPtr.lock())
       {
         m_TJManhattanDistances = m_TJManhattanDistancesPtr.lock()->getPointer(0);
       }
@@ -425,7 +422,7 @@ void FindEuclideanDistMap::dataCheck()
     else
     {
       m_TJEuclideanDistancesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, -1, cDims);
-      if(nullptr != m_TJEuclideanDistancesPtr.lock().get())
+      if(nullptr != m_TJEuclideanDistancesPtr.lock())
       {
         m_TJEuclideanDistances = m_TJEuclideanDistancesPtr.lock()->getPointer(0);
       }
@@ -438,7 +435,7 @@ void FindEuclideanDistMap::dataCheck()
     if (m_CalcManhattanDist == true)
     {
       m_QPManhattanDistancesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter, int32_t>(this, tempPath, -1, cDims);
-      if(nullptr != m_QPManhattanDistancesPtr.lock().get())
+      if(nullptr != m_QPManhattanDistancesPtr.lock())
       {
         m_QPManhattanDistances = m_QPManhattanDistancesPtr.lock()->getPointer(0);
       }
@@ -446,7 +443,7 @@ void FindEuclideanDistMap::dataCheck()
     else
     {
       m_QPEuclideanDistancesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, -1, cDims);
-      if(nullptr != m_QPEuclideanDistancesPtr.lock().get())
+      if(nullptr != m_QPEuclideanDistancesPtr.lock())
       {
         m_QPEuclideanDistances = m_QPEuclideanDistancesPtr.lock()->getPointer(0);
       }
@@ -457,7 +454,7 @@ void FindEuclideanDistMap::dataCheck()
   tempPath.update(getFeatureIdsArrayPath().getDataContainerName(), getFeatureIdsArrayPath().getAttributeMatrixName(), getNearestNeighborsArrayName());
   m_NearestNeighborsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter, int32_t>(
         this, tempPath, 0, cDims);                    /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_NearestNeighborsPtr.lock().get())
+  if(nullptr != m_NearestNeighborsPtr.lock())
   {
     m_NearestNeighbors = m_NearestNeighborsPtr.lock()->getPointer(0);
   }
@@ -540,7 +537,7 @@ void FindEuclideanDistMap::findDistanceMap()
   std::vector<int32_t> coordination;
 
   size_t udims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
     static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -666,12 +663,12 @@ void FindEuclideanDistMap::findDistanceMap()
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
 #endif
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   if(doParallel == true)
   {
     tbb::task_group* g = new tbb::task_group;

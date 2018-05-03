@@ -81,8 +81,7 @@ PhReaderPrivate::PhReaderPrivate(PhReader* ptr)
 //
 // -----------------------------------------------------------------------------
 PhReader::PhReader()
-: FileReader()
-, m_VolumeDataContainerName(SIMPL::Defaults::ImageDataContainerName)
+: m_VolumeDataContainerName(SIMPL::Defaults::ImageDataContainerName)
 , m_CellAttributeMatrixName(SIMPL::Defaults::CellAttributeMatrixName)
 , m_InputFile("")
 , m_FileWasRead(false)
@@ -102,7 +101,6 @@ PhReader::PhReader()
   m_Dims[1] = 0;
   m_Dims[2] = 0;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -122,6 +120,7 @@ SIMPL_PIMPL_PROPERTY_DEF(PhReader, QDateTime, LastRead)
 // -----------------------------------------------------------------------------
 void PhReader::setupFilterParameters()
 {
+  FileReader::setupFilterParameters();
   FilterParameterVector parameters;
   parameters.push_back(SIMPL_NEW_INPUT_FILE_FP("Input File", InputFile, FilterParameter::Parameter, PhReader, "*.ph", "CMU Grain Growth"));
   parameters.push_back(SIMPL_NEW_FLOAT_VEC3_FP("Origin", Origin, FilterParameter::Parameter, PhReader));
@@ -158,7 +157,7 @@ void PhReader::updateCellInstancePointers()
   setErrorCondition(0);
   setWarningCondition(0);
 
-  if(nullptr != m_FeatureIdsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_FeatureIdsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -230,7 +229,7 @@ void PhReader::dataCheck()
       ImageGeom::Pointer imageGeom =  m->getGeometryAs<ImageGeom>();
       if(nullptr != imageGeom.get())
       {
-        imageGeom->setDimensions(v[0], v[1], v[2]);
+        imageGeom->setDimensions(v.data());
       }
     }
     else
@@ -273,13 +272,13 @@ void PhReader::dataCheck()
   QVector<size_t> cDims(1, 1);
   tempPath.update(getVolumeDataContainerName(), getCellAttributeMatrixName(), getFeatureIdsArrayName());
   m_FeatureIdsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter, int32_t>(this, tempPath, 0, cDims);
-  if(nullptr != m_FeatureIdsPtr.lock().get())
+  if(nullptr != m_FeatureIdsPtr.lock())
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   }
 
-  m->getGeometryAs<ImageGeom>()->setResolution(m_Resolution.x, m_Resolution.y, m_Resolution.z);
-  m->getGeometryAs<ImageGeom>()->setOrigin(m_Origin.x, m_Origin.y, m_Origin.z);
+  m->getGeometryAs<ImageGeom>()->setResolution(std::make_tuple(m_Resolution.x, m_Resolution.y, m_Resolution.z));
+  m->getGeometryAs<ImageGeom>()->setOrigin(std::make_tuple(m_Origin.x, m_Origin.y, m_Origin.z));
 }
 
 // -----------------------------------------------------------------------------
@@ -359,7 +358,7 @@ int32_t PhReader::readHeader()
     ImageGeom::Pointer imageGeom =  m->getGeometryAs<ImageGeom>();
     if(nullptr != imageGeom.get())
     {
-      imageGeom->setDimensions(static_cast<size_t>(nx), static_cast<size_t>(ny), static_cast<size_t>(nz));
+      imageGeom->setDimensions(v.data());
     }
   }
 
@@ -402,8 +401,8 @@ int32_t PhReader::readFile()
   }
 
   // Now set the Resolution and Origin that the user provided on the GUI or as parameters
-  m->getGeometryAs<ImageGeom>()->setResolution(m_Resolution.x, m_Resolution.y, m_Resolution.z);
-  m->getGeometryAs<ImageGeom>()->setOrigin(m_Origin.x, m_Origin.y, m_Origin.z);
+  m->getGeometryAs<ImageGeom>()->setResolution(std::make_tuple(m_Resolution.x, m_Resolution.y, m_Resolution.z));
+  m->getGeometryAs<ImageGeom>()->setOrigin(std::make_tuple(m_Origin.x, m_Origin.y, m_Origin.z));
 
   notifyStatusMessage(getHumanLabel(), "Complete");
   return 0;

@@ -648,7 +648,7 @@ protected:
 
 private:
   StatsGen(const StatsGen&);       // Copy Constructor Not Implemented
-  void operator=(const StatsGen&); // Operator '=' Not Implemented
+  void operator=(const StatsGen&); // Move assignment Not Implemented
 };
 
 #endif /* _statsgen_h_ */

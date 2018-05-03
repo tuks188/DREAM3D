@@ -52,8 +52,7 @@
 //
 // -----------------------------------------------------------------------------
 FindShapes::FindShapes()
-: AbstractFilter()
-, m_CellFeatureAttributeMatrixName(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "")
+: m_CellFeatureAttributeMatrixName(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "")
 , m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
 , m_CentroidsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, SIMPL::FeatureData::Centroids)
 , m_Omega3sArrayName(SIMPL::FeatureData::Omega3s)
@@ -73,7 +72,6 @@ FindShapes::FindShapes()
   m_FeatureMoments = nullptr;
   m_FeatureEigenVals = nullptr;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -156,7 +154,7 @@ void FindShapes::dataCheck()
   QVector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_FeatureIdsPtr.lock().get())                                                                   /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -164,7 +162,7 @@ void FindShapes::dataCheck()
   tempPath.update(getCellFeatureAttributeMatrixName().getDataContainerName(), getCellFeatureAttributeMatrixName().getAttributeMatrixName(), getOmega3sArrayName());
   m_Omega3sPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0,
                                                                                                                 cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_Omega3sPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_Omega3sPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Omega3s = m_Omega3sPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -172,7 +170,7 @@ void FindShapes::dataCheck()
   tempPath.update(getCellFeatureAttributeMatrixName().getDataContainerName(), getCellFeatureAttributeMatrixName().getAttributeMatrixName(), getVolumesArrayName());
   m_VolumesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0,
                                                                                                                 cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_VolumesPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_VolumesPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Volumes = m_VolumesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -181,14 +179,14 @@ void FindShapes::dataCheck()
   tempPath.update(getCellFeatureAttributeMatrixName().getDataContainerName(), getCellFeatureAttributeMatrixName().getAttributeMatrixName(), getAxisLengthsArrayName());
   m_AxisLengthsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0,
                                                                                                                     cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_AxisLengthsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_AxisLengthsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AxisLengths = m_AxisLengthsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
   m_CentroidsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getCentroidsArrayPath(),
                                                                                                      cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_CentroidsPtr.lock().get())                                                                 /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_CentroidsPtr.lock())                                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Centroids = m_CentroidsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -196,7 +194,7 @@ void FindShapes::dataCheck()
   tempPath.update(getCellFeatureAttributeMatrixName().getDataContainerName(), getCellFeatureAttributeMatrixName().getAttributeMatrixName(), getAxisEulerAnglesArrayName());
   m_AxisEulerAnglesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
       this, tempPath, 0, cDims);                   /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_AxisEulerAnglesPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_AxisEulerAnglesPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AxisEulerAngles = m_AxisEulerAnglesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -205,7 +203,7 @@ void FindShapes::dataCheck()
   tempPath.update(getCellFeatureAttributeMatrixName().getDataContainerName(), getCellFeatureAttributeMatrixName().getAttributeMatrixName(), getAspectRatiosArrayName());
   m_AspectRatiosPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0,
                                                                                                                      cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_AspectRatiosPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_AspectRatiosPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AspectRatios = m_AspectRatiosPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -243,9 +241,10 @@ void FindShapes::find_moments()
   size_t xPoints = imageGeom->getXPoints();
   size_t yPoints = imageGeom->getYPoints();
   size_t zPoints = imageGeom->getZPoints();
-  float xRes = imageGeom->getXRes();
-  float yRes = imageGeom->getYRes();
-  float zRes = imageGeom->getZRes();
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = imageGeom->getResolution();
 
   float xOrigin = 0.0f;
   float yOrigin = 0.0f;
@@ -396,28 +395,28 @@ void FindShapes::find_moments2D()
   size_t numfeatures = m_CentroidsPtr.lock()->getNumberOfTuples();
 
   size_t xPoints = 0, yPoints = 0;
-  float xRes = 0.0f, yRes = 0.0f;
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
 
   if(imageGeom->getXPoints() == 1)
   {
     xPoints = imageGeom->getYPoints();
-    xRes = imageGeom->getYRes();
     yPoints = imageGeom->getZPoints();
-    yRes = imageGeom->getZRes();
+    std::tie(zRes, xRes, yRes) = imageGeom->getResolution();
   }
   if(imageGeom->getYPoints() == 1)
   {
     xPoints = imageGeom->getXPoints();
-    xRes = imageGeom->getXRes();
     yPoints = imageGeom->getZPoints();
-    yRes = imageGeom->getZRes();
+    std::tie(xRes, zRes, yRes) = imageGeom->getResolution();
   }
   if(imageGeom->getZPoints() == 1)
   {
     xPoints = imageGeom->getXPoints();
-    xRes = imageGeom->getXRes();
     yPoints = imageGeom->getYPoints();
-    yRes = imageGeom->getYRes();
+    std::tie(xRes, yRes, zRes) = imageGeom->getResolution();
   }
 
   float modXRes = xRes * m_ScaleFactor;
@@ -596,27 +595,25 @@ void FindShapes::find_axes2D()
   size_t yPoints = 0;
   float xRes = 0.0f;
   float yRes = 0.0f;
+  float zRes = 0.0f;
 
   if(imageGeom->getXPoints() == 1)
   {
     xPoints = imageGeom->getYPoints();
-    xRes = imageGeom->getYRes();
     yPoints = imageGeom->getZPoints();
-    yRes = imageGeom->getZRes();
+    std::tie(zRes, xRes, yRes) = imageGeom->getResolution();
   }
   if(imageGeom->getYPoints() == 1)
   {
     xPoints = imageGeom->getXPoints();
-    xRes = imageGeom->getXRes();
     yPoints = imageGeom->getZPoints();
-    yRes = imageGeom->getZRes();
+    std::tie(xRes, zRes, yRes) = imageGeom->getResolution();
   }
   if(imageGeom->getZPoints() == 1)
   {
     xPoints = imageGeom->getXPoints();
-    xRes = imageGeom->getXRes();
     yPoints = imageGeom->getYPoints();
-    yRes = imageGeom->getYRes();
+    std::tie(xRes, yRes, zRes) = imageGeom->getResolution();
   }
 
 
@@ -887,10 +884,10 @@ void FindShapes::execute()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName());
   ImageGeom::Pointer imageGeom = m->getGeometryAs<ImageGeom>();
 
-
-  float xRes = imageGeom->getXRes();
-  float yRes = imageGeom->getYRes();
-  float zRes = imageGeom->getZRes();
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = imageGeom->getResolution();
 
   m_ScaleFactor = static_cast<double>(1.0f / xRes);
   if(yRes > xRes && yRes > zRes)

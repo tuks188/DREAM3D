@@ -53,14 +53,12 @@
 //
 // -----------------------------------------------------------------------------
 AlignSectionsFeatureCentroid::AlignSectionsFeatureCentroid()
-: AlignSections()
-, m_ReferenceSlice(0)
+: m_ReferenceSlice(0)
 , m_UseReferenceSlice(false)
 , m_GoodVoxelsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Mask)
 , m_GoodVoxels(nullptr)
 {
   // only setting up the child parameters because the parent constructor has already been called
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -73,6 +71,7 @@ AlignSectionsFeatureCentroid::~AlignSectionsFeatureCentroid() = default;
 // -----------------------------------------------------------------------------
 void AlignSectionsFeatureCentroid::setupFilterParameters()
 {
+  AlignSections::setupFilterParameters();
   // getting the current parameters that were set by the parent and adding to it before resetting it
   FilterParameterVector parameters = getFilterParameters();
   QStringList linkedProps("ReferenceSlice");
@@ -141,7 +140,7 @@ void AlignSectionsFeatureCentroid::dataCheck()
   QVector<size_t> cDims(1, 1);
   m_GoodVoxelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getGoodVoxelsArrayPath(),
                                                                                                      cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_GoodVoxelsPtr.lock().get())                                                                /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_GoodVoxelsPtr.lock())                                                                      /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_GoodVoxels = m_GoodVoxelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -179,7 +178,7 @@ void AlignSectionsFeatureCentroid::find_shifts(std::vector<int64_t>& xshifts, st
             << "Slice_A,Slice_B,New X Shift,New Y Shift,X Shift, Y Shift, X Centroid, Y Centroid" << std::endl;
   }
   size_t udims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   size_t dims[3] = {
       static_cast<size_t>(udims[0]), static_cast<size_t>(udims[1]), static_cast<size_t>(udims[2]),
@@ -190,8 +189,10 @@ void AlignSectionsFeatureCentroid::find_shifts(std::vector<int64_t>& xshifts, st
   size_t count = 0;
   size_t slice = 0;
   size_t point = 0;
-  float xRes = m->getGeometryAs<ImageGeom>()->getXRes();
-  float yRes = m->getGeometryAs<ImageGeom>()->getYRes();
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
   std::vector<float> xCentroid(dims[2], 0.0f);
   std::vector<float> yCentroid(dims[2], 0.0f);
 

@@ -52,8 +52,7 @@
 //
 // -----------------------------------------------------------------------------
 ChangeResolution::ChangeResolution()
-: AbstractFilter()
-, m_NewDataContainerName(SIMPL::Defaults::NewImageDataContainerName)
+: m_NewDataContainerName(SIMPL::Defaults::NewImageDataContainerName)
 , m_CellAttributeMatrixPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, "")
 , m_CellFeatureAttributeMatrixPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, "")
 , m_RenumberFeatures(true)
@@ -65,7 +64,6 @@ ChangeResolution::ChangeResolution()
   m_Resolution.y = 1.0f;
   m_Resolution.z = 1.0f;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -177,7 +175,7 @@ void ChangeResolution::dataCheck()
     QVector<size_t> cDims(1, 1);
     m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                           cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-    if(nullptr != m_FeatureIdsPtr.lock().get())                                                                   /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+    if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
     {
       m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -214,11 +212,16 @@ void ChangeResolution::preflight()
   size_t dims[3] = {0, 0, 0};
 
   ImageGeom::Pointer image = m->getGeometryAs<ImageGeom>();
-  image->getDimensions(dims);
+  std::tie(dims[0], dims[1], dims[2]) = image->getDimensions();
 
-  float sizex = (dims[0]) * image->getXRes();
-  float sizey = (dims[1]) * image->getYRes();
-  float sizez = (dims[2]) * image->getZRes();
+  float sizex = 0.0f;
+  float sizey = 0.0f;
+  float sizez = 0.0f;
+  std::tie(sizex, sizey, sizez) = m->getGeometryAs<ImageGeom>()->getResolution();
+  sizex *= static_cast<float>(dims[0]);
+  sizey *= static_cast<float>(dims[1]);
+  sizez *= static_cast<float>(dims[2]);
+
   size_t m_XP = size_t(sizex / m_Resolution.x);
   size_t m_YP = size_t(sizey / m_Resolution.y);
   size_t m_ZP = size_t(sizez / m_Resolution.z);
@@ -235,8 +238,8 @@ void ChangeResolution::preflight()
     m_ZP = 1;
   }
 
-  image->setDimensions(m_XP, m_YP, m_ZP);
-  image->setResolution(m_Resolution.x, m_Resolution.y, m_Resolution.z);
+  image->setDimensions(std::make_tuple(m_XP, m_YP, m_ZP));
+  image->setResolution(std::make_tuple(m_Resolution.x, m_Resolution.y, m_Resolution.z));
 
   QVector<size_t> tDims(3, 0);
   tDims[0] = m_XP;
@@ -304,8 +307,12 @@ void ChangeResolution::execute()
   {
     m = getDataContainerArray()->getDataContainer(getNewDataContainerName());
   }
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
 
-  if(m->getGeometryAs<ImageGeom>()->getXRes() == m_Resolution.x && m->getGeometryAs<ImageGeom>()->getYRes() == m_Resolution.y && m->getGeometryAs<ImageGeom>()->getZRes() == m_Resolution.z)
+  if(xRes == m_Resolution.x && yRes == m_Resolution.y && zRes == m_Resolution.z)
   {
     return;
   }
@@ -313,11 +320,16 @@ void ChangeResolution::execute()
   AttributeMatrix::Pointer cellAttrMat = m->getAttributeMatrix(getCellAttributeMatrixPath().getAttributeMatrixName());
 
   size_t dims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(dims);
+  std::tie(dims[0], dims[1], dims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
-  float sizex = (dims[0]) * m->getGeometryAs<ImageGeom>()->getXRes();
-  float sizey = (dims[1]) * m->getGeometryAs<ImageGeom>()->getYRes();
-  float sizez = (dims[2]) * m->getGeometryAs<ImageGeom>()->getZRes();
+  float sizex = 0.0f;
+  float sizey = 0.0f;
+  float sizez = 0.0f;
+  std::tie(sizex, sizey, sizez) = m->getGeometryAs<ImageGeom>()->getResolution();
+  sizex *= static_cast<float>(dims[0]);
+  sizey *= static_cast<float>(dims[1]);
+  sizez *= static_cast<float>(dims[2]);
+
   size_t m_XP = size_t(sizex / m_Resolution.x);
   size_t m_YP = size_t(sizey / m_Resolution.y);
   size_t m_ZP = size_t(sizez / m_Resolution.z);
@@ -402,8 +414,8 @@ void ChangeResolution::execute()
     cellAttrMat->removeAttributeArray(*iter);
     newCellAttrMat->addAttributeArray(*iter, data);
   }
-  m->getGeometryAs<ImageGeom>()->setResolution(m_Resolution.x, m_Resolution.y, m_Resolution.z);
-  m->getGeometryAs<ImageGeom>()->setDimensions(m_XP, m_YP, m_ZP);
+  m->getGeometryAs<ImageGeom>()->setResolution(std::make_tuple(m_Resolution.x, m_Resolution.y, m_Resolution.z));
+  m->getGeometryAs<ImageGeom>()->setDimensions(std::make_tuple(m_XP, m_YP, m_ZP));
   m->removeAttributeMatrix(getCellAttributeMatrixPath().getAttributeMatrixName());
   m->addAttributeMatrix(getCellAttributeMatrixPath().getAttributeMatrixName(), newCellAttrMat);
 

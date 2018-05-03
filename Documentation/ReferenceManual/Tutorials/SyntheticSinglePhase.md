@@ -1,4 +1,4 @@
-Synthetic Microstructure Generation {#tutorialsyntheticsingle}
+Synthetic Microstructure Generation 
 =========
 
 This tutorial uses a **Prebuilt Pipeline** to explain the concepts behind _sythentic microstructure_ generation in DREAM.3D. Begin by finding the **Prebuilt Pipeline** <i>(01) Single Cubic Phase Equiaxed</i> in the **Prebuilt Pipelines View** and double click on it. This will open that **Pipeline** in a new DREAM.3D window. In order to generate a synthetic microstructure, DREAM.3D needs a set of statistics that define the stochastic properties of the structure. In this case, the statistics have been generated _synthetically_ using the [StatsGenerator](@ref statsgeneratorfilter) **Filter**. To learn how to generate your own microstructure statistics, visit the [StatsGenerator documentation](@ref statsgeneratorfilter).
@@ -8,14 +8,12 @@ The <i>(01) Single Cubic Phase Equiaxed</i> **Prebuilt Pipeline** reads in a sta
 -------------------
 
 ![IPF Triangle for Cubic Symmetry](Images/IPFFilterLegend.png)
-@image latex Images/IPFFilterLegend.png "IPF Triangle for Cubic Symmetry" width=6in
 
 -------------------
 
 -------------------
 
 ![Example Generated Synthetic Microstructure](Images/Synthetic.png)
-@image latex Images/Synthetic.png "Example Generated Synthetic Microstructure" width=6in
 
 -------------------
 
@@ -27,7 +25,6 @@ In order to start this swapping process, DREAM.3D will need to know what [types 
 ------------
 
 ![General Workflow for Synthetic Building](Images/SyntheticProcess.png)
-@image latex Images/EbsdReconstruction.png "General Workflow for Synthetic Building" width=6in
 
 ------------
 
@@ -50,6 +47,5 @@ In order to utilize a complete synthetic building **Pipeline** that matches both
 ------------
 
 ![Example Small IN100 Synthetic Microstructure](Images/SmallIN100Synthetic.png)
-@image latex Images/SmallIN100Synthetic.png "Example Small IN100 Synthetic Microstructure" width=6in
 
 ------------

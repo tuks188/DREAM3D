@@ -1,4 +1,4 @@
-Find Feature Clustering {#findfeatureclustering}
+Find Feature Clustering 
 =============
 
 ## Group (Subgroup) ##
@@ -46,7 +46,7 @@ Image
 
 ## Example Pipelines ##
 
-
++ (09) Image Segmentation.json
 
 ## License & Copyright ##
 

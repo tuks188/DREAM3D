@@ -35,7 +35,7 @@
 
 #include "AlignSections.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/atomic.h>
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
@@ -154,20 +154,18 @@ private:
   std::vector<int64_t> m_yshifts;
   int32_t m_VoxelArrayIndex = 0;
 
-  void operator=(const AlignSectionsTransferDataImpl&) = delete; // Operator '=' Not Implemented
+  void operator=(const AlignSectionsTransferDataImpl&) = delete; // Move assignment Not Implemented
 };
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
 AlignSections::AlignSections()
-: AbstractFilter()
-, m_DataContainerName(SIMPL::Defaults::ImageDataContainerName)
+: m_DataContainerName(SIMPL::Defaults::ImageDataContainerName)
 , m_CellAttributeMatrixName(SIMPL::Defaults::CellAttributeMatrixName)
 , m_WriteAlignmentShifts(false)
 , m_AlignmentShiftFileName("")
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -290,19 +288,19 @@ void AlignSections::execute()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getDataContainerName());
 
   size_t dims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(dims);
+  std::tie(dims[0], dims[1], dims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   std::vector<int64_t> xshifts(dims[2], 0);
   std::vector<int64_t> yshifts(dims[2], 0);
 
   find_shifts(xshifts, yshifts);
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
 #endif
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   // The idea for this parallel section is to parallelize over each Data Array that
   // will need it's data adjusted. This should go faster than before by about 2x.
   // Better speed up could be achieved if we had better data locality.

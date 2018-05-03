@@ -120,7 +120,7 @@ template <typename T> void ExecuteTemplate(ReplaceElementAttributesWithNeighborV
   size_t totalPoints = inArrayPtr->getNumberOfTuples();
 
   size_t udims[3] = {0, 0, 0};
-  m->getGeometryAs<ImageGeom>()->getDimensions(udims);
+  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
   };
@@ -264,13 +264,11 @@ template <typename T> void ExecuteTemplate(ReplaceElementAttributesWithNeighborV
 //
 // -----------------------------------------------------------------------------
 ReplaceElementAttributesWithNeighborValues::ReplaceElementAttributesWithNeighborValues()
-: AbstractFilter()
-, m_MinConfidence(0.1f)
+: m_MinConfidence(0.1f)
 , m_Loop(false)
 , m_ConfidenceIndexArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::ConfidenceIndex)
 , m_SelectedComparison(Detail::LessThan)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------

@@ -50,13 +50,11 @@
 //
 // -----------------------------------------------------------------------------
 FindFeatureCentroids::FindFeatureCentroids()
-: AbstractFilter()
-, m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
+: m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
 , m_CentroidsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, SIMPL::FeatureData::Centroids)
 , m_FeatureIds(nullptr)
 , m_Centroids(nullptr)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -114,7 +112,7 @@ void FindFeatureCentroids::dataCheck()
   QVector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_FeatureIdsPtr.lock().get())                                                                   /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -122,7 +120,7 @@ void FindFeatureCentroids::dataCheck()
   cDims[0] = 3;
   m_CentroidsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, getCentroidsArrayPath(), 0,
                                                                                                                   cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_CentroidsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_CentroidsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Centroids = m_CentroidsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -164,14 +162,12 @@ void FindFeatureCentroids::find_centroids()
   size_t yPoints = imageGeom->getYPoints();
   size_t zPoints = imageGeom->getZPoints();
 
-  float xRes = imageGeom->getXRes();
-  float yRes = imageGeom->getYRes();
-  float zRes = imageGeom->getZRes();
-
-  float xOrigin = 0.0f;
-  float yOrigin = 0.0f;
-  float zOrigin = 0.0f;
-  imageGeom->getOrigin(xOrigin, yOrigin, zOrigin);
+  float xRes = 0.0f;
+  float yRes = 0.0f;
+  float zRes = 0.0f;
+  std::tie(xRes, yRes, zRes) = imageGeom->getResolution();
+  float origin[3] = { 0.0f, 0.0f, 0.0f};
+  imageGeom->getOrigin(origin);
 
   size_t zStride = 0;
   size_t yStride = 0;
@@ -201,9 +197,9 @@ void FindFeatureCentroids::find_centroids()
       featurecenters[i * 4 + 1] = featurecenters[i * 4 + 1] / featurecenters[i * 4 + 0];
       featurecenters[i * 4 + 2] = featurecenters[i * 4 + 2] / featurecenters[i * 4 + 0];
       featurecenters[i * 4 + 3] = featurecenters[i * 4 + 3] / featurecenters[i * 4 + 0];
-      m_Centroids[3 * i] = featurecenters[i * 4 + 1] + xOrigin;
-      m_Centroids[3 * i + 1] = featurecenters[i * 4 + 2] + yOrigin;
-      m_Centroids[3 * i + 2] = featurecenters[i * 4 + 3] + zOrigin;
+      m_Centroids[3 * i] = featurecenters[i * 4 + 1] + origin[0];
+      m_Centroids[3 * i + 1] = featurecenters[i * 4 + 2] + origin[1];
+      m_Centroids[3 * i + 2] = featurecenters[i * 4 + 3] + origin[2];
     }
   }
 }

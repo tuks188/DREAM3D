@@ -35,7 +35,7 @@
 
 #include "TriangleCentroidFilter.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/partitioner.h>
@@ -84,7 +84,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     generate(r.begin(), r.end());
@@ -96,11 +96,9 @@ public:
 //
 // -----------------------------------------------------------------------------
 TriangleCentroidFilter::TriangleCentroidFilter()
-: SurfaceMeshFilter()
-, m_SurfaceMeshTriangleCentroidsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceCentroids)
+: m_SurfaceMeshTriangleCentroidsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceCentroids)
 , m_SurfaceMeshTriangleCentroids(nullptr)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -113,6 +111,7 @@ TriangleCentroidFilter::~TriangleCentroidFilter() = default;
 // -----------------------------------------------------------------------------
 void TriangleCentroidFilter::setupFilterParameters()
 {
+  SurfaceMeshFilter::setupFilterParameters();
   FilterParameterVector parameters;
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::CreatedArray));
   {
@@ -159,7 +158,7 @@ void TriangleCentroidFilter::dataCheck()
   QVector<size_t> cDims(1, 3);
   m_SurfaceMeshTriangleCentroidsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<double>, AbstractFilter, double>(
       this, getSurfaceMeshTriangleCentroidsArrayPath(), 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_SurfaceMeshTriangleCentroidsPtr.lock().get())    /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_SurfaceMeshTriangleCentroidsPtr.lock())          /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshTriangleCentroids = m_SurfaceMeshTriangleCentroidsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -199,7 +198,7 @@ void TriangleCentroidFilter::execute()
 
   DataContainer::Pointer sm = getDataContainerArray()->getDataContainer(getSurfaceMeshTriangleCentroidsArrayPath().getDataContainerName());
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
 #endif
@@ -207,7 +206,7 @@ void TriangleCentroidFilter::execute()
   // No check because datacheck() made sure we can do the next line.
   TriangleGeom::Pointer triangleGeom = sm->getGeometryAs<TriangleGeom>();
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   if(doParallel == true)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, triangleGeom->getNumberOfTris()), CalculateCentroidsImpl(triangleGeom->getVertices(), triangleGeom->getTriangles(), m_SurfaceMeshTriangleCentroids),

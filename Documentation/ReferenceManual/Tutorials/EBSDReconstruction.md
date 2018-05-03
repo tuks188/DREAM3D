@@ -1,4 +1,4 @@
-3D Orientation Data Reconstruction {#tutorialebsdreconstruction}
+3D Orientation Data Reconstruction 
 ========
 
 This tutorial uses a **Prebuilt Pipeline** to reconstruct a 3D data set of a Ni based superalloy called the "Small IN100" data set. This data set was collected by M. Uchic et. al. at the Air Force Research Laboratory (AFRL) and is provided to the DREAM.3D community as a learning tool. The data set consists of 117 slices of EBSD data where each slice is 189 x 201 scan points.
@@ -28,7 +28,6 @@ The actual components of the **Prebuilt Pipeline** are important to understand i
 ------------
 
 ![General Workflow for EBSD Reconstruction](Images/EbsdReconstruction.png)
-@image latex Images/EbsdReconstruction.png "General Workflow for EBSD Reconstruction" width=6in
 
 ------------
 
@@ -48,7 +47,6 @@ At this point the reconstructed volume will be mostly black. This is because the
 ------------
 
 ![Initial Rendering of the Reconstructed Small IN100 Data Set Showing Bad Voxels in Black](Images/Ex_Reconstruction_40.png)
-@image latex Images/Ex_Reconstruction_40.png "Initial Rendering of the Reconstructed Small IN100 Data Set Showing Bad Voxels in Black" width=6in
 
 ------------
 
@@ -58,11 +56,9 @@ In order to visually reveal more of the inner structure of the reconstructed vol
 
 ![Applying the Threshold Filter Using the Toolbar](Images/ParaViewToolbar.png)
 
-@image latex Images/ParaViewToolbar.png "Applying the Threshold Filter Using the Toolbar" width=4.5in
 
 ------------
 
 ![Visualizing the EBSD Data](Images/Ex_Reconstruction_44.png)
 
-@image latex Images/Ex_Reconstruction_44.png "Visualizing the EBSD Data" width=3in
 

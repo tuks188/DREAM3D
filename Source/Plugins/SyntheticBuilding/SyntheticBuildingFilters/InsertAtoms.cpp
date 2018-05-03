@@ -35,7 +35,7 @@
 
 #include "InsertAtoms.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/partitioner.h>
@@ -141,7 +141,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     checkPoints(r.begin(), r.end());
@@ -247,8 +247,7 @@ public:
 //
 // -----------------------------------------------------------------------------
 InsertAtoms::InsertAtoms()
-: AbstractFilter()
-, m_VertexDataContainerName(SIMPL::Defaults::VertexDataContainerName)
+: m_VertexDataContainerName(SIMPL::Defaults::VertexDataContainerName)
 , m_VertexAttributeMatrixName(SIMPL::Defaults::VertexAttributeMatrixName)
 , m_Basis(0)
 , m_SurfaceMeshFaceLabelsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceLabels)
@@ -262,7 +261,6 @@ InsertAtoms::InsertAtoms()
   m_LatticeConstants.y = 1.0f;
   m_LatticeConstants.z = 1.0f;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -333,7 +331,7 @@ void InsertAtoms::updateVertexInstancePointers()
 {
   setErrorCondition(0);
   setWarningCondition(0);
-  if(nullptr != m_AtomFeatureLabelsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_AtomFeatureLabelsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AtomFeatureLabels = m_AtomFeatureLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -383,7 +381,7 @@ void InsertAtoms::dataCheck()
   QVector<size_t> cDims(1, 2);
   m_SurfaceMeshFaceLabelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath(),
                                                                                                                    cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_SurfaceMeshFaceLabelsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_SurfaceMeshFaceLabelsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshFaceLabels = m_SurfaceMeshFaceLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -395,7 +393,7 @@ void InsertAtoms::dataCheck()
   cDims[0] = 4;
   m_AvgQuatsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getAvgQuatsArrayPath(),
                                                                                                     cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_AvgQuatsPtr.lock().get())                                                                 /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_AvgQuatsPtr.lock())                                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AvgQuats = m_AvgQuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -404,7 +402,7 @@ void InsertAtoms::dataCheck()
   tempPath.update(getVertexDataContainerName(), getVertexAttributeMatrixName(), getAtomFeatureLabelsArrayName());
   m_AtomFeatureLabelsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter, int32_t>(
       this, tempPath, -301, cDims);                  /* Assigns the shared_ptr<>(this, tempPath, -301, dims);  Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_AtomFeatureLabelsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_AtomFeatureLabelsPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AtomFeatureLabels = m_AtomFeatureLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -543,7 +541,7 @@ void InsertAtoms::execute()
   DataContainer::Pointer sm = getDataContainerArray()->getDataContainer(getSurfaceMeshFaceLabelsArrayPath().getDataContainerName());
   SIMPL_RANDOMNG_NEW()
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
 #endif
@@ -636,7 +634,7 @@ void InsertAtoms::execute()
 
   QuatF* avgQuats = reinterpret_cast<QuatF*>(m_AvgQuats);
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   if(doParallel == true)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, numFeatures), InsertAtomsImpl(triangleGeom, faceLists, faceBBs, avgQuats, latticeConstants, m_Basis, points, inFeature), tbb::auto_partitioner());

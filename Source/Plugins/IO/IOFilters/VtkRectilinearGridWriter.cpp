@@ -212,11 +212,9 @@ template <typename T> void WriteDataArray(AbstractFilter* filter, FILE* f, IData
 //
 // -----------------------------------------------------------------------------
 VtkRectilinearGridWriter::VtkRectilinearGridWriter()
-: AbstractFilter()
-, m_OutputFile("")
+: m_OutputFile("")
 , m_WriteBinaryFile(false)
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -373,7 +371,7 @@ void VtkRectilinearGridWriter::execute()
 
   ImageGeom::Pointer image = m->getGeometryAs<ImageGeom>();
   size_t dims[3] = {0, 0, 0};
-  image->getDimensions(dims);
+  std::tie(dims[0], dims[1], dims[2]) = image->getDimensions();
   float res[3] = {0.0f, 0.0f, 0.0f};
   image->getResolution(res);
   float origin[3] = {0.0f, 0.0f, 0.0f};

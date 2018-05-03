@@ -263,7 +263,7 @@ public:
     DataContainer::Pointer m = phReader->getDataContainerArray()->getDataContainer(SIMPL::Defaults::ImageDataContainerName);
     DREAM3D_REQUIRED_PTR(m.get(), !=, nullptr)
 
-    m->getGeometryAs<ImageGeom>()->getDimensions(nx, ny, nz);
+    std::tie(nx, ny, nz) = m->getGeometryAs<ImageGeom>()->getDimensions();
     DREAM3D_REQUIRE_EQUAL(nx, UnitTest::FeatureIdsTest::XSize);
     DREAM3D_REQUIRE_EQUAL(ny, UnitTest::FeatureIdsTest::YSize);
     DREAM3D_REQUIRE_EQUAL(nz, UnitTest::FeatureIdsTest::ZSize);
@@ -338,7 +338,7 @@ public:
       DataContainer::Pointer m = phReader->getDataContainerArray()->getDataContainer(SIMPL::Defaults::ImageDataContainerName);
       DREAM3D_REQUIRED_PTR(m.get(), !=, nullptr)
 
-      m->getGeometryAs<ImageGeom>()->getDimensions(nx, ny, nz);
+      std::tie(nx, ny, nz) = m->getGeometryAs<ImageGeom>()->getDimensions();
       DREAM3D_REQUIRE_EQUAL(nx, UnitTest::FeatureIdsTest::XSize);
       DREAM3D_REQUIRE_EQUAL(ny, UnitTest::FeatureIdsTest::YSize);
       DREAM3D_REQUIRE_EQUAL(nz, UnitTest::FeatureIdsTest::ZSize);
@@ -375,7 +375,7 @@ public:
       DataContainer::Pointer m = phReader->getDataContainerArray()->getDataContainer(SIMPL::Defaults::ImageDataContainerName);
       DREAM3D_REQUIRED_PTR(m.get(), !=, nullptr)
 
-      m->getGeometryAs<ImageGeom>()->getDimensions(nx, ny, nz);
+      std::tie(nx, ny, nz) = m->getGeometryAs<ImageGeom>()->getDimensions();
       DREAM3D_REQUIRE_EQUAL(nx, UnitTest::FeatureIdsTest::XSize);
       DREAM3D_REQUIRE_EQUAL(ny, UnitTest::FeatureIdsTest::YSize);
       DREAM3D_REQUIRE_EQUAL(nz, UnitTest::FeatureIdsTest::ZSize);
@@ -412,7 +412,7 @@ public:
       DataContainer::Pointer m = phReader->getDataContainerArray()->getDataContainer(SIMPL::Defaults::ImageDataContainerName);
       DREAM3D_REQUIRED_PTR(m.get(), !=, nullptr)
 
-      m->getGeometryAs<ImageGeom>()->getDimensions(nx, ny, nz);
+      std::tie(nx, ny, nz) = m->getGeometryAs<ImageGeom>()->getDimensions();
       DREAM3D_REQUIRE_EQUAL(nx, UnitTest::FeatureIdsTest::XSize);
       DREAM3D_REQUIRE_EQUAL(ny, UnitTest::FeatureIdsTest::YSize);
       DREAM3D_REQUIRE_EQUAL(nz, UnitTest::FeatureIdsTest::ZSize);
@@ -460,7 +460,7 @@ public:
       DataContainer::Pointer m = phReader->getDataContainerArray()->getDataContainer(SIMPL::Defaults::ImageDataContainerName);
       DREAM3D_REQUIRED_PTR(m.get(), !=, nullptr)
 
-      m->getGeometryAs<ImageGeom>()->getDimensions(nx, ny, nz);
+      std::tie(nx, ny, nz) = m->getGeometryAs<ImageGeom>()->getDimensions();
       DREAM3D_REQUIRE_EQUAL(nx, UnitTest::FeatureIdsTest::XSize);
       DREAM3D_REQUIRE_EQUAL(ny, UnitTest::FeatureIdsTest::YSize);
       DREAM3D_REQUIRE_EQUAL(nz, UnitTest::FeatureIdsTest::ZSize);
@@ -501,7 +501,7 @@ public:
       DataContainer::Pointer m = phReader->getDataContainerArray()->getDataContainer(SIMPL::Defaults::ImageDataContainerName);
       DREAM3D_REQUIRED_PTR(m.get(), !=, nullptr)
 
-      m->getGeometryAs<ImageGeom>()->getDimensions(nx, ny, nz);
+      std::tie(nx, ny, nz) = m->getGeometryAs<ImageGeom>()->getDimensions();
       DREAM3D_REQUIRE_EQUAL(nx, UnitTest::FeatureIdsTest::XSize);
       DREAM3D_REQUIRE_EQUAL(ny, UnitTest::FeatureIdsTest::YSize);
       DREAM3D_REQUIRE_EQUAL(nz, UnitTest::FeatureIdsTest::ZSize);
@@ -531,5 +531,5 @@ public:
 
 private:
   PhIOTest(const PhIOTest&);       // Copy Constructor Not Implemented
-  void operator=(const PhIOTest&); // Operator '=' Not Implemented
+  void operator=(const PhIOTest&); // Move assignment Not Implemented
 };

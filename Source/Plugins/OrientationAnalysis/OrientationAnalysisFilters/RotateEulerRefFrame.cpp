@@ -35,7 +35,7 @@
 
 #include "RotateEulerRefFrame.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range.h>
 #include <tbb/blocked_range3d.h>
 #include <tbb/parallel_for.h>
@@ -105,7 +105,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     convert(r.begin(), r.end());
@@ -117,8 +117,7 @@ public:
 //
 // -----------------------------------------------------------------------------
 RotateEulerRefFrame::RotateEulerRefFrame()
-: AbstractFilter()
-, m_RotationAngle(0.0f)
+: m_RotationAngle(0.0f)
 , m_CellEulerAnglesArrayPath("", "", "")
 , m_CellEulerAngles(nullptr)
 {
@@ -126,7 +125,6 @@ RotateEulerRefFrame::RotateEulerRefFrame()
   m_RotationAxis.y = 0.0f;
   m_RotationAxis.z = 1.0f;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -179,7 +177,7 @@ void RotateEulerRefFrame::dataCheck()
   QVector<size_t> cDims(1, 3);
   m_CellEulerAnglesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getCellEulerAnglesArrayPath(),
                                                                                                            cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_CellEulerAnglesPtr.lock().get())                                                                 /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_CellEulerAnglesPtr.lock())                                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_CellEulerAngles = m_CellEulerAnglesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -217,12 +215,12 @@ void RotateEulerRefFrame::execute()
   float rotAxis[3] = {m_RotationAxis.x, m_RotationAxis.y, m_RotationAxis.z};
   MatrixMath::Normalize3x1(rotAxis);
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
 #endif
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   if(doParallel == true)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), RotateEulerRefFrameImpl(m_CellEulerAngles, rotAngle, rotAxis), tbb::auto_partitioner());

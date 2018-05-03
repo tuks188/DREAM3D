@@ -17,10 +17,10 @@ class GenerateFeatureIds : public AbstractFilter
   Q_OBJECT
 public:
   SIMPL_SHARED_POINTERS(GenerateFeatureIds)
-  SIMPL_STATIC_NEW_MACRO(GenerateFeatureIds)
-   SIMPL_TYPE_MACRO_SUPER_OVERRIDE(GenerateFeatureIds, AbstractFilter)
+  SIMPL_FILTER_NEW_MACRO(GenerateFeatureIds)
+  SIMPL_TYPE_MACRO_SUPER_OVERRIDE(GenerateFeatureIds, AbstractFilter)
 
-  virtual ~GenerateFeatureIds()
+  ~GenerateFeatureIds()
   {
   }
   SIMPL_INSTANCE_STRING_PROPERTY(DataContainerName)
@@ -77,8 +77,7 @@ public:
 
 protected:
   GenerateFeatureIds()
-  : AbstractFilter()
-  , m_DataContainerName(SIMPL::Defaults::DataContainerName)
+  : m_DataContainerName(SIMPL::Defaults::DataContainerName)
   , m_CellAttributeMatrixName(SIMPL::Defaults::CellAttributeMatrixName)
   , m_CellFeatureAttributeMatrixName(SIMPL::Defaults::CellFeatureAttributeMatrixName)
   , m_FeatureIds(nullptr)
@@ -108,14 +107,17 @@ private:
     QVector<size_t> dims(1, 1);
     m_FeatureIdsPtr =
         cellAttrMat->createNonPrereqArray<DataArray<int32_t>, AbstractFilter>(this, m_FeatureIdsArrayName, 0, dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-    if(nullptr != m_FeatureIdsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+    if(nullptr != m_FeatureIdsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
     {
       m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
   }
 
+public:
   GenerateFeatureIds(const GenerateFeatureIds&) = delete; // Copy Constructor Not Implemented
-  void operator=(const GenerateFeatureIds&);     // Operator '=' Not Implemented
+  GenerateFeatureIds(GenerateFeatureIds&&) = delete;      // Move Constructor
+  GenerateFeatureIds& operator=(const GenerateFeatureIds&) = delete; // Copy Assignment Not Implemented
+  GenerateFeatureIds& operator=(GenerateFeatureIds&&) = delete;      // Move Assignment Not Implemented
 };
 
 /**
@@ -130,14 +132,14 @@ class CreateDataContainer : public AbstractFilter
   Q_OBJECT
 public:
   SIMPL_SHARED_POINTERS(CreateDataContainer)
-  SIMPL_STATIC_NEW_MACRO(CreateDataContainer)
-   SIMPL_TYPE_MACRO_SUPER_OVERRIDE(CreateDataContainer, AbstractFilter)
+  SIMPL_FILTER_NEW_MACRO(CreateDataContainer)
+  SIMPL_TYPE_MACRO_SUPER_OVERRIDE(CreateDataContainer, AbstractFilter)
 
   SIMPL_FILTER_PARAMETER(int64_t, XDim)
   SIMPL_FILTER_PARAMETER(int64_t, YDim)
   SIMPL_FILTER_PARAMETER(int64_t, ZDim)
 
-  virtual ~CreateDataContainer()
+  ~CreateDataContainer()
   {
   }
 
@@ -185,8 +187,7 @@ public:
 
 protected:
   CreateDataContainer()
-  : AbstractFilter()
-  , m_XDim(0)
+  : m_XDim(0)
   , m_YDim(0)
   , m_ZDim(0)
   {
@@ -210,7 +211,7 @@ protected:
     int64_t nx = m_XDim;
     int64_t ny = m_YDim;
     int64_t nz = m_ZDim;
-    m->getGeometryAs<ImageGeom>()->setDimensions(nx, ny, nz);
+    m->getGeometryAs<ImageGeom>()->setDimensions(std::make_tuple(nx, ny, nz));
     getDataContainerArray()->addDataContainer(m);
     QVector<size_t> tDims(3, 0);
     tDims[0] = nx;
@@ -222,7 +223,7 @@ protected:
 
 private:
   CreateDataContainer(const CreateDataContainer&) = delete; // Copy Constructor Not Implemented
-  void operator=(const CreateDataContainer&);      // Operator '=' Not Implemented
+  void operator=(const CreateDataContainer&);               // Move assignment Not Implemented
 };
 
 #endif /* _GenerateFeatureIds_H_ */

@@ -35,7 +35,7 @@
 
 #include "ReadStlFile.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/partitioner.h>
@@ -91,7 +91,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     convert(r.begin(), r.end());
@@ -107,8 +107,7 @@ private:
 //
 // -----------------------------------------------------------------------------
 ReadStlFile::ReadStlFile()
-: AbstractFilter()
-, m_SurfaceMeshDataContainerName(SIMPL::Defaults::TriangleDataContainerName)
+: m_SurfaceMeshDataContainerName(SIMPL::Defaults::TriangleDataContainerName)
 , m_FaceAttributeMatrixName(SIMPL::Defaults::FaceAttributeMatrixName)
 , m_StlFilePath("")
 , m_FaceNormalsArrayName(SIMPL::FaceData::SurfaceMeshFaceNormals)
@@ -120,7 +119,6 @@ ReadStlFile::ReadStlFile()
 , m_minZcoord(std::numeric_limits<float>::max())
 , m_maxZcoord(-std::numeric_limits<float>::max())
 {
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -164,7 +162,7 @@ void ReadStlFile::updateFaceInstancePointers()
   setErrorCondition(0);
   setWarningCondition(0);
 
-  if(nullptr != m_FaceNormalsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_FaceNormalsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FaceNormals = m_FaceNormalsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -218,7 +216,7 @@ void ReadStlFile::dataCheck()
   QVector<size_t> cDims(1, 3);
   tempPath.update(getSurfaceMeshDataContainerName(), getFaceAttributeMatrixName(), getFaceNormalsArrayName());
   m_FaceNormalsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<double>, AbstractFilter, double>(this, tempPath, 0, cDims);
-  if(nullptr != m_FaceNormalsPtr.lock().get())
+  if(nullptr != m_FaceNormalsPtr.lock())
   {
     m_FaceNormals = m_FaceNormalsPtr.lock()->getPointer(0);
   }
@@ -468,13 +466,13 @@ void ReadStlFile::eliminate_duplicate_nodes()
     uniqueIds[i] = i;
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
 #endif
 
 // Parallel algorithm to find duplicate nodes
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   if(doParallel == true)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, 100 * 100 * 100), FindUniqueIdsImpl(triangleGeom->getVertices(), nodesInBin, uniqueIds), tbb::auto_partitioner());

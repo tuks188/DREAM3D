@@ -61,7 +61,7 @@
 #include "OrientationLib/OrientationMath/OrientationTransforms.hpp"
 #include "OrientationLib/LaueOps/LaueOps.h"
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include "tbb/concurrent_vector.h"
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
@@ -119,7 +119,7 @@ class TrisSelector
   int64_t* m_Triangles;
   int8_t* m_NodeTypes;
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::concurrent_vector<TriAreaAndNormals>* selectedTris;
 #else
   QVector<TriAreaAndNormals>* selectedTris;
@@ -143,7 +143,7 @@ class TrisSelector
 public:
   TrisSelector(bool __m_ExcludeTripleLines, int64_t* __m_Triangles, int8_t* __m_NodeTypes,
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
                tbb::concurrent_vector<TriAreaAndNormals>* __selectedTris,
 #else
                QVector<TriAreaAndNormals>* __selectedTris,
@@ -301,7 +301,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     select(r.begin(), r.end());
@@ -320,7 +320,7 @@ class ProbeDistrib
   QVector<float> samplPtsX;
   QVector<float> samplPtsY;
   QVector<float> samplPtsZ;
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::concurrent_vector<TriAreaAndNormals> selectedTris;
 #else
   QVector<TriAreaAndNormals> selectedTris;
@@ -333,7 +333,7 @@ class ProbeDistrib
 
 public:
   ProbeDistrib(QVector<double>* __distribValues, QVector<double>* __errorValues, QVector<float> __samplPtsX, QVector<float> __samplPtsY, QVector<float> __samplPtsZ,
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
                tbb::concurrent_vector<TriAreaAndNormals> __selectedTris,
 #else
                QVector<TriAreaAndNormals> __selectedTris,
@@ -394,7 +394,7 @@ public:
     }
   }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   void operator()(const tbb::blocked_range<size_t>& r) const
   {
     probe(r.begin(), r.end());
@@ -408,8 +408,7 @@ public:
 //
 // -----------------------------------------------------------------------------
 FindGBCDMetricBased::FindGBCDMetricBased()
-: SurfaceMeshFilter()
-, m_PhaseOfInterest(1)
+: m_PhaseOfInterest(1)
 , m_ChosenLimitDists(FindGBCDMetricBased::k_DefaultResolutionChoice)
 , m_NumSamplPts(3000)
 , m_ExcludeTripleLines(false)
@@ -438,7 +437,6 @@ FindGBCDMetricBased::FindGBCDMetricBased()
   m_MisorientationRotation.k = 1.0f;
   m_MisorientationRotation.l = 1.0f;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -451,6 +449,7 @@ FindGBCDMetricBased::~FindGBCDMetricBased() = default;
 // -----------------------------------------------------------------------------
 void FindGBCDMetricBased::setupFilterParameters()
 {
+  SurfaceMeshFilter::setupFilterParameters();
   FilterParameterVector parameters;
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Phase of Interest", PhaseOfInterest, FilterParameter::Parameter, FindGBCDMetricBased));
   parameters.push_back(SIMPL_NEW_AXISANGLE_FP("Fixed Misorientation", MisorientationRotation, FilterParameter::Parameter, FindGBCDMetricBased));
@@ -675,13 +674,13 @@ void FindGBCDMetricBased::dataCheck()
   QVector<size_t> cDims(1, 1);
   m_CrystalStructuresPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<unsigned int>, AbstractFilter>(this, getCrystalStructuresArrayPath(),
                                                                                                                     cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_CrystalStructuresPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_CrystalStructuresPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_CrystalStructures = m_CrystalStructuresPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
   // Phase of Interest  (filter params.)
-  if(nullptr != m_CrystalStructuresPtr.lock().get())
+  if(nullptr != m_CrystalStructuresPtr.lock())
   {
     if(getPhaseOfInterest() >= static_cast<int>(m_CrystalStructuresPtr.lock()->getNumberOfTuples()) || getPhaseOfInterest() <= 0)
     {
@@ -695,7 +694,7 @@ void FindGBCDMetricBased::dataCheck()
   cDims[0] = 3;
   m_FeatureEulerAnglesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getFeatureEulerAnglesArrayPath(),
                                                                                                               cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_FeatureEulerAnglesPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_FeatureEulerAnglesPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureEulerAngles = m_FeatureEulerAnglesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -704,7 +703,7 @@ void FindGBCDMetricBased::dataCheck()
   cDims[0] = 1;
   m_FeaturePhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeaturePhasesArrayPath(),
                                                                                                            cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_FeaturePhasesPtr.lock().get())                                                                   /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_FeaturePhasesPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -713,7 +712,7 @@ void FindGBCDMetricBased::dataCheck()
   cDims[0] = 2;
   m_SurfaceMeshFaceLabelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath(),
                                                                                                                    cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_SurfaceMeshFaceLabelsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_SurfaceMeshFaceLabelsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshFaceLabels = m_SurfaceMeshFaceLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -722,7 +721,7 @@ void FindGBCDMetricBased::dataCheck()
   cDims[0] = 3;
   m_SurfaceMeshFaceNormalsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<double>, AbstractFilter>(this, getSurfaceMeshFaceNormalsArrayPath(),
                                                                                                                    cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_SurfaceMeshFaceNormalsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_SurfaceMeshFaceNormalsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshFaceNormals = m_SurfaceMeshFaceNormalsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -731,7 +730,7 @@ void FindGBCDMetricBased::dataCheck()
   cDims[0] = 1;
   m_SurfaceMeshFaceAreasPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<double>, AbstractFilter>(this, getSurfaceMeshFaceAreasArrayPath(),
                                                                                                                  cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_SurfaceMeshFaceAreasPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_SurfaceMeshFaceAreasPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshFaceAreas = m_SurfaceMeshFaceAreasPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -740,7 +739,7 @@ void FindGBCDMetricBased::dataCheck()
   cDims[0] = 2;
   m_SurfaceMeshFeatureFaceLabelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(
       this, getSurfaceMeshFeatureFaceLabelsArrayPath(), cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_SurfaceMeshFeatureFaceLabelsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_SurfaceMeshFeatureFaceLabelsPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshFeatureFaceLabels = m_SurfaceMeshFeatureFaceLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -749,7 +748,7 @@ void FindGBCDMetricBased::dataCheck()
   cDims[0] = 1;
   m_NodeTypesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int8_t>, AbstractFilter>(this, getNodeTypesArrayPath(),
                                                                                                       cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_NodeTypesPtr.lock().get())                                                                  /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_NodeTypesPtr.lock())                                                                        /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_NodeTypes = m_NodeTypesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
@@ -946,7 +945,7 @@ void FindGBCDMetricBased::execute()
   size_t numMeshTris = m_SurfaceMeshFaceAreasPtr.lock()->getNumberOfTuples();
 
 // ---------  find triangles (and equivalent crystallographic parameters) with +- the fixed misorientation ---------
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
   tbb::concurrent_vector<GBCDMetricBased::TriAreaAndNormals> selectedTris(0);
@@ -975,7 +974,7 @@ void FindGBCDMetricBased::execute()
       trisChunkSize = numMeshTris - i;
     }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(i, i + trisChunkSize), GBCDMetricBased::TrisSelector(m_ExcludeTripleLines, m_Triangles, m_NodeTypes, &selectedTris, &triIncluded, m_misorResol, m_PhaseOfInterest,
@@ -1045,7 +1044,7 @@ void FindGBCDMetricBased::execute()
       pointsChunkSize = samplPtsX.size() - i;
     }
 
-#ifdef SIMPLib_USE_PARALLEL_ALGORITHMS
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     if(doParallel == true)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(i, i + pointsChunkSize),

@@ -54,8 +54,7 @@
 //
 // -----------------------------------------------------------------------------
 UncertainRegularGridSampleSurfaceMesh::UncertainRegularGridSampleSurfaceMesh()
-: SampleSurfaceMesh()
-, m_DataContainerName(SIMPL::Defaults::ImageDataContainerName)
+: m_DataContainerName(SIMPL::Defaults::ImageDataContainerName)
 , m_CellAttributeMatrixName(SIMPL::Defaults::CellAttributeMatrixName)
 , m_XPoints(0)
 , m_YPoints(0)
@@ -74,7 +73,6 @@ UncertainRegularGridSampleSurfaceMesh::UncertainRegularGridSampleSurfaceMesh()
   m_Uncertainty.y = 0.1f;
   m_Uncertainty.z = 0.1f;
 
-  setupFilterParameters();
 }
 
 // -----------------------------------------------------------------------------
@@ -87,6 +85,7 @@ UncertainRegularGridSampleSurfaceMesh::~UncertainRegularGridSampleSurfaceMesh() 
 // -----------------------------------------------------------------------------
 void UncertainRegularGridSampleSurfaceMesh::setupFilterParameters()
 {
+  SampleSurfaceMesh::setupFilterParameters();
   FilterParameterVector parameters = getFilterParameters();
   parameters.push_back(SIMPL_NEW_INTEGER_FP("X Points", XPoints, FilterParameter::Parameter, UncertainRegularGridSampleSurfaceMesh));
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Y Points", YPoints, FilterParameter::Parameter, UncertainRegularGridSampleSurfaceMesh));
@@ -149,10 +148,10 @@ void UncertainRegularGridSampleSurfaceMesh::dataCheck()
   m->setGeometry(image);
 
   // Set the Dimensions, Resolution and Origin of the output data container
-  m->getGeometryAs<ImageGeom>()->setDimensions(m_XPoints, m_YPoints, m_ZPoints);
-  m->getGeometryAs<ImageGeom>()->setResolution(m_Resolution.x, m_Resolution.y, m_Resolution.z);
-  m->getGeometryAs<ImageGeom>()->setOrigin(m_Origin.x, m_Origin.y, m_Origin.z);
-
+  m->getGeometryAs<ImageGeom>()->setDimensions(std::make_tuple(m_XPoints, m_YPoints, m_ZPoints));
+  m->getGeometryAs<ImageGeom>()->setResolution(std::make_tuple(m_Resolution.x, m_Resolution.y, m_Resolution.z));
+  m->getGeometryAs<ImageGeom>()->setOrigin(std::make_tuple(m_Origin.x, m_Origin.y, m_Origin.z));
+  
   QVector<size_t> tDims(3, 0);
   tDims[0] = m_XPoints;
   tDims[1] = m_YPoints;
@@ -167,7 +166,7 @@ void UncertainRegularGridSampleSurfaceMesh::dataCheck()
   tempPath.update(getDataContainerName(), getCellAttributeMatrixName(), getFeatureIdsArrayName());
   m_FeatureIdsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter, int32_t>(
       this, tempPath, 0, cDims);              /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(nullptr != m_FeatureIdsPtr.lock().get()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
+  if(nullptr != m_FeatureIdsPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
