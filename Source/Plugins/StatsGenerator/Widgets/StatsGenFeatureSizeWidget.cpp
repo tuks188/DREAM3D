@@ -111,7 +111,7 @@ void StatsGenFeatureSizeWidget::setupGui()
 
   m_SigmaValidator = new QDoubleValidator(m_Sigma_SizeDistribution);
   m_SigmaValidator->setLocale(loc);
-  m_SigmaValidator->setRange(0.0000, 10.0, 6);
+  m_SigmaValidator->setRange(0.0000, 1000000, 6);
   m_Sigma_SizeDistribution->setValidator(m_SigmaValidator);
 
   m_XiValidator = new QDoubleValidator(m_Xi_SizeDistribution);
