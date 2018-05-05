@@ -157,44 +157,64 @@ public:
 
     QLocale loc = QLocale::system();
 
-    /* Set the Feature_Diameter_Info Data */
+	QString disType = statsData->getDistributionTypeCombo();
+//	distributionTypeCombo->blockSignals(true);
+	int disTypeIndex = distributionTypeCombo->findText(disType);
+	distributionTypeCombo->setCurrentIndex(disTypeIndex);
+//	distributionTypeCombo->blockSignals(false);
+
+	/* Set the Feature_Diameter_Info Data */
     binStepSize = statsData->getBinStepSize();
     m_BinStepSize->blockSignals(true);
     m_BinStepSize->setValue(binStepSize);
     m_BinStepSize->blockSignals(false);
     maxFeatureSize = statsData->getMaxFeatureDiameter();
-    minFeatureSize = statsData->getMinFeatureDiameter();
-
+	if (disType == SIMPL::StringConstants::LogNormalDistribution)
+	{
+		minFeatureSize = statsData->getMinFeatureDiameter();
+	}
+		
     /* Set the Feature_Size_Distribution Data */
     VectorOfFloatArray distData = statsData->getFeatureSizeDistribution();
     mu = distData[0]->getValue(0);
 	sigma = distData[1]->getValue(0);
+	if (disType == SIMPL::StringConstants::ParetoDistribution)
+	{
+		xi = distData[2]->getValue(0);
+		m_Xi_SizeDistribution->blockSignals(true);
+		m_Xi_SizeDistribution->setText(loc.toString(xi));
+		m_Xi_SizeDistribution->blockSignals(false);
+	}
 
     m_Sigma_SizeDistribution->blockSignals(true);
     m_FeatureESD->blockSignals(true);
 
-    m_Sigma_SizeDistribution->setText(loc.toString(sigma));
-    float esd = std::exp(mu + (sigma * sigma) / 2.0f);
+	m_Sigma_SizeDistribution->setText(loc.toString(sigma));
+	float esd = std::exp(mu + (sigma * sigma) / 2.0f);
     m_FeatureESD->setText(loc.toString(esd));
 
     m_FeatureESD->blockSignals(false);
     m_Sigma_SizeDistribution->blockSignals(false);
 
-    minCutOff = (mu - log(minFeatureSize)) / sigma;
-    maxCutOff = (log(maxFeatureSize) - mu) / sigma;
+	if (disType == SIMPL::StringConstants::LogNormalDistribution)
+	{
+		minFeatureSize = (mu - log(minFeatureSize)) / sigma;
+		maxFeatureSize = (log(maxFeatureSize) - mu) / sigma;
+	}
 
-    m_MinSigmaCutOff->blockSignals(true);
-    m_MinSigmaCutOff->setText(QString::number(minCutOff));
-    m_MinSigmaCutOff->blockSignals(false);
+	m_MinSigmaCutOff->blockSignals(true);
+	m_MinSigmaCutOff->setText(QString::number(minFeatureSize));
+	m_MinSigmaCutOff->blockSignals(false);
 
     m_MaxSigmaCutOff->blockSignals(true);
-    m_MaxSigmaCutOff->setText(QString::number(maxCutOff));
+    m_MaxSigmaCutOff->setText(QString::number(maxFeatureSize));
     m_MaxSigmaCutOff->blockSignals(false);
 
     // Set the Mu value which will force the update to the plots
-    QString fromDouble = loc.toString(mu);
-    m_Mu_SizeDistribution->setText(fromDouble);
-    int err = calculateNumberOfBins();
+	QString fromDouble = loc.toString(mu);
+	m_Mu_SizeDistribution->setText(fromDouble);
+
+	int err = calculateNumberOfBins();
     if(err < 0)
     {
 
