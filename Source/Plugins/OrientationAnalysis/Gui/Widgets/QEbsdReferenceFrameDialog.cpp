@@ -47,6 +47,7 @@
 #include <QtGui/QFont>
 #include <QtGui/QPainter>
 #include <QtGui/QPixmap>
+#include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QGraphicsPixmapItem>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMessageBox>
@@ -75,7 +76,7 @@
 //
 // -----------------------------------------------------------------------------
 QEbsdReferenceFrameDialog::QEbsdReferenceFrameDialog(QString filename, QWidget* parent)
-: QDialog(parent)
+: SVDialog(parent)
 , m_EbsdFileName(filename)
 , m_OriginGroup(nullptr)
 {
