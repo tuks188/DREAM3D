@@ -60,9 +60,6 @@ FitFeatureData::FitFeatureData()
 , m_FeaturePhasesArrayPath("", "", "")
 , m_BiasedFeaturesArrayPath("", "", "")
 , m_NewEnsembleArrayArray("", "", "")
-, m_BiasedFeatures(nullptr)
-, m_FeaturePhases(nullptr)
-, m_NewEnsembleArray(nullptr)
 {
 }
 
@@ -76,7 +73,7 @@ FitFeatureData::~FitFeatureData() = default;
 // -----------------------------------------------------------------------------
 void FitFeatureData::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   {
     ChoiceFilterParameter::Pointer parameter = ChoiceFilterParameter::New();
     parameter->setHumanLabel("Distribution Type");
@@ -142,10 +139,10 @@ void FitFeatureData::initialize()
 // -----------------------------------------------------------------------------
 void FitFeatureData::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeaturePhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeaturePhasesArrayPath(),
                                                                                                            cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeaturePhasesPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -180,7 +177,7 @@ void FitFeatureData::dataCheck()
     m_NewEnsembleArray = m_NewEnsembleArrayPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
-  if(m_RemoveBiasedFeatures == true)
+  if(m_RemoveBiasedFeatures)
   {
     cDims[0] = 1;
     m_BiasedFeaturesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getBiasedFeaturesArrayPath(),
@@ -254,7 +251,7 @@ template <typename T> void fitData(IDataArray::Pointer inDataPtr, float* ensembl
   int32_t ensemble = 0;
   for(size_t i = 1; i < numfeatures; i++)
   {
-    if(removeBiasedFeatures == false || biasedFeatures[i] == false)
+    if(!removeBiasedFeatures || !biasedFeatures[i])
     {
       ensemble = eIds[i];
       values[ensemble].push_back(static_cast<float>(fPtr[i]));
@@ -276,10 +273,10 @@ template <typename T> void fitData(IDataArray::Pointer inDataPtr, float* ensembl
 // -----------------------------------------------------------------------------
 void FitFeatureData::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -289,7 +286,6 @@ void FitFeatureData::execute()
   EXECUTE_FUNCTION_TEMPLATE(this, fitData, m_InDataArrayPtr.lock(), m_InDataArrayPtr.lock(), m_NewEnsembleArray, m_FeaturePhases, numEnsembles, m_DistributionType, m_RemoveBiasedFeatures,
                             m_BiasedFeatures)
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -298,7 +294,7 @@ void FitFeatureData::execute()
 AbstractFilter::Pointer FitFeatureData::newFilterInstance(bool copyFilterParameters) const
 {
   FitFeatureData::Pointer filter = FitFeatureData::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

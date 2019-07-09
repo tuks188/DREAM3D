@@ -99,9 +99,6 @@ protected slots:
   void on_savePoleFigureImage_clicked();
   void tableDataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight);
 
-  virtual void on_m_ODFParametersBtn_clicked(bool b);
-  virtual void on_m_MDFParametersBtn_clicked(bool b);
-
   virtual void on_m_WeightSpreads_clicked(bool b);
   virtual void on_m_WeightSpreadsBulkLoad_clicked(bool b);
 
@@ -129,7 +126,10 @@ private:
   QButtonGroup m_ODFGroup;
   QString m_OpenDialogLastDirectory; // Must be last in the list
 
+public:
   StatsGenAxisODFWidget(const StatsGenAxisODFWidget&) = delete; // Copy Constructor Not Implemented
-  void operator=(const StatsGenAxisODFWidget&) = delete;        // Move assignment Not Implemented
+  StatsGenAxisODFWidget(StatsGenAxisODFWidget&&) = delete;      // Move Constructor Not Implemented
+  StatsGenAxisODFWidget& operator=(const StatsGenAxisODFWidget&) = delete; // Copy Assignment Not Implemented
+  StatsGenAxisODFWidget& operator=(StatsGenAxisODFWidget&&) = delete;      // Move Assignment Not Implemented
 };
 

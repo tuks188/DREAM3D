@@ -45,14 +45,19 @@
 #include "Statistics/StatisticsConstants.h"
 #include "Statistics/StatisticsVersion.h"
 
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
+
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
 FindVolFractions::FindVolFractions()
 : m_CellPhasesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Phases)
 , m_VolFractionsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::VolFractions)
-, m_CellPhases(nullptr)
-, m_VolFractions(nullptr)
 {
 }
 
@@ -66,7 +71,7 @@ FindVolFractions::~FindVolFractions() = default;
 // -----------------------------------------------------------------------------
 void FindVolFractions::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req =
@@ -104,12 +109,12 @@ void FindVolFractions::initialize()
 // -----------------------------------------------------------------------------
 void FindVolFractions::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getCellPhasesArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_CellPhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getCellPhasesArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_CellPhasesPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -117,8 +122,7 @@ void FindVolFractions::dataCheck()
     m_CellPhases = m_CellPhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
-  m_VolFractionsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, getVolFractionsArrayPath(), 0,
-                                                                                                                     cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_VolFractionsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, getVolFractionsArrayPath(), 0, cDims, "", DataArrayID31);
   if(nullptr != m_VolFractionsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_VolFractions = m_VolFractionsPtr.lock()->getPointer(0);
@@ -143,10 +147,10 @@ void FindVolFractions::preflight()
 // -----------------------------------------------------------------------------
 void FindVolFractions::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -154,21 +158,26 @@ void FindVolFractions::execute()
   size_t totalPoints = m_CellPhasesPtr.lock()->getNumberOfTuples();
   size_t totalEnsembles = m_VolFractionsPtr.lock()->getNumberOfTuples();
 
+  std::vector<size_t> ensembleElements(totalEnsembles);
+
+  // Initialize everythign
   for(size_t i = 1; i < totalEnsembles; i++)
   {
     m_VolFractions[i] = 0;
+    ensembleElements[i] = 0;
   }
+
+  // Calculate the total number of elements in each Ensemble
   for(size_t i = 0; i < totalPoints; i++)
   {
-    m_VolFractions[m_CellPhases[i]]++;
+    ensembleElements[m_CellPhases[i]]++;
   }
-
+  // Calculate the Volume Fraction
   for(size_t i = 1; i < totalEnsembles; i++)
   {
-    m_VolFractions[i] /= totalPoints;
+    m_VolFractions[i] = static_cast<double>(ensembleElements[i]) / static_cast<double>(totalPoints);
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -177,7 +186,7 @@ void FindVolFractions::execute()
 AbstractFilter::Pointer FindVolFractions::newFilterInstance(bool copyFilterParameters) const
 {
   FindVolFractions::Pointer filter = FindVolFractions::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

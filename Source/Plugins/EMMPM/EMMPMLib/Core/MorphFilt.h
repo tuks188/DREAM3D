@@ -36,7 +36,6 @@
 
 #pragma once
 
-#include <QtCore/QObject>
 #include <QtCore/QString>
 
 #include "SIMPLib/SIMPLib.h"
@@ -76,7 +75,7 @@ class EMMPMLib_EXPORT MorphFilter : public Observable
      */
     void multiSE(EMMPM_Data* data);
 
-    SIMPL_INSTANCE_PROPERTY(int, ErrorCondition)
+    SIMPL_INSTANCE_PROPERTY(int, ErrorCode)
 
     /**
     * @brief This returns a string that is displayed in the GUI. It should be readable

@@ -33,7 +33,6 @@
 *
 * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-#include <QtCore/QCoreApplication>
 #include <QtCore/QFile>
 
 #include "SIMPLib/Common/SIMPLibSetGetMacros.h"
@@ -52,7 +51,7 @@
 
 #define CREATE_DATA_ARRAY(type, attrMat, tDims, cDims, initVal, err)                                                                                                                                   \
   DataArray<type>::Pointer _##type##_##attrMat##Array = DataArray<type>::CreateArray(tDims, cDims, #type, true);                                                                                       \
-  err = attrMat->addAttributeArray(#type, _##type##_##attrMat##Array);                                                                                                                                 \
+  err = attrMat->insertOrAssign(_##type##_##attrMat##Array);                                                                                                                                           \
   _##type##_##attrMat##Array->initializeWithValue(initVal);                                                                                                                                            \
   DREAM3D_REQUIRE(err >= 0);
 
@@ -76,7 +75,7 @@
     qDebug() << "Unable to set property DifferenceMapArrayPath";                                                                                                                                       \
   }                                                                                                                                                                                                    \
   filter->execute();                                                                                                                                                                                   \
-  err = filter->getErrorCondition();                                                                                                                                                                   \
+  err = filter->getErrorCode();                                                                                                                                                                        \
   DREAM3D_REQUIRE_EQUAL(err, errVal);
 
 #define SET_PROPERTIES_AND_CHECK_EQ(filter, firstPath, secondPath, diffMapPath, type)                                                                                                                  \
@@ -99,7 +98,7 @@
     qDebug() << "Unable to set property DifferenceMapArrayPath";                                                                                                                                       \
   }                                                                                                                                                                                                    \
   filter->execute();                                                                                                                                                                                   \
-  err = filter->getErrorCondition();                                                                                                                                                                   \
+  err = filter->getErrorCode();                                                                                                                                                                        \
   DREAM3D_REQUIRE_EQUAL(err, 0);                                                                                                                                                                       \
   diffMap = dc->getAttributeMatrix(diffMapPath.getAttributeMatrixName())->getAttributeArray(diffMapPath.getDataArrayName());                                                                           \
   firstArray = dc->getAttributeMatrix(firstPath.getAttributeMatrixName())->getAttributeArray(firstPath.getDataArrayName());                                                                            \
@@ -169,7 +168,7 @@ public:
     DataContainer::Pointer m = DataContainer::New("FindDifferenceMapTest");
 
     // Create Attribute Matrices with different tDims to test validation of tuple compatibility
-    QVector<size_t> tDims(1, 100);
+    std::vector<size_t> tDims(1, 100);
     AttributeMatrix::Pointer attrMat1 = AttributeMatrix::New(tDims, "DiffMapTestAttrMat1", AttributeMatrix::Type::Cell);
     AttributeMatrix::Pointer attrMat2 = AttributeMatrix::New(tDims, "DiffMapTestAttrMat2", AttributeMatrix::Type::Cell);
     AttributeMatrix::Pointer attrMat11 = AttributeMatrix::New(tDims, "DiffMapTestAttrMat11", AttributeMatrix::Type::Cell);
@@ -178,14 +177,14 @@ public:
     tDims[0] = 10;
     AttributeMatrix::Pointer attrMat3 = AttributeMatrix::New(tDims, "DiffMapTestAttrMat3", AttributeMatrix::Type::Cell);
 
-    m->addAttributeMatrix("DiffMapTestAttrMat1", attrMat1);
-    m->addAttributeMatrix("DiffMapTestAttrMat2", attrMat2);
-    m->addAttributeMatrix("DiffMapTestAttrMat11", attrMat11);
-    m->addAttributeMatrix("DiffMapTestAttrMat22", attrMat22);
-    m->addAttributeMatrix("DiffMapTestAttrMat3", attrMat3);
-    dca->addDataContainer(m);
+    m->addOrReplaceAttributeMatrix(attrMat1);
+    m->addOrReplaceAttributeMatrix(attrMat2);
+    m->addOrReplaceAttributeMatrix(attrMat11);
+    m->addOrReplaceAttributeMatrix(attrMat22);
+    m->addOrReplaceAttributeMatrix(attrMat3);
+    dca->addOrReplaceDataContainer(m);
 
-    QVector<size_t> cDims(1, 3);
+    std::vector<size_t> cDims(1, 3);
     int32_t initVal = 10;
     tDims[0] = 100;
 
@@ -289,8 +288,8 @@ public:
     QString diffMapName = "DifferenceMap";
 
     DataContainer::Pointer dc = dca->getDataContainer("FindDifferenceMapTest");
-    QVector<size_t> checkDims1;
-    QVector<size_t> checkDims2;
+    std::vector<size_t> checkDims1;
+    std::vector<size_t> checkDims2;
     IDataArray::Pointer diffMap;
     IDataArray::Pointer firstArray;
 

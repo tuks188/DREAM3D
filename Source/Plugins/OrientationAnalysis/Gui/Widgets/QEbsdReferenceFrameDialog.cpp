@@ -38,20 +38,13 @@
 #include <iostream>
 
 #include <QtCore/QFileInfo>
-#include <QtCore/QJsonDocument>
-#include <QtCore/QPropertyAnimation>
-#include <QtCore/QStateMachine>
-#include <QtCore/QtEndian>
 
 #include <QtGui/QColor>
 #include <QtGui/QFont>
 #include <QtGui/QPainter>
-#include <QtGui/QPixmap>
 #include <QtWidgets/QButtonGroup>
-#include <QtWidgets/QGraphicsPixmapItem>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMessageBox>
-#include <QtWidgets/QPushButton>
 
 #include "EbsdLib/HKL/CtfConstants.h"
 #include "EbsdLib/TSL/AngConstants.h"
@@ -269,7 +262,7 @@ bool QEbsdReferenceFrameDialog::getNoTranschecked()
 // -----------------------------------------------------------------------------
 void QEbsdReferenceFrameDialog::loadEbsdData()
 {
-  if(m_EbsdFileName.isEmpty() == true)
+  if(m_EbsdFileName.isEmpty())
   {
     return;
   }
@@ -289,7 +282,7 @@ void QEbsdReferenceFrameDialog::loadEbsdData()
     reader->setInputFile(m_EbsdFileName);
     reader->setDataContainerArray(dca);
     reader->execute();
-    int err = reader->getErrorCondition();
+    int err = reader->getErrorCode();
     if(err < 0)
     {
       QMessageBox msgBox;
@@ -305,7 +298,7 @@ void QEbsdReferenceFrameDialog::loadEbsdData()
       m_DisplayedImage = QImage();
       return;
     }
-    dcName = reader->getDataContainerName();
+    dcName = reader->getDataContainerName().getDataContainerName();
     cellAttrMatName = reader->getCellAttributeMatrixName();
     cellEnsembleName = reader->getCellEnsembleAttributeMatrixName();
     cellPhasesArrayPath = DataArrayPath(dcName, cellAttrMatName, Ebsd::AngFile::Phases);
@@ -318,7 +311,7 @@ void QEbsdReferenceFrameDialog::loadEbsdData()
     reader->setInputFile(m_EbsdFileName);
     reader->setDataContainerArray(dca);
     reader->execute();
-    int err = reader->getErrorCondition();
+    int err = reader->getErrorCode();
 
     if(err < 0)
     {
@@ -335,7 +328,7 @@ void QEbsdReferenceFrameDialog::loadEbsdData()
       m_DisplayedImage = QImage();
       return;
     }
-    dcName = reader->getDataContainerName();
+    dcName = reader->getDataContainerName().getDataContainerName();
     cellAttrMatName = reader->getCellAttributeMatrixName();
     cellEnsembleName = reader->getCellEnsembleAttributeMatrixName();
     cellPhasesArrayPath = DataArrayPath(dcName, cellAttrMatName, Ebsd::CtfFile::Phases);
@@ -344,7 +337,7 @@ void QEbsdReferenceFrameDialog::loadEbsdData()
   }
 
   // If they want to convert the Eulers to Radians
-  if(degToRads->isChecked() == true)
+  if(degToRads->isChecked())
   {
     QString filtName = ChangeAngleRepresentation::ClassName();
     FilterManager* fm = FilterManager::Instance();
@@ -363,7 +356,7 @@ void QEbsdReferenceFrameDialog::loadEbsdData()
 
       convert->setDataContainerArray(dca);
       convert->execute();
-      int err = convert->getErrorCondition();
+      int err = convert->getErrorCode();
       if(err < 0)
       {
         m_BaseImage = QImage();
@@ -417,10 +410,8 @@ void QEbsdReferenceFrameDialog::loadEbsdData()
   }
 
   DataContainer::Pointer m = dca->getDataContainer(dcName);
-  size_t dims[3] = {0, 0, 0};
-  std::tie(dims[0], dims[1], dims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
-  float res[3] = {0.0f, 0.0f, 0.0f};
-  m->getGeometryAs<ImageGeom>()->getResolution(res);
+  SizeVec3Type dims = m->getGeometryAs<ImageGeom>()->getDimensions();
+  FloatVec3Type res = m->getGeometryAs<ImageGeom>()->getSpacing();
 
   m_XDim->setText(QString::number(dims[0]));
   m_YDim->setText(QString::number(dims[1]));
@@ -430,7 +421,7 @@ void QEbsdReferenceFrameDialog::loadEbsdData()
   AttributeMatrix::Pointer attrMat = m->getAttributeMatrix(cellAttrMatName);
   IDataArray::Pointer arrayPtr = attrMat->getAttributeArray(outputArrayName);
 
-  generateImageRGB(arrayPtr, dims);
+  generateImageRGB(arrayPtr, dims.data());
 }
 
 // -----------------------------------------------------------------------------
@@ -441,21 +432,21 @@ int QEbsdReferenceFrameDialog::createIpfColors(DataContainerArray::Pointer dca, 
 {
   // We can use this filter directly because it is in the current plugin
   GenerateIPFColors::Pointer ipfColorFilter = GenerateIPFColors::New();
-  FloatVec3_t ref;
-  ref.x = 0;
-  ref.y = 0;
-  ref.z = 0;
+  FloatVec3Type ref;
+  ref[0] = 0;
+  ref[1] = 0;
+  ref[2] = 0;
   if(refDir->currentIndex() == 0)
   {
-    ref.x = 1;
+    ref[0] = 1;
   }
   else if(refDir->currentIndex() == 1)
   {
-    ref.y = 1;
+    ref[1] = 1;
   }
   else if(refDir->currentIndex() == 2)
   {
-    ref.z = 1;
+    ref[2] = 1;
   }
   ipfColorFilter->setReferenceDir(ref);
   ipfColorFilter->setDataContainerArray(dca);
@@ -463,7 +454,7 @@ int QEbsdReferenceFrameDialog::createIpfColors(DataContainerArray::Pointer dca, 
   ipfColorFilter->setCellEulerAnglesArrayPath(cellEulerAnglesArrayPath);
   ipfColorFilter->setCrystalStructuresArrayPath(crystalStructuresArrayPath);
   ipfColorFilter->execute();
-  int err = ipfColorFilter->getErrorCondition();
+  int err = ipfColorFilter->getErrorCode();
   if(err < 0)
   {
     m_BaseImage = QImage();
@@ -506,21 +497,21 @@ int QEbsdReferenceFrameDialog::createIpfColors(DataContainerArray::Pointer dca, 
 int QEbsdReferenceFrameDialog::createArrayColors(DataContainerArray::Pointer dca, DataArrayPath dataArrayPath, QString outputArrayName)
 {
   GenerateColorTable::Pointer colorTableFilter = GenerateColorTable::New();
-  FloatVec3_t ref;
-  ref.x = 0;
-  ref.y = 0;
-  ref.z = 0;
+  FloatVec3Type ref;
+  ref[0] = 0;
+  ref[1] = 0;
+  ref[2] = 0;
   if(refDir->currentIndex() == 0)
   {
-    ref.x = 1;
+    ref[0] = 1;
   }
   else if(refDir->currentIndex() == 1)
   {
-    ref.y = 1;
+    ref[1] = 1;
   }
   else if(refDir->currentIndex() == 2)
   {
-    ref.z = 1;
+    ref[2] = 1;
   }
 
   QJsonArray controlPointsArray;
@@ -539,7 +530,7 @@ int QEbsdReferenceFrameDialog::createArrayColors(DataContainerArray::Pointer dca
   colorTableFilter->setSelectedPresetControlPoints(controlPointsArray);
   colorTableFilter->setSelectedPresetName("Grayscale");
   colorTableFilter->execute();
-  int err = colorTableFilter->getErrorCondition();
+  int err = colorTableFilter->getErrorCode();
   if(err < 0)
   {
     m_BaseImage = QImage();
@@ -602,14 +593,14 @@ void QEbsdReferenceFrameDialog::generateImageRGB(IDataArray::Pointer dataArray, 
 // -----------------------------------------------------------------------------
 void QEbsdReferenceFrameDialog::originChanged(bool checked)
 {
-  if(checked == false)
+  if(!checked)
   {
     return;
   }
 
   updateGraphicsView();
 
-  if(checked == true)
+  if(checked)
   {
     updateDisplay();
   }
@@ -646,21 +637,21 @@ void QEbsdReferenceFrameDialog::getSampleTranformation(AxisAngleInput_t& input)
   input.k = 0.0f;
   input.l = 1.0f;
 
-  if(getTSLchecked() == true)
+  if(getTSLchecked())
   {
     input.angle = 180.0;
     input.h = 0.0;
     input.k = 1.0;
     input.l = 0.0;
   }
-  else if(getHKLchecked() == true)
+  else if(getHKLchecked())
   {
     input.angle = 180.0;
     input.h = 0.0;
     input.k = 1.0;
     input.l = 0.0;
   }
-  else if(getHEDMchecked() == true)
+  else if(getHEDMchecked())
   {
     input.angle = 0.0;
     input.h = 0.0;
@@ -679,21 +670,21 @@ void QEbsdReferenceFrameDialog::getEulerTranformation(AxisAngleInput_t& input)
   input.k = 0.0f;
   input.l = 1.0f;
 
-  if(getTSLchecked() == true)
+  if(getTSLchecked())
   {
     input.angle = 90.0;
     input.h = 0.0;
     input.k = 0.0;
     input.l = 1.0;
   }
-  else if(getHKLchecked() == true)
+  else if(getHKLchecked())
   {
     input.angle = 0.0;
     input.h = 0.0;
     input.k = 0.0;
     input.l = 1.0;
   }
-  else if(getHEDMchecked() == true)
+  else if(getHEDMchecked())
   {
     input.angle = 0.0;
     input.h = 0.0;
@@ -749,8 +740,8 @@ QImage QEbsdReferenceFrameDialog::paintImage(QImage image)
 
   int pxHigh = 0;
   int pxWide = 0;
-
-  QFont font("Arial", 16, QFont::Bold);
+  int32_t fontScale = 16;
+  QFont font("Lato", fontScale, QFont::Bold);
   {
     QPainter painter;
     QImage pImage(100, 100, QImage::Format_ARGB32_Premultiplied);

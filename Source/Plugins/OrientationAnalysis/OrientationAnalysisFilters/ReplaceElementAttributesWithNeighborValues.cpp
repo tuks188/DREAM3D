@@ -41,6 +41,7 @@
 #include "SIMPLib/FilterParameters/ChoiceFilterParameter.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/FloatFilterParameter.h"
+#include "SIMPLib/FilterParameters/MultiDataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
 
@@ -58,9 +59,7 @@ public:
   SIMPL_SHARED_POINTERS(LessThanComparison<T>)
   SIMPL_STATIC_NEW_MACRO(LessThanComparison<T>)
   SIMPL_TYPE_MACRO(LessThanComparison<T>)
-  virtual ~LessThanComparison()
-  {
-  }
+  virtual ~LessThanComparison() = default;
 
   virtual bool compare(T a, T b)
   {
@@ -76,9 +75,7 @@ public:
   }
 
 protected:
-  LessThanComparison()
-  {
-  }
+  LessThanComparison() = default;
 };
 
 template <typename T> class GreaterThanComparison : public LessThanComparison<T>
@@ -87,40 +84,35 @@ public:
   SIMPL_SHARED_POINTERS(GreaterThanComparison<T>)
   SIMPL_STATIC_NEW_MACRO(GreaterThanComparison<T>)
   SIMPL_TYPE_MACRO_SUPER(GreaterThanComparison<T>, LessThanComparison<T>)
-  virtual ~GreaterThanComparison()
-  {
-  }
+  ~GreaterThanComparison() override = default;
 
-  virtual bool compare(T a, T b)
+  bool compare(T a, T b) override
   {
     return a > b;
   }
-  virtual bool compare1(T a, T b)
+  bool compare1(T a, T b) override
   {
     return a <= b;
   }
-  virtual bool compare2(T a, T b)
+  bool compare2(T a, T b) override
   {
     return a < b;
   }
 
 protected:
-  GreaterThanComparison()
-  {
-  }
+  GreaterThanComparison() = default;
 };
 
 template <typename T> void ExecuteTemplate(ReplaceElementAttributesWithNeighborValues* filter, IDataArray::Pointer inArrayPtr)
 {
-  typedef DataArray<T> DataArrayType;
-  typedef typename DataArrayType::Pointer DataArrayPointerType;
+  using DataArrayType = DataArray<T>;
+  using DataArrayPointerType = typename DataArrayType::Pointer;
 
   DataArrayPath dataArrayPath = filter->getConfidenceIndexArrayPath();
   DataContainer::Pointer m = filter->getDataContainerArray()->getDataContainer(dataArrayPath.getDataContainerName());
   size_t totalPoints = inArrayPtr->getNumberOfTuples();
 
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
   };
@@ -154,7 +146,15 @@ template <typename T> void ExecuteTemplate(ReplaceElementAttributesWithNeighborV
 
   float thresholdValue = filter->getMinConfidence();
 
-  while(keepGoing == true)
+  QString attrMatName = dataArrayPath.getAttributeMatrixName();
+  QVector<DataArrayPath> ignoredPaths = filter->getIgnoredDataArrayPaths();
+  QList<QString> voxelArrayNames = m->getAttributeMatrix(attrMatName)->getAttributeArrayNames();
+  for(const auto& dataArrayPath : ignoredPaths)
+  {
+    voxelArrayNames.removeAll(dataArrayPath.getDataArrayName());
+  }
+
+  while(keepGoing)
   {
     keepGoing = false;
     count = 0;
@@ -203,7 +203,7 @@ template <typename T> void ExecuteTemplate(ReplaceElementAttributesWithNeighborV
           {
             good = false;
           }
-          if(good == true)
+          if(good)
           {
             if(comp->compare1(data[neighbor], thresholdValue) && comp->compare2(data[neighbor], best))
             {
@@ -216,13 +216,11 @@ template <typename T> void ExecuteTemplate(ReplaceElementAttributesWithNeighborV
       if(int64_t(i) > prog)
       {
         progressInt = static_cast<int64_t>(((float)i / totalPoints) * 100.0f);
-        QString ss = QObject::tr("|| Processing Data Current Loop (%1) Progress: %2% Complete").arg(count).arg(progressInt);
-        filter->notifyStatusMessage(filter->getMessagePrefix(), filter->getHumanLabel(), ss);
+        QString ss = QObject::tr("Processing Data Current Loop (%1) Progress: %2% Complete").arg(count).arg(progressInt);
+        filter->notifyStatusMessage(ss);
         prog = prog + progIncrement;
       }
     }
-    QString attrMatName = dataArrayPath.getAttributeMatrixName();
-    QList<QString> voxelArrayNames = m->getAttributeMatrix(attrMatName)->getAttributeArrayNames();
 
     if(filter->getCancel())
     {
@@ -237,22 +235,22 @@ template <typename T> void ExecuteTemplate(ReplaceElementAttributesWithNeighborV
       if(int64_t(i) > prog)
       {
         progressInt = static_cast<int64_t>(((float)i / totalPoints) * 100.0f);
-        QString ss = QObject::tr("|| Processing Data Current Loop (%1) || Transferring Cell Data: %2% Complete").arg(count).arg(progressInt);
-        filter->notifyStatusMessage(filter->getMessagePrefix(), filter->getHumanLabel(), ss);
+        QString ss = QObject::tr("Processing Data Current Loop (%1) || Transferring Cell Data: %2% Complete").arg(count).arg(progressInt);
+        filter->notifyStatusMessage(ss);
         prog = prog + progIncrement;
       }
 
       neighbor = bestNeighbor[i];
       if(neighbor != -1)
       {
-        for(QList<QString>::iterator iter = voxelArrayNames.begin(); iter != voxelArrayNames.end(); ++iter)
+        for(const auto& arrayName : voxelArrayNames)
         {
-          IDataArray::Pointer p = m->getAttributeMatrix(attrMatName)->getAttributeArray(*iter);
+          IDataArray::Pointer p = m->getAttributeMatrix(attrMatName)->getAttributeArray(arrayName);
           p->copyTuple(neighbor, i);
         }
       }
     }
-    if(filter->getLoop() == true && count > 0)
+    if(filter->getLoop() && count > 0)
     {
       keepGoing = true;
     }
@@ -281,7 +279,7 @@ ReplaceElementAttributesWithNeighborValues::~ReplaceElementAttributesWithNeighbo
 // -----------------------------------------------------------------------------
 void ReplaceElementAttributesWithNeighborValues::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_FLOAT_FP("Threshold Value", MinConfidence, FilterParameter::Parameter, ReplaceElementAttributesWithNeighborValues));
   {
     ChoiceFilterParameter::Pointer parameter = ChoiceFilterParameter::New();
@@ -333,23 +331,22 @@ void ReplaceElementAttributesWithNeighborValues::initialize()
 // -----------------------------------------------------------------------------
 void ReplaceElementAttributesWithNeighborValues::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getConfidenceIndexArrayPath().getDataContainerName());
 
   m_InArrayPtr = getDataContainerArray()->getPrereqIDataArrayFromPath<IDataArray, AbstractFilter>(this, getConfidenceIndexArrayPath());
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
-  QVector<size_t> cDims = m_InArrayPtr.lock()->getComponentDimensions();
+  std::vector<size_t> cDims = m_InArrayPtr.lock()->getComponentDimensions();
   if(cDims.size() != 1 && cDims.at(0) != 1)
   {
     QString ss = QObject::tr("The number of components must be 1.");
-    setErrorCondition(-5655);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-5655, ss);
   }
 }
 
@@ -371,10 +368,10 @@ void ReplaceElementAttributesWithNeighborValues::preflight()
 // -----------------------------------------------------------------------------
 void ReplaceElementAttributesWithNeighborValues::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -384,8 +381,7 @@ void ReplaceElementAttributesWithNeighborValues::execute()
   // redundant code
   EXECUTE_FUNCTION_TEMPLATE(this, Detail::ExecuteTemplate, m_InArrayPtr.lock(), this, m_InArrayPtr.lock());
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -394,7 +390,7 @@ void ReplaceElementAttributesWithNeighborValues::execute()
 AbstractFilter::Pointer ReplaceElementAttributesWithNeighborValues::newFilterInstance(bool copyFilterParameters) const
 {
   ReplaceElementAttributesWithNeighborValues::Pointer filter = ReplaceElementAttributesWithNeighborValues::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

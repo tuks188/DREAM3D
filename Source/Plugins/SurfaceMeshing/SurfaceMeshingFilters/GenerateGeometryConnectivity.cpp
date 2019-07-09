@@ -64,7 +64,7 @@ GenerateGeometryConnectivity::~GenerateGeometryConnectivity() = default;
 void GenerateGeometryConnectivity::setupFilterParameters()
 {
   SurfaceMeshFilter::setupFilterParameters();
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_BOOL_FP("Generate Per Vertex Element List", GenerateVertexTriangleLists, FilterParameter::Parameter, GenerateGeometryConnectivity));
   parameters.push_back(SIMPL_NEW_BOOL_FP("Generate Element Neighbors List", GenerateTriangleNeighbors, FilterParameter::Parameter, GenerateGeometryConnectivity));
   {
@@ -80,7 +80,7 @@ void GenerateGeometryConnectivity::setupFilterParameters()
 void GenerateGeometryConnectivity::readFilterParameters(AbstractFilterParametersReader* reader, int index)
 {
   reader->openFilterGroup(this, index);
-  setSurfaceDataContainerName(reader->readString("SurfaceDataContainerName", getSurfaceDataContainerName()));
+  setSurfaceDataContainerName(reader->readDataArrayPath("SurfaceDataContainerName", getSurfaceDataContainerName()));
   setGenerateVertexTriangleLists(reader->readValue("GenerateVertexTriangleLists", getGenerateVertexTriangleLists()));
   setGenerateTriangleNeighbors(reader->readValue("GenerateTriangleNeighbors", getGenerateTriangleNeighbors()));
   reader->closeFilterGroup();
@@ -119,10 +119,10 @@ void GenerateGeometryConnectivity::preflight()
 // -----------------------------------------------------------------------------
 void GenerateGeometryConnectivity::execute()
 {
-  int32_t err = 0;
-  setErrorCondition(err);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -130,31 +130,28 @@ void GenerateGeometryConnectivity::execute()
   DataContainer::Pointer sm = getDataContainerArray()->getDataContainer(getSurfaceDataContainerName());
   IGeometry::Pointer geom = sm->getGeometry();
 
-  if(m_GenerateVertexTriangleLists == true || m_GenerateTriangleNeighbors == true)
+  if(m_GenerateVertexTriangleLists || m_GenerateTriangleNeighbors)
   {
-    notifyStatusMessage(getHumanLabel(), "Generating Vertex Element List");
-    err = geom->findElementsContainingVert();
+    notifyStatusMessage("Generating Vertex Element List");
+    int err = geom->findElementsContainingVert();
     if(err < 0)
     {
-      setErrorCondition(-400);
       QString ss = QObject::tr("Error generating vertex element list for Geometry type %1").arg(geom->getGeometryTypeAsString());
-      notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+      setErrorCondition(-400, ss);
     }
   }
-  if(m_GenerateTriangleNeighbors == true)
+  if(m_GenerateTriangleNeighbors)
   {
-    notifyStatusMessage(getHumanLabel(), "Generating Element Neighbors List");
-    err = geom->findElementNeighbors();
+    notifyStatusMessage("Generating Element Neighbors List");
+    int err = geom->findElementNeighbors();
     if(err < 0)
     {
-      setErrorCondition(-401);
       QString ss = QObject::tr("Error generating element neighbor list for Geometry type %1").arg(geom->getGeometryTypeAsString());
-      notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+      setErrorCondition(-401, ss);
     }
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -163,7 +160,7 @@ void GenerateGeometryConnectivity::execute()
 AbstractFilter::Pointer GenerateGeometryConnectivity::newFilterInstance(bool copyFilterParameters) const
 {
   GenerateGeometryConnectivity::Pointer filter = GenerateGeometryConnectivity::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

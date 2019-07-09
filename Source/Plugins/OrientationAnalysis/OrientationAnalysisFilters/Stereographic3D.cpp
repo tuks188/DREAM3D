@@ -42,11 +42,19 @@
 #include "SIMPLib/Common/Constants.h"
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 
 #include "OrientationAnalysis/OrientationAnalysisConstants.h"
 #include "OrientationAnalysis/OrientationAnalysisVersion.h"
+
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
 
 /**
  * @brief The GenerateCoordinatesImpl class implements a threaded algorithm that computes the IPF
@@ -62,9 +70,7 @@ public:
   {
   }
 
-  virtual ~GenerateCoordinatesImpl()
-  {
-  }
+  virtual ~GenerateCoordinatesImpl() = default;
 
   void convert(size_t start, size_t end) const
   {
@@ -81,8 +87,7 @@ public:
       {
         m_Filter->setCancel(true);
         QString ss = QObject::tr("The scalar value of a quaterion was <= -1.0. The value was %1").arg(m_Quats[quatIndex + 3]);
-        m_Filter->setErrorCondition(-95000);
-        m_Filter->notifyErrorMessage(m_Filter->getHumanLabel(), ss, m_Filter->getErrorCondition());
+        m_Filter->setErrorCondition(-95000, ss);
         return;
       }
       if(m_Quats[quatIndex + 3] != 0.0f)
@@ -135,8 +140,8 @@ Stereographic3D::~Stereographic3D() = default;
 // -----------------------------------------------------------------------------
 void Stereographic3D::initialize()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   setCancel(false);
 }
 
@@ -145,13 +150,13 @@ void Stereographic3D::initialize()
 // -----------------------------------------------------------------------------
 void Stereographic3D::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
   DataArraySelectionFilterParameter::RequirementType req = DataArraySelectionFilterParameter::CreateRequirement(SIMPL::TypeNames::Float, 4, AttributeMatrix::Type::Any, IGeometry::Type::Any);
   parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Quaternions", QuatsArrayPath, FilterParameter::RequiredArray, Stereographic3D, req));
 
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Coordinates", CoordinatesArrayName, FilterParameter::CreatedArray, Stereographic3D));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Coordinates", CoordinatesArrayName, QuatsArrayPath, QuatsArrayPath, FilterParameter::CreatedArray, Stereographic3D));
 
   setFilterParameters(parameters);
 }
@@ -172,11 +177,11 @@ void Stereographic3D::readFilterParameters(AbstractFilterParametersReader* reade
 // -----------------------------------------------------------------------------
 void Stereographic3D::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   QVector<DataArrayPath> dataArrayPaths;
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
 
   cDims[0] = 4;
   m_QuatsPtr =
@@ -190,8 +195,7 @@ void Stereographic3D::dataCheck()
   cDims[0] = 3;
   DataArrayPath path = getQuatsArrayPath();
   path.setDataArrayName(getCoordinatesArrayName());
-  m_CellCoordinatesPtr =
-      getDataContainerArray()->createNonPrereqArrayFromPath<FloatArrayType, AbstractFilter, float>(this, path, 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_CellCoordinatesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<FloatArrayType, AbstractFilter, float>(this, path, 0, cDims, "", DataArrayID31);
   if(nullptr != m_CellCoordinatesPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_CellCoordinates = m_CellCoordinatesPtr.lock()->getPointer(0);
@@ -222,7 +226,7 @@ void Stereographic3D::execute()
 {
   initialize();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -240,7 +244,7 @@ void Stereographic3D::execute()
 #endif
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), GenerateCoordinatesImpl(this, m_Quats, m_CellCoordinates), tbb::auto_partitioner());
   }
@@ -251,7 +255,6 @@ void Stereographic3D::execute()
     serial.convert(0, totalPoints);
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -260,7 +263,7 @@ void Stereographic3D::execute()
 AbstractFilter::Pointer Stereographic3D::newFilterInstance(bool copyFilterParameters) const
 {
   Stereographic3D::Pointer filter = Stereographic3D::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

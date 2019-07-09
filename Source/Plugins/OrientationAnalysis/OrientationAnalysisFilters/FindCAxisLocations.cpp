@@ -38,6 +38,7 @@
 #include "SIMPLib/Common/Constants.h"
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 
@@ -52,8 +53,6 @@
 FindCAxisLocations::FindCAxisLocations()
 : m_QuatsArrayPath("", "", "")
 , m_CAxisLocationsArrayName(SIMPL::CellData::CAxisLocation)
-, m_Quats(nullptr)
-, m_CAxisLocations(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 
@@ -69,14 +68,14 @@ FindCAxisLocations::~FindCAxisLocations() = default;
 // -----------------------------------------------------------------------------
 void FindCAxisLocations::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Element Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req = DataArraySelectionFilterParameter::CreateCategoryRequirement(SIMPL::TypeNames::Float, 4, AttributeMatrix::Category::Element);
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Quaternions", QuatsArrayPath, FilterParameter::RequiredArray, FindCAxisLocations, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Element Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("C-Axis Locations", CAxisLocationsArrayName, FilterParameter::CreatedArray, FindCAxisLocations));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("C-Axis Locations", CAxisLocationsArrayName, QuatsArrayPath, QuatsArrayPath, FilterParameter::CreatedArray, FindCAxisLocations));
   setFilterParameters(parameters);
 }
 
@@ -103,11 +102,11 @@ void FindCAxisLocations::initialize()
 // -----------------------------------------------------------------------------
 void FindCAxisLocations::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
-  QVector<size_t> cDims(1, 4);
+  std::vector<size_t> cDims(1, 4);
   m_QuatsPtr =
       getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getQuatsArrayPath(), cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_QuatsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -143,10 +142,10 @@ void FindCAxisLocations::preflight()
 // -----------------------------------------------------------------------------
 void FindCAxisLocations::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -183,7 +182,6 @@ void FindCAxisLocations::execute()
     m_CAxisLocations[index + 2] = c1[2];
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -192,7 +190,7 @@ void FindCAxisLocations::execute()
 AbstractFilter::Pointer FindCAxisLocations::newFilterInstance(bool copyFilterParameters) const
 {
   FindCAxisLocations::Pointer filter = FindCAxisLocations::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

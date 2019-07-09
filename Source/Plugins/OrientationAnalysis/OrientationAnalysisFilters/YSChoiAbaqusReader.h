@@ -36,9 +36,8 @@
 
 #pragma once
 
-#include <string.h> // needed for the ::memcpy function below
 #include <QtCore/QString>
-
+#include <cstring> // needed for the ::memcpy function below
 
 #include "SIMPLib/SIMPLib.h"
 #include "SIMPLib/Common/Constants.h"
@@ -53,7 +52,7 @@ class OrientationAnalysis_EXPORT YSChoiAbaqusReader : public FileReader
 {
     Q_OBJECT
     PYB11_CREATE_BINDINGS(YSChoiAbaqusReader SUPERCLASS FileReader)
-    PYB11_PROPERTY(QString DataContainerName READ getDataContainerName WRITE setDataContainerName)
+    PYB11_PROPERTY(DataArrayPath DataContainerName READ getDataContainerName WRITE setDataContainerName)
     PYB11_PROPERTY(QString CellEnsembleAttributeMatrixName READ getCellEnsembleAttributeMatrixName WRITE setCellEnsembleAttributeMatrixName)
     PYB11_PROPERTY(QString CellFeatureAttributeMatrixName READ getCellFeatureAttributeMatrixName WRITE setCellFeatureAttributeMatrixName)
     PYB11_PROPERTY(QString CellAttributeMatrixName READ getCellAttributeMatrixName WRITE setCellAttributeMatrixName)
@@ -71,10 +70,10 @@ class OrientationAnalysis_EXPORT YSChoiAbaqusReader : public FileReader
     SIMPL_FILTER_NEW_MACRO(YSChoiAbaqusReader)
     SIMPL_TYPE_MACRO_SUPER_OVERRIDE(YSChoiAbaqusReader, FileReader)
 
-    virtual ~YSChoiAbaqusReader();
+    ~YSChoiAbaqusReader() override;
 
-    SIMPL_FILTER_PARAMETER(QString, DataContainerName)
-    Q_PROPERTY(QString DataContainerName READ getDataContainerName WRITE setDataContainerName)
+    SIMPL_FILTER_PARAMETER(DataArrayPath, DataContainerName)
+    Q_PROPERTY(DataArrayPath DataContainerName READ getDataContainerName WRITE setDataContainerName)
 
     SIMPL_FILTER_PARAMETER(QString, CellEnsembleAttributeMatrixName)
     Q_PROPERTY(QString CellEnsembleAttributeMatrixName READ getCellEnsembleAttributeMatrixName WRITE setCellEnsembleAttributeMatrixName)
@@ -183,7 +182,7 @@ class OrientationAnalysis_EXPORT YSChoiAbaqusReader : public FileReader
     /**
      * @brief dataCheck Checks for the appropriate parameter values and availability of arrays
      */
-    void dataCheck();
+    void dataCheck() override;
 
     /**
      * @brief Initializes all the private instance variables.
@@ -205,7 +204,10 @@ class OrientationAnalysis_EXPORT YSChoiAbaqusReader : public FileReader
 
     void updateEnsembleInstancePointers();
 
+  public:
     YSChoiAbaqusReader(const YSChoiAbaqusReader&) = delete; // Copy Constructor Not Implemented
-    void operator=(const YSChoiAbaqusReader&) = delete;     // Move assignment Not Implemented
+    YSChoiAbaqusReader(YSChoiAbaqusReader&&) = delete;      // Move Constructor Not Implemented
+    YSChoiAbaqusReader& operator=(const YSChoiAbaqusReader&) = delete; // Copy Assignment Not Implemented
+    YSChoiAbaqusReader& operator=(YSChoiAbaqusReader&&) = delete;      // Move Assignment Not Implemented
 };
 

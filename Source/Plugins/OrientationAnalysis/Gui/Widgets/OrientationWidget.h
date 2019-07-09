@@ -50,7 +50,7 @@ public:
   virtual ~OrientationWidget();
 
 signals:
-  void valuesChanged(QVector<double> values, OrientationConverter<double>::OrientationType type, bool hasErrors);
+  void valuesChanged(QVector<double> values, OrientationRepresentation::Type type, bool hasErrors);
   void invalidValues(int errorCode, QString errorMsg);
   void clearErrorTable();
 
@@ -67,8 +67,10 @@ protected slots:
   virtual void updateData(OrientationUtilityCalculator* calculator);
   void updateAngleMeasurement(bool isRadians);
 
-private:
+public:
   OrientationWidget(const OrientationWidget&) = delete; // Copy Constructor Not Implemented
-  void operator=(const OrientationWidget&) = delete;    // Move assignment Not Implemented
+  OrientationWidget(OrientationWidget&&) = delete;      // Move Constructor Not Implemented
+  OrientationWidget& operator=(const OrientationWidget&) = delete; // Copy Assignment Not Implemented
+  OrientationWidget& operator=(OrientationWidget&&) = delete;      // Move Assignment Not Implemented
 };
 

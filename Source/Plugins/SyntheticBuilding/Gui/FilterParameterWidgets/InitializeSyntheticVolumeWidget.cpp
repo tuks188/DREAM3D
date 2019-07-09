@@ -40,8 +40,6 @@
 #include <QtCore/QFileInfo>
 #include <QtWidgets/QComboBox>
 #include <QtWidgets/QFileDialog>
-#include <QtWidgets/QListWidget>
-#include <QtWidgets/QListWidgetItem>
 #include <QtWidgets/QMessageBox>
 
 #include "H5Support/H5Lite.h"
@@ -56,13 +54,47 @@
 #include "SIMPLib/Geometry/ImageGeom.h"
 #include "SIMPLib/Math/SIMPLibMath.h"
 #include "SIMPLib/Math/SIMPLibRandom.h"
+#include "SIMPLib/Messages/AbstractMessageHandler.h"
+#include "SIMPLib/Messages/FilterErrorMessage.h"
+#include "SIMPLib/Messages/FilterWarningMessage.h"
 #include "SIMPLib/SIMPLib.h"
 #include "SIMPLib/StatsData/PrimaryStatsData.h"
 #include "SIMPLib/StatsData/StatsData.h"
 
 #include "SVWidgetsLib/QtSupport/QtSFileCompleter.h"
+#include "SVWidgetsLib/QtSupport/QtSFileUtils.h"
 
 #include "SyntheticBuilding/SyntheticBuildingFilters/InitializeSyntheticVolume.h"
+
+/**
+ * @brief This message handler is used by the InitializeSyntheticVolumeWidget
+ * to dump DataContainerReader error and warning messages to the debugger.
+ */
+class ReaderMessageHandler : public AbstractMessageHandler
+{
+  public:
+    explicit ReaderMessageHandler() {}
+
+    /**
+     * @brief Dumps the DataContainerReader error messages to the debugger.
+     * @param msg
+     */
+    void processMessage(const FilterErrorMessage* msg) const override
+    {
+      qDebug() << msg->getClassName() << msg->getCode() << msg->getMessageText();
+    }
+
+    /**
+     * @brief Dumps the DataContainerReader warning messages to the debugger.
+     * @param msg
+     */
+    void processMessage(const FilterWarningMessage* msg) const override
+    {
+      qDebug() << msg->getClassName() << msg->getCode() << msg->getMessageText();
+    }
+
+  private:
+};
 
 // -----------------------------------------------------------------------------
 //
@@ -159,7 +191,7 @@ void InitializeSyntheticVolumeWidget::setupGui()
 void InitializeSyntheticVolumeWidget::on_m_InputFileBtn_clicked()
 {
   QString file = QFileDialog::getOpenFileName(this, tr("Select Input File"), getInputFilePath(), tr("DREAM3D Stats Files (*.dream3d *.h5stats);;HDF5 Files(*.h5 *.hdf5);;All Files(*.*)"));
-  if(true == file.isEmpty())
+  if(file.isEmpty())
   {
     return;
   }
@@ -180,13 +212,13 @@ void InitializeSyntheticVolumeWidget::on_m_InputFile_textChanged(const QString& 
   {
     return;
   }
-  if(verifyPathExists(m_InputFile->text(), m_InputFile) == false)
+  if(!QtSFileUtils::VerifyPathExists(m_InputFile->text(), m_InputFile))
   {
     return;
   }
 
   QFileInfo fi(m_InputFile->text());
-  if(fi.isFile() == false)
+  if(!fi.isFile())
   {
     return;
   }
@@ -201,7 +233,6 @@ void InitializeSyntheticVolumeWidget::on_m_InputFile_textChanged(const QString& 
   m_DidCausePreflight = false;
   m_NewFileLoaded = false;
 
-  if(true)
   {
     return;
   }
@@ -212,7 +243,7 @@ void InitializeSyntheticVolumeWidget::on_m_InputFile_textChanged(const QString& 
   // reader->setDataContainerArrayProxy(dcaProxy);
 
   // Connect up to get any errors
-  connect(reader.get(), SIGNAL(filterGeneratedMessage(const PipelineMessage&)), this, SLOT(displayErrorMessage(const PipelineMessage&)));
+  connect(reader.get(), SIGNAL(messageGenerated(const AbstractMessage::Pointer&)), this, SLOT(displayErrorMessage(const AbstractMessage::Pointer&)));
 
   // Read the structure from file
   DataContainerArrayProxy dcaProxy = reader->readDataContainerArrayStructure(m_InputFile->text());
@@ -220,7 +251,7 @@ void InitializeSyntheticVolumeWidget::on_m_InputFile_textChanged(const QString& 
   DataContainerArray::Pointer dca = DataContainerArray::New();
 
   m_DataContainer = DataContainer::New("DataContainer");
-  dca->addDataContainer(m_DataContainer);
+  dca->addOrReplaceDataContainer(m_DataContainer);
 
   //      QSet<QString> selectedArrays;
   //      selectedArrays.insert(SIMPL::EnsembleData::Statistics);
@@ -246,10 +277,10 @@ void InitializeSyntheticVolumeWidget::on_m_InputFile_textChanged(const QString& 
   reader->setDataContainerArray(dca);
   reader->setInputFile(m_InputFile->text());
   reader->setInputFileDataContainerArrayProxy(dcaProxy);
-  connect(reader.get(), SIGNAL(filterGeneratedMessage(const PipelineMessage&)), this, SLOT(displayErrorMessage(const PipelineMessage&)));
+  connect(reader.get(), SIGNAL(messageGenerated(const AbstractMessage::Pointer&)), this, SLOT(displayErrorMessage(const AbstractMessage::Pointer&)));
 
   reader->execute();
-  int err = reader->getErrorCondition();
+  int err = reader->getErrorCode();
   if(err < 0)
   {
     m_DataContainer = DataContainer::NullPointer();
@@ -275,7 +306,7 @@ void InitializeSyntheticVolumeWidget::on_m_InputFile_textChanged(const QString& 
 
   // Remove all the items from the GUI and from the internal tracking Lists
   QLayoutItem* child;
-  while((formLayout_2->count() > 0) && (child = formLayout_2->takeAt(0)) != 0)
+  while((formLayout_2->count() > 0) && (child = formLayout_2->takeAt(0)) != nullptr)
   {
     delete child;
   }
@@ -348,7 +379,7 @@ void InitializeSyntheticVolumeWidget::filterNeedsInputParameters(AbstractFilter*
 void InitializeSyntheticVolumeWidget::beforePreflight()
 {
 
-  if(m_NewFileLoaded == true)
+  if(m_NewFileLoaded)
   {
     // We need to update the DataArraySelectionWidgets
     statsArrayWidget->initializeWidget(m_StatsArrayPath.get(), m_Filter);
@@ -358,7 +389,7 @@ void InitializeSyntheticVolumeWidget::beforePreflight()
     m_NewFileLoaded = false; // We are all done with our update based a new file being loaded
   }
 
-  if(m_DidCausePreflight == false)
+  if(!m_DidCausePreflight)
   {
     // Update the DataArraySelectionWidgets
   }
@@ -374,10 +405,10 @@ void InitializeSyntheticVolumeWidget::afterPreflight()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void InitializeSyntheticVolumeWidget::displayErrorMessage(const PipelineMessage& msg)
+void InitializeSyntheticVolumeWidget::displayErrorMessage(const AbstractMessage::Pointer& msg)
 {
-
-  qDebug() << msg.getFilterClassName() << msg.getCode() << msg.getPrefix() << msg.getText();
+  ReaderMessageHandler msgHandler;
+  msg->visit(&msgHandler);
 }
 
 // -----------------------------------------------------------------------------
@@ -554,24 +585,6 @@ void InitializeSyntheticVolumeWidget::estimateNumFeaturesSetup()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-bool InitializeSyntheticVolumeWidget::verifyPathExists(QString outFilePath, QLineEdit* lineEdit)
-{
-  //  std::cout << "outFilePath: " << outFilePath << std::endl;
-  QFileInfo fileinfo(outFilePath);
-  if(false == fileinfo.exists())
-  {
-    lineEdit->setStyleSheet("border: 1px solid red;");
-  }
-  else
-  {
-    lineEdit->setStyleSheet("");
-  }
-  return fileinfo.exists();
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 void InitializeSyntheticVolumeWidget::setInputFilePath(QString val)
 {
   m_InputFile->setText(val);
@@ -713,7 +726,8 @@ QFilterWidget* InitializeSyntheticVolumeWidget::createDeepCopy()
 
   //  int count = m_ShapeTypeCombos.count();
   //  DataArray<unsigned int>::Pointer shapeTypes =
-  //    DataArray<unsigned int>::CreateArray(count+1, SIMPL::EnsembleData::ShapeTypes);
+  //    DataArray<unsigned int>::CreateArray(count+1, SIMPL::EnsembleData::ShapeTypes, 
+true);
   //  shapeTypes->SetValue(0, SIMPL::ShapeType::UnknownShapeType);
   //  bool ok = false;
   //  for (int i = 0; i < count; ++i)
@@ -732,26 +746,6 @@ QFilterWidget* InitializeSyntheticVolumeWidget::createDeepCopy()
 //
 // -----------------------------------------------------------------------------
 void InitializeSyntheticVolumeWidget::setShapeTypes(DataArray<unsigned int>::Pointer array)
-{
-
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-bool InitializeSyntheticVolumeWidget::verifyPathExists(QString outFilePath, QLineEdit* lineEdit)
-{
-  //  qDebug() << "outFilePath: " << outFilePath() << "\n";
-  QFileInfo fileinfo(outFilePath);
-  if (false == fileinfo.exists() )
-  {
-    lineEdit->setStyleSheet("border: 1px solid red;");
-  }
-  else
-  {
-    lineEdit->setStyleSheet("");
-  }
-  return fileinfo.exists();
-}
+{}
 
 #endif

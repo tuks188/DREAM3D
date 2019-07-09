@@ -52,9 +52,8 @@ using namespace H5Support_NAMESPACE;
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-H5CtfReader::H5CtfReader() :
-  CtfReader(),
-  m_ReadAllArrays(true)
+H5CtfReader::H5CtfReader()
+: m_ReadAllArrays(true)
 {
 }
 
@@ -63,7 +62,86 @@ H5CtfReader::H5CtfReader() :
 // -----------------------------------------------------------------------------
 H5CtfReader::~H5CtfReader()
 {
-  deletePointers();
+  if(m_PhaseCleanup)
+  {
+    deallocateArrayData<int32_t>(m_Phase);
+    m_Phase = nullptr;
+  }
+  if(m_XCleanup)
+  {
+    deallocateArrayData<float>(m_X);
+    m_X = nullptr;
+  }
+  if(m_YCleanup)
+  {
+    deallocateArrayData<float>(m_Y);
+    m_Y = nullptr;
+  }
+  if(m_ZCleanup)
+  {
+    deallocateArrayData<float>(m_Z);
+    m_Z = nullptr;
+  }
+  if(m_BandsCleanup)
+  {
+    deallocateArrayData<int32_t>(m_Bands);
+    m_Bands = nullptr;
+  }
+  if(m_ErrorCleanup)
+  {
+    deallocateArrayData<int32_t>(m_Error);
+    m_Error = nullptr;
+  }
+  if(m_Euler1Cleanup)
+  {
+    deallocateArrayData<float>(m_Euler1);
+    m_Euler1 = nullptr;
+  }
+  if(m_Euler2Cleanup)
+  {
+    deallocateArrayData<float>(m_Euler2);
+    m_Euler2 = nullptr;
+  }
+  if(m_Euler3Cleanup)
+  {
+    deallocateArrayData<float>(m_Euler3);
+    m_Euler3 = nullptr;
+  }
+  if(m_MADCleanup)
+  {
+    deallocateArrayData<float>(m_MAD);
+    m_MAD = nullptr;
+  }
+  if(m_BCCleanup)
+  {
+    deallocateArrayData<int32_t>(m_BC);
+    m_BC = nullptr;
+  }
+  if(m_BSCleanup)
+  {
+    deallocateArrayData<int32_t>(m_BS);
+    m_BS = nullptr;
+  }
+  if(m_GrainIndexCleanup)
+  {
+    deallocateArrayData<int32_t>(m_GrainIndex);
+    m_GrainIndex = nullptr;
+  }
+  if(m_GrainRandomColourRCleanup)
+  {
+    deallocateArrayData<int32_t>(m_GrainRandomColourR);
+    m_GrainRandomColourR = nullptr;
+  }
+  if(m_GrainRandomColourGCleanup)
+  {
+    deallocateArrayData<int32_t>(m_GrainRandomColourG);
+    m_GrainRandomColourG = nullptr;
+  }
+  if(m_GrainRandomColourBCleanup)
+  {
+    deallocateArrayData<int32_t>(m_GrainRandomColourB);
+    m_GrainRandomColourB = nullptr;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -72,7 +150,7 @@ H5CtfReader::~H5CtfReader()
 int H5CtfReader::readHeaderOnly()
 {
   int err = -1;
-  if (m_HDF5Path.isEmpty() == true)
+  if(m_HDF5Path.isEmpty())
   {
     qDebug() << "H5CtfReader Error: HDF5 Path is empty.";
     return -1;
@@ -107,7 +185,7 @@ int H5CtfReader::readHeaderOnly()
 int H5CtfReader::readFile()
 {
   int err = -1;
-  if (m_HDF5Path.isEmpty() == true)
+  if(m_HDF5Path.isEmpty())
   {
     qDebug() << "H5CtfReader Error: HDF5 Path is empty.";
     return -1;
@@ -129,11 +207,9 @@ int H5CtfReader::readFile()
   }
 
   // Read all the header information
-// qDebug() << "H5CtfReader:: reading Header .. ";
   err = readHeader(gid);
 
   // Read and transform data
-// qDebug() << "H5CtfReader:: Reading Data .. ";
   err = readData(gid);
 
   err = H5Gclose(gid);
@@ -151,7 +227,7 @@ int H5CtfReader::readHeader(hid_t parId)
   QString sBuf;
   QTextStream ss(&sBuf);
   int err = -1;
-  hid_t gid = H5Gopen(parId, Ebsd::H5::Header.toLatin1().data(), H5P_DEFAULT);
+  hid_t gid = H5Gopen(parId, Ebsd::H5Aztec::Header.toLatin1().data(), H5P_DEFAULT);
   if (gid < 0)
   {
     qDebug() << "H5CtfReader Error: Could not open 'Header' Group";
@@ -176,28 +252,30 @@ int H5CtfReader::readHeader(hid_t parId)
   READ_EBSD_HEADER_DATA("H5CtfReader", CtfHeaderEntry<float>, float, TiltAngle, Ebsd::Ctf::TiltAngle, gid)
   READ_EBSD_HEADER_DATA("H5CtfReader", CtfHeaderEntry<float>, float, TiltAxis, Ebsd::Ctf::TiltAxis, gid)
 
-  hid_t phasesGid = H5Gopen(gid, Ebsd::H5::Phases.toLatin1().data(), H5P_DEFAULT);
+  hid_t phasesGid = H5Gopen(gid, Ebsd::H5Aztec::Phases.toLatin1().data(), H5P_DEFAULT);
   if (phasesGid < 0)
   {
-    qDebug() << "H5CtfReader Error: Could not open Header/Phases HDF Group. Is this an older file?";
+    setErrorCode(-90007);
+    setErrorMessage("H5CtfReader Error: Could not open Header/Phases HDF Group.");
     H5Gclose(gid);
     return -1;
   }
 
   QList<QString> names;
   err = QH5Utilities::getGroupObjects(phasesGid, H5Utilities::H5Support_GROUP, names);
-  if (err < 0 || names.size() == 0)
+  if(err < 0 || names.empty())
   {
-    qDebug() << "H5CtfReader Error: There were no Phase groups present in the HDF5 file";
+    setErrorCode(-90009);
+    setErrorMessage("H5CtfReader Error: There were no Phase groups present in the HDF5 file");
     H5Gclose(phasesGid);
     H5Gclose(gid);
     return -1;
   }
   bool ok = false;
   m_Phases.clear();
-  for (int p = 0; p < names.size(); ++p)
+
+  for(const auto& phaseGroupName : names)
   {
-    QString phaseGroupName = names[p];
     hid_t pid = H5Gopen(phasesGid, phaseGroupName.toLatin1().data(), H5P_DEFAULT);
     CtfPhase::Pointer m_CurrentPhase = CtfPhase::New();
 
@@ -216,36 +294,19 @@ int H5CtfReader::readHeader(hid_t parId)
     m_Phases.push_back(m_CurrentPhase);
     err = H5Gclose(pid);
   }
-  err = H5Gclose(phasesGid);
 
   QString completeHeader;
-  err = QH5Lite::readStringDataset(gid, Ebsd::H5::OriginalHeader, completeHeader);
+  err = QH5Lite::readStringDataset(gid, Ebsd::H5Aztec::OriginalHeader, completeHeader);
+  if(err < 0)
+  {
+    setErrorCode(-90010);
+    setErrorMessage("The dataset 'Original Header' was missing from the HDF5 file.");
+  }
   setOriginalHeader(completeHeader);
-
+  err = H5Gclose(phasesGid);
   err = H5Gclose(gid);
   return err;
 }
-
-
-#define CTF_READER_ALLOCATE_AND_READ(name, type)\
-  if (m_ReadAllArrays == true || m_ArrayNames.find(Ebsd::Ctf::name) != m_ArrayNames.end()) {\
-    type* _##name = allocateArray<type>(totalDataRows);\
-    if (nullptr != _##name) {\
-      ::memset(_##name, 0, numBytes);\
-      err = QH5Lite::readPointerDataset(gid, Ebsd::Ctf::name, _##name);\
-      if (err < 0) {\
-        deallocateArrayData(_##name); /*deallocate the array*/\
-        _##name = nullptr;\
-        setErrorCode(-90020);\
-        ss << "Error reading dataset '" << #name << "' from the HDF5 file. This data set is required to be in the file because either "\
-           "the program is set to read ALL the Data arrays or the program was instructed to read this array.";\
-        setErrorMessage(ss.string());\
-        err = H5Gclose(gid);if (err < 0) {}\
-        return getErrorCode();\
-      }\
-    }\
-    setPointerByName(#name, _##name);\
-  }
 
 // -----------------------------------------------------------------------------
 //
@@ -253,9 +314,6 @@ int H5CtfReader::readHeader(hid_t parId)
 int H5CtfReader::readData(hid_t parId)
 {
   int err = -1;
-
-  // Delete any currently existing pointers
-  deletePointers();
 
   size_t yCells = getYCells();
   size_t xCells = getXCells();
@@ -267,12 +325,12 @@ int H5CtfReader::readData(hid_t parId)
     return -1;
   }
 
-
-  hid_t gid = H5Gopen(parId, Ebsd::H5::Data.toLatin1(), H5P_DEFAULT);
+  hid_t gid = H5Gopen(parId, Ebsd::H5Aztec::Data.toLatin1(), H5P_DEFAULT);
   if (gid < 0)
   {
-    std::cout << "H5CtfReader Error: Could not open 'Data' Group" << std::endl;
-    return -1;
+    setErrorMessage("H5CtfReader Error: Could not open 'Data' Group");
+    setErrorCode(-90012);
+    return getErrorCode();
   }
 
   setNumberOfElements(totalDataRows);
@@ -280,20 +338,28 @@ int H5CtfReader::readData(hid_t parId)
   QString sBuf;
   QTextStream ss(&sBuf);
 
-  CTF_READER_ALLOCATE_AND_READ(Phase, int);
-  CTF_READER_ALLOCATE_AND_READ(Bands, int);
-  CTF_READER_ALLOCATE_AND_READ(Error, int);
-  CTF_READER_ALLOCATE_AND_READ(Euler1, float);
-  CTF_READER_ALLOCATE_AND_READ(Euler2, float);
-  CTF_READER_ALLOCATE_AND_READ(Euler3, float);
-  CTF_READER_ALLOCATE_AND_READ(MAD, float);
-  CTF_READER_ALLOCATE_AND_READ(BC, int);
-  CTF_READER_ALLOCATE_AND_READ(BS, int);
-  CTF_READER_ALLOCATE_AND_READ(GrainIndex, int);
-  CTF_READER_ALLOCATE_AND_READ(GrainRandomColourR, int);
-  CTF_READER_ALLOCATE_AND_READ(GrainRandomColourG, int);
-  CTF_READER_ALLOCATE_AND_READ(GrainRandomColourB, int);
+  if(m_ArrayNames.empty() && !m_ReadAllArrays)
+  {
+    err = H5Gclose(gid);
+    err = -90013;
+    setErrorMessage("H5CtfReader Error: ReadAllArrays was FALSE and no other arrays were requested to be read.");
+    setErrorCode(err);
+    return err;
+  }
 
+  ANG_READER_ALLOCATE_AND_READ(Phase, Ebsd::Ctf::Phase, int);
+  ANG_READER_ALLOCATE_AND_READ(BandCount, Ebsd::Ctf::Bands, int);
+  ANG_READER_ALLOCATE_AND_READ(Error, Ebsd::Ctf::Error, int);
+  ANG_READER_ALLOCATE_AND_READ(Euler1, Ebsd::Ctf::Euler1, float);
+  ANG_READER_ALLOCATE_AND_READ(Euler2, Ebsd::Ctf::Euler2, float);
+  ANG_READER_ALLOCATE_AND_READ(Euler3, Ebsd::Ctf::Euler3, float);
+  ANG_READER_ALLOCATE_AND_READ(MeanAngularDeviation, Ebsd::Ctf::MAD, float);
+  ANG_READER_ALLOCATE_AND_READ(BandContrast, Ebsd::Ctf::BC, int);
+  ANG_READER_ALLOCATE_AND_READ(BandSlope, Ebsd::Ctf::BS, int);
+  ANG_READER_ALLOCATE_AND_READ(GrainIndex, Ebsd::Ctf::GrainIndex, int);
+  ANG_READER_ALLOCATE_AND_READ(GrainRandomColourR, Ebsd::Ctf::GrainRandomColourR, int);
+  ANG_READER_ALLOCATE_AND_READ(GrainRandomColourG, Ebsd::Ctf::GrainRandomColourG, int);
+  ANG_READER_ALLOCATE_AND_READ(GrainRandomColourB, Ebsd::Ctf::GrainRandomColourB, int);
 
   err = H5Gclose(gid);
 
@@ -303,7 +369,7 @@ int H5CtfReader::readData(hid_t parId)
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void H5CtfReader::setArraysToRead(QSet<QString> names)
+void H5CtfReader::setArraysToRead(const QSet<QString>& names)
 {
   m_ArrayNames = names;
 }

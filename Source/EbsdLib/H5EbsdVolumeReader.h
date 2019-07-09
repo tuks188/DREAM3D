@@ -37,7 +37,6 @@
 #pragma once
 
 #include <QtCore/QString>
-#include <QtCore/QVector>
 #include <QtCore/QSet>
 
 #include "EbsdLib/EbsdSetGetMacros.h"
@@ -149,8 +148,11 @@ class EbsdLib_EXPORT H5EbsdVolumeReader : public H5EbsdVolumeInfo
     QSet<QString>         m_ArrayNames;
     bool                  m_ReadAllArrays;
 
+  public:
     H5EbsdVolumeReader(const H5EbsdVolumeReader&) = delete; // Copy Constructor Not Implemented
-    void operator=(const H5EbsdVolumeReader&) = delete;     // Move assignment Not Implemented
+    H5EbsdVolumeReader(H5EbsdVolumeReader&&) = delete;      // Move Constructor Not Implemented
+    H5EbsdVolumeReader& operator=(const H5EbsdVolumeReader&) = delete; // Copy Assignment Not Implemented
+    H5EbsdVolumeReader& operator=(H5EbsdVolumeReader&&) = delete;      // Move Assignment Not Implemented
 };
 
 

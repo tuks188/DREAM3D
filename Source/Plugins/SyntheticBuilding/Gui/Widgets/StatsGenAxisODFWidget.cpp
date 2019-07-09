@@ -38,17 +38,12 @@
 #include <iostream>
 
 //-- Qt Includes
-#include <QtConcurrent/QtConcurrentMap>
 #include <QtCore/QDir>
 #include <QtCore/QFile>
-#include <QtCore/QFileInfo>
 #include <QtCore/QModelIndex>
-#include <QtCore/QSettings>
 #include <QtCore/QString>
-#include <QtGui/QCloseEvent>
 #include <QtWidgets/QAbstractItemDelegate>
 #include <QtWidgets/QFileDialog>
-#include <QtWidgets/QMessageBox>
 
 #include "EbsdLib/EbsdConstants.h"
 
@@ -127,22 +122,6 @@ void StatsGenAxisODFWidget::on_m_WeightSpreadsBulkLoad_clicked(bool b)
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void StatsGenAxisODFWidget::on_m_ODFParametersBtn_clicked(bool b)
-{
-  stackedWidget->setCurrentIndex(0);
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void StatsGenAxisODFWidget::on_m_MDFParametersBtn_clicked(bool b)
-{
-  stackedWidget->setCurrentIndex(1);
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 void StatsGenAxisODFWidget::extractStatsData(int index, StatsData* statsData, PhaseType::Type phaseType)
 {
 
@@ -162,7 +141,7 @@ void StatsGenAxisODFWidget::extractStatsData(int index, StatsData* statsData, Ph
     TransformationStatsData* tp = dynamic_cast<TransformationStatsData*>(statsData);
     arrays = tp->getAxisODF_Weights();
   }
-  if(arrays.size() > 0)
+  if(!arrays.empty())
   {
     QVector<float> e1(static_cast<int>(arrays[0]->getNumberOfTuples()));
     ::memcpy(&(e1.front()), arrays[0]->getVoidPointer(0), sizeof(float) * e1.size());
@@ -179,21 +158,15 @@ void StatsGenAxisODFWidget::extractStatsData(int index, StatsData* statsData, Ph
     QVector<float> sigmas(static_cast<int>(arrays[3]->getNumberOfTuples()));
     ::memcpy(&(sigmas.front()), arrays[3]->getVoidPointer(0), sizeof(float) * sigmas.size());
 
-    // Data was stored as radians, convert back to angles
-    for(int e = 0; e < e1.size(); e++)
+    // Convert from Radians to Degrees for the Euler Angles
+    for(int i = 0; i < e1.size(); ++i)
     {
-      e1[e] = e1[0] * 180.0f / SIMPLib::Constants::k_Pif;
-    }
-    for(int e = 0; e < e2.size(); e++)
-    {
-      e2[e] = e2[0] * 180.0f / SIMPLib::Constants::k_Pif;
-    }
-    for(int e = 0; e < e3.size(); e++)
-    {
-      e3[e] = e3[0] * 180.0f / SIMPLib::Constants::k_Pif;
+      e1[i] = e1[i] * static_cast<float>(SIMPLib::Constants::k_RadToDeg);
+      e2[i] = e2[i] * static_cast<float>(SIMPLib::Constants::k_RadToDeg);
+      e3[i] = e3[i] * static_cast<float>(SIMPLib::Constants::k_RadToDeg);
     }
 
-    if(e1.size() > 0)
+    if(!e1.empty())
     {
       // Load the data into the table model
       m_ODFTableModel->setTableData(e1, e2, e3, weights, sigmas);
@@ -328,22 +301,6 @@ void StatsGenAxisODFWidget::setupGui()
     m_PFLambertLabel->hide();
   }
 
-  // Disable the MDF tab
-  m_MDFParametersBtn->setDisabled(true);
-
-  m_ODFGroup.addButton(m_ODFParametersBtn);
-  m_ODFGroup.addButton(m_MDFParametersBtn);
-  m_ODFParametersBtn->setVisible(false);
-  m_MDFParametersBtn->setVisible(false);
-  horizontalLine->setVisible(false);
-
-  // Style the buttons
-  addODFTextureBtn->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(addODFTextureBtn->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::AddImagePath));  
-  deleteODFTextureBtn->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(deleteODFTextureBtn->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::DeleteImagePath));
-  m_CalculateODFBtn->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(m_CalculateODFBtn->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::ReloadImagePath));
-  savePoleFigureImage->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(savePoleFigureImage->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::SaveImagePath));
-  
-  on_m_ODFParametersBtn_clicked(true);
 }
 
 // -----------------------------------------------------------------------------
@@ -501,8 +458,8 @@ void StatsGenAxisODFWidget::calculateAxisODF()
   int lamberSize = m_PFLambertSize->value();
   int numColors = 16;
   int npoints = pfSamplePoints->value();
-  QVector<size_t> dims(1, 3);
-  FloatArrayType::Pointer eulers = FloatArrayType::CreateArray(npoints, dims, "Eulers");
+  std::vector<size_t> dims(1, 3);
+  FloatArrayType::Pointer eulers = FloatArrayType::CreateArray(npoints, dims, "Eulers", true);
 
   odf.resize(OrthoRhombicOps::k_OdfSize);
 
@@ -518,6 +475,13 @@ void StatsGenAxisODFWidget::calculateAxisODF()
   config.numColors = numColors;
   config.discrete = true;
   config.discreteHeatMap = false;
+    
+  // Check if the user wants a Discreet or Lambert PoleFigure
+  if(m_PFTypeCB->currentIndex() == 1)
+  {
+    config.discrete = false;
+  }
+  
   QVector<QString> labels(3);
   labels[0] = QString("C Axis"); // 001
   labels[1] = QString("A Axis"); // 100
@@ -607,35 +571,32 @@ void StatsGenAxisODFWidget::on_loadODFTextureBtn_clicked()
 {
   QString proposedFile = m_OpenDialogLastDirectory;
   QString file = QFileDialog::getOpenFileName(this, tr("Open Axis ODF File"), proposedFile, tr("Text Document (*.txt)"));
-  if(true == file.isEmpty())
+  if(file.isEmpty())
   {
     return;
   }
-  else
+
+  size_t numOrients = 0;
+  std::ifstream inFile;
+  inFile.open(file.toLatin1().data());
+
+  inFile >> numOrients;
+
+  float e1, e2, e3, weight, sigma;
+  for(size_t i = 0; i < numOrients; i++)
   {
-    size_t numOrients = 0;
-    QString filename = file;
-    std::ifstream inFile;
-    inFile.open(filename.toLatin1().data());
-
-    inFile >> numOrients;
-
-    float e1, e2, e3, weight, sigma;
-    for(size_t i = 0; i < numOrients; i++)
+    inFile >> e1 >> e2 >> e3 >> weight >> sigma;
+    if(!m_ODFTableModel->insertRow(m_ODFTableModel->rowCount()))
     {
-      inFile >> e1 >> e2 >> e3 >> weight >> sigma;
-      if(!m_ODFTableModel->insertRow(m_ODFTableModel->rowCount()))
-      {
-        return;
-      }
-      int row = m_ODFTableModel->rowCount() - 1;
-      m_ODFTableModel->setRowData(row, e1, e2, e3, weight, sigma);
-      m_ODFTableView->resizeColumnsToContents();
-      m_ODFTableView->scrollToBottom();
-      m_ODFTableView->setFocus();
-      QModelIndex index = m_ODFTableModel->index(m_ODFTableModel->rowCount() - 1, 0);
-      m_ODFTableView->setCurrentIndex(index);
+      return;
     }
+    int row = m_ODFTableModel->rowCount() - 1;
+    m_ODFTableModel->setRowData(row, e1, e2, e3, weight, sigma);
+    m_ODFTableView->resizeColumnsToContents();
+    m_ODFTableView->scrollToBottom();
+    m_ODFTableView->setFocus();
+    QModelIndex index = m_ODFTableModel->index(m_ODFTableModel->rowCount() - 1, 0);
+    m_ODFTableView->setCurrentIndex(index);
   }
 }
 
@@ -652,18 +613,15 @@ SGODFTableModel* StatsGenAxisODFWidget::tableModel()
 // -----------------------------------------------------------------------------
 void StatsGenAxisODFWidget::on_savePoleFigureImage_clicked()
 {
-  QString Ftype = "Image Files";
-  QString ext = "*.png";
   QString s = "Image Files (*.tiff *.png *.bmp);;All Files(*.*)";
   QString defaultName = m_OpenDialogLastDirectory;
 
   QString file = QFileDialog::getSaveFileName(this, tr("Save File As"), defaultName, s);
 
-  if(true == file.isEmpty())
+  if(file.isEmpty())
   {
     return;
   }
-  // bool ok = false;
   file = QDir::toNativeSeparators(file);
   // Store the last used directory into the private instance variable
   m_OpenDialogLastDirectory = file;

@@ -76,13 +76,13 @@ public:
 
   int gatherStatsData(AttributeMatrix::Pointer attrMat, bool preflight = false) override;
 
-  QIcon getPhaseIcon() override;
+  QIcon getPhaseIcon();
 
   void generateDefaultData() override;
 
 protected slots:
 
-  virtual void on_m_GenerateDefaultData_clicked() override;
+  void on_m_GenerateDefaultData_clicked();
 
 signals:
 
@@ -91,14 +91,17 @@ signals:
   void progressText(const QString& text);
 
 protected:
-  void setupGui() override;
+  void setupGui();
 
 private:
   QList<QWidget*> m_WidgetList;
 
   StatsGenRDFWidget* m_RdfPlot = nullptr;
 
+public:
   PrecipitatePhaseWidget(const PrecipitatePhaseWidget&) = delete; // Copy Constructor Not Implemented
-  void operator=(const PrecipitatePhaseWidget&) = delete;         // Move assignment Not Implemented
+  PrecipitatePhaseWidget(PrecipitatePhaseWidget&&) = delete;      // Move Constructor Not Implemented
+  PrecipitatePhaseWidget& operator=(const PrecipitatePhaseWidget&) = delete; // Copy Assignment Not Implemented
+  PrecipitatePhaseWidget& operator=(PrecipitatePhaseWidget&&) = delete;      // Move Assignment Not Implemented
 };
 

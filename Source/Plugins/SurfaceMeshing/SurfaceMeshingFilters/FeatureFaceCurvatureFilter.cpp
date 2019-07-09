@@ -45,6 +45,7 @@
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/IntFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Geometry/TriangleGeom.h"
@@ -94,7 +95,7 @@ FeatureFaceCurvatureFilter::~FeatureFaceCurvatureFilter() = default;
 void FeatureFaceCurvatureFilter::setupFilterParameters()
 {
   SurfaceMeshFilter::setupFilterParameters();
-  QVector<FilterParameter::Pointer> parameters;
+  FilterParameterVectorType parameters;
 
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Neighborhood Ring Count", NRing, FilterParameter::Parameter, FeatureFaceCurvatureFilter));
   QStringList linkedProps;
@@ -140,12 +141,12 @@ void FeatureFaceCurvatureFilter::setupFilterParameters()
   }
 
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Principal Curvature 1", SurfaceMeshPrincipalCurvature1sArrayName, FilterParameter::CreatedArray, FeatureFaceCurvatureFilter));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Principal Curvature 2", SurfaceMeshPrincipalCurvature2sArrayName, FilterParameter::CreatedArray, FeatureFaceCurvatureFilter));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Principal Direction 1", SurfaceMeshPrincipalDirection1sArrayName, FilterParameter::CreatedArray, FeatureFaceCurvatureFilter));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Principal Direction 2", SurfaceMeshPrincipalDirection2sArrayName, FilterParameter::CreatedArray, FeatureFaceCurvatureFilter));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Gaussian Curvature", SurfaceMeshGaussianCurvaturesArrayName, FilterParameter::CreatedArray, FeatureFaceCurvatureFilter));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Mean Curvature", SurfaceMeshMeanCurvaturesArrayName, FilterParameter::CreatedArray, FeatureFaceCurvatureFilter));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Principal Curvature 1", SurfaceMeshPrincipalCurvature1sArrayName, FaceAttributeMatrixPath, FaceAttributeMatrixPath, FilterParameter::CreatedArray, FeatureFaceCurvatureFilter));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Principal Curvature 2", SurfaceMeshPrincipalCurvature2sArrayName, FaceAttributeMatrixPath, FaceAttributeMatrixPath, FilterParameter::CreatedArray, FeatureFaceCurvatureFilter));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Principal Direction 1", SurfaceMeshPrincipalDirection1sArrayName, FaceAttributeMatrixPath, FaceAttributeMatrixPath, FilterParameter::CreatedArray, FeatureFaceCurvatureFilter));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Principal Direction 2", SurfaceMeshPrincipalDirection2sArrayName, FaceAttributeMatrixPath, FaceAttributeMatrixPath, FilterParameter::CreatedArray, FeatureFaceCurvatureFilter));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Gaussian Curvature", SurfaceMeshGaussianCurvaturesArrayName, FaceAttributeMatrixPath, FaceAttributeMatrixPath, FilterParameter::CreatedArray, FeatureFaceCurvatureFilter));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Mean Curvature", SurfaceMeshMeanCurvaturesArrayName, FaceAttributeMatrixPath, FaceAttributeMatrixPath, FilterParameter::CreatedArray, FeatureFaceCurvatureFilter));
   setFilterParameters(parameters);
 }
 
@@ -189,8 +190,8 @@ void FeatureFaceCurvatureFilter::initialize()
 // -----------------------------------------------------------------------------
 void FeatureFaceCurvatureFilter::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
 
   DataArrayPath tempPath;
@@ -199,20 +200,20 @@ void FeatureFaceCurvatureFilter::dataCheck()
 
   QVector<IDataArray::Pointer> dataArrays;
 
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(triangles->getTriangles());
   }
 
   DataContainer::Pointer sm = getDataContainerArray()->getPrereqDataContainer(this, getSurfaceMeshFaceLabelsArrayPath().getDataContainerName(), false);
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   // We do not know the size of the array so we can not use the macro so we just manually call
   // the needed methods that will propagate these array additions to the pipeline
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   tempPath = getFaceAttributeMatrixPath();
   tempPath.setDataArrayName(getSurfaceMeshPrincipalCurvature1sArrayName());
   m_SurfaceMeshPrincipalCurvature1sPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<double>, AbstractFilter, double>(
@@ -221,7 +222,7 @@ void FeatureFaceCurvatureFilter::dataCheck()
   {
     m_SurfaceMeshPrincipalCurvature1s = m_SurfaceMeshPrincipalCurvature1sPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshPrincipalCurvature1sPtr.lock());
   }
@@ -283,7 +284,7 @@ void FeatureFaceCurvatureFilter::dataCheck()
   {
     m_SurfaceMeshFeatureFaceIds = m_SurfaceMeshFeatureFaceIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshFeatureFaceIdsPtr.lock());
   }
@@ -295,7 +296,7 @@ void FeatureFaceCurvatureFilter::dataCheck()
   {
     m_SurfaceMeshFaceLabels = m_SurfaceMeshFaceLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshFaceLabelsPtr.lock());
   }
@@ -307,7 +308,7 @@ void FeatureFaceCurvatureFilter::dataCheck()
   {
     m_SurfaceMeshFaceNormals = m_SurfaceMeshFaceNormalsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshFaceNormalsPtr.lock());
   }
@@ -318,7 +319,7 @@ void FeatureFaceCurvatureFilter::dataCheck()
   {
     m_SurfaceMeshTriangleCentroids = m_SurfaceMeshTriangleCentroidsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshTriangleCentroidsPtr.lock());
   }
@@ -344,10 +345,10 @@ void FeatureFaceCurvatureFilter::preflight()
 // -----------------------------------------------------------------------------
 void FeatureFaceCurvatureFilter::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -419,7 +420,7 @@ void FeatureFaceCurvatureFilter::execute()
   for(SharedFeatureFaceIterator_t iter = sharedFeatureFaces.begin(); iter != sharedFeatureFaces.end(); ++iter)
   {
     QString ss = QObject::tr("Working on Face Id %1/%2").arg((*iter).first).arg(maxFaceId);
-    notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+    notifyStatusMessage(ss);
 
     FaceIds_t& triangleIds = (*iter).second;
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
@@ -447,8 +448,7 @@ void FeatureFaceCurvatureFilter::execute()
   
 #endif
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -460,7 +460,7 @@ void FeatureFaceCurvatureFilter::tbbTaskProgress()
   m_CompletedFeatureFaces++;
 
   QString ss = QObject::tr("%1/%2 Complete").arg(m_CompletedFeatureFaces).arg(m_TotalFeatureFaces);
-  notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+  notifyStatusMessage(ss);
 }
 
 #endif
@@ -471,7 +471,7 @@ void FeatureFaceCurvatureFilter::tbbTaskProgress()
 AbstractFilter::Pointer FeatureFaceCurvatureFilter::newFilterInstance(bool copyFilterParameters) const
 {
   FeatureFaceCurvatureFilter::Pointer filter = FeatureFaceCurvatureFilter::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

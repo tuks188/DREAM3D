@@ -57,6 +57,7 @@
 #include "SIMPLib/FilterParameters/OutputFileFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/Geometry/TriangleGeom.h"
+#include "SIMPLib/Utilities/FileSystemPathHelper.h"
 
 #include "OrientationLib/LaueOps/LaueOps.h"
 #include "OrientationLib/OrientationMath/OrientationTransforms.hpp"
@@ -120,8 +121,8 @@ class TrisSelector
 {
   // corresponding to Phase of Interest
   bool m_ExcludeTripleLines;
-  int64_t* m_Triangles;
-  int8_t* m_NodeTypes;
+  MeshIndexType* m_Triangles = nullptr;
+  int8_t* m_NodeTypes = nullptr;
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::concurrent_vector<TriAreaAndNormals>* selectedTris;
 #else
@@ -131,15 +132,14 @@ class TrisSelector
   QVector<LaueOps::Pointer> m_OrientationOps;
   uint32_t cryst;
   int32_t nsym;
-  uint32_t* m_CrystalStructures;
-  float* m_Eulers;
-  int32_t* m_Phases;
-  int32_t* m_FaceLabels;
-  double* m_FaceNormals;
-  double* m_FaceAreas;
+  float* m_Eulers = nullptr;
+  int32_t* m_Phases = nullptr;
+  int32_t* m_FaceLabels = nullptr;
+  double* m_FaceNormals = nullptr;
+  double* m_FaceAreas = nullptr;
 
 public:
-  TrisSelector(bool __m_ExcludeTripleLines, int64_t* __m_Triangles, int8_t* __m_NodeTypes,
+  TrisSelector(bool __m_ExcludeTripleLines, MeshIndexType* __m_Triangles, int8_t* __m_NodeTypes,
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
                tbb::concurrent_vector<TriAreaAndNormals>* __selectedTris,
@@ -152,7 +152,6 @@ public:
   , m_NodeTypes(__m_NodeTypes)
   , selectedTris(__selectedTris)
   , m_PhaseOfInterest(__m_PhaseOfInterest)
-  , m_CrystalStructures(__m_CrystalStructures)
   , m_Eulers(__m_Eulers)
   , m_Phases(__m_Phases)
   , m_FaceLabels(__m_FaceLabels)
@@ -164,9 +163,7 @@ public:
     nsym = m_OrientationOps[cryst]->getNumSymOps();
   }
 
-  virtual ~TrisSelector()
-  {
-  }
+  virtual ~TrisSelector() = default;
 
   void select(size_t start, size_t end) const
   {
@@ -198,7 +195,7 @@ public:
         continue;
       }
 
-      if(m_ExcludeTripleLines == true)
+      if(m_ExcludeTripleLines)
       {
         int64_t node1 = m_Triangles[triIdx * 3];
         int64_t node2 = m_Triangles[triIdx * 3 + 1];
@@ -289,9 +286,7 @@ public:
     nsym = m_OrientationOps[__cryst]->getNumSymOps();
   }
 
-  virtual ~ProbeDistrib()
-  {
-  }
+  virtual ~ProbeDistrib() = default;
 
   void probe(size_t start, size_t end) const
   {
@@ -323,7 +318,9 @@ public:
           {
             float sign = 1.0f;
             if(inversion == 1)
+            {
               sign = -1.0f;
+            }
 
             float gamma1 = acosf(sign * (probeNormal[0] * sym_normal1[0] + probeNormal[1] * sym_normal1[1] + probeNormal[2] * sym_normal1[2]));
 
@@ -384,14 +381,6 @@ FindGBPDMetricBased::FindGBPDMetricBased()
 , m_SurfaceMeshFaceAreasArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceAreas)
 , m_SurfaceMeshFeatureFaceLabelsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceFeatureAttributeMatrixName, "FaceLabels")
 , m_NodeTypesArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::VertexAttributeMatrixName, SIMPL::VertexData::SurfaceMeshNodeType)
-, m_CrystalStructures(nullptr)
-, m_FeatureEulerAngles(nullptr)
-, m_FeaturePhases(nullptr)
-, m_SurfaceMeshFaceAreas(nullptr)
-, m_SurfaceMeshFaceLabels(nullptr)
-, m_SurfaceMeshFaceNormals(nullptr)
-, m_SurfaceMeshFeatureFaceLabels(nullptr)
-, m_NodeTypes(nullptr)
 {
 }
 
@@ -405,7 +394,7 @@ FindGBPDMetricBased::~FindGBPDMetricBased() = default;
 // -----------------------------------------------------------------------------
 void FindGBPDMetricBased::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Phase of Interest", PhaseOfInterest, FilterParameter::Parameter, FindGBPDMetricBased));
   parameters.push_back(SIMPL_NEW_FLOAT_FP("Limiting Distance [deg.]", LimitDist, FilterParameter::Parameter, FindGBPDMetricBased));
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Number of Sampling Points (on a Hemisphere)", NumSamplPts, FilterParameter::Parameter, FindGBPDMetricBased));
@@ -493,63 +482,34 @@ void FindGBPDMetricBased::initialize()
 // -----------------------------------------------------------------------------
 void FindGBPDMetricBased::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   // Number of Sampling Points (filter params.)
   if(getNumSamplPts() < 1)
   {
-    setErrorCondition(-1000);
     QString ss = QObject::tr("The number of sampling points must be greater than zero");
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-1000, ss);
   }
 
   // Set some reasonable value, but allow user to use more if he/she knows what he/she does
   if(getNumSamplPts() > 5000)
   {
-    setWarningCondition(-1001);
     QString ss = QObject::tr("Most likely, you do not need to use that many sampling points");
-    notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
+    setWarningCondition(-1001, ss);
   }
 
   // Output files (filter params.)
-  if(getDistOutputFile().isEmpty() == true)
-  {
-    setErrorCondition(-1002);
-    QString ss = QObject::tr("The output file for saving the distribution must be set");
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
-  }
+  FileSystemPathHelper::CheckOutputFile(this, "Output Distribution File", getDistOutputFile(), true);
+  FileSystemPathHelper::CheckOutputFile(this, "Output Error File", getErrOutputFile(), true);
 
-  if(getErrOutputFile().isEmpty() == true)
-  {
-    setErrorCondition(-1003);
-    QString ss = QObject::tr("The output file for saving the distribution errors must be set");
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
-  }
-
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   QFileInfo distOutFileInfo(getDistOutputFile());
-  QDir distParentPath = distOutFileInfo.path();
-  if(distParentPath.exists() == false)
-  {
-    setWarningCondition(-1004);
-    QString ss = QObject::tr("The directory path for the distribution output file does not exist. DREAM.3D will attempt to create this path during execution of the filter");
-    notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
-  }
-
   QFileInfo errOutFileInfo(getErrOutputFile());
-  QDir errParentPath = errOutFileInfo.path();
-  if(errParentPath.exists() == false)
-  {
-    setWarningCondition(-1005);
-    QString ss = QObject::tr("The directory path for the distribution errors output file does not exist. DREAM.3D will attempt to create this path during execution of the filter");
-    notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
-  }
-
   if(distOutFileInfo.suffix().compare("") == 0)
   {
     setDistOutputFile(getDistOutputFile().append(".dat"));
@@ -561,7 +521,7 @@ void FindGBPDMetricBased::dataCheck()
 
   // Make sure the file name ends with _1 so the GMT scripts work correctly
   QString distFName = distOutFileInfo.baseName();
-  if(distFName.endsWith("_1") == false)
+  if(!distFName.endsWith("_1"))
   {
     distFName = distFName + "_1";
     QString absPath = distOutFileInfo.absolutePath() + "/" + distFName + ".dat";
@@ -569,22 +529,21 @@ void FindGBPDMetricBased::dataCheck()
   }
 
   QString errFName = errOutFileInfo.baseName();
-  if(errFName.endsWith("_1") == false)
+  if(!errFName.endsWith("_1"))
   {
     errFName = errFName + "_1";
     QString absPath = errOutFileInfo.absolutePath() + "/" + errFName + ".dat";
     setErrOutputFile(absPath);
   }
 
-  if(getDistOutputFile().isEmpty() == false && getDistOutputFile() == getErrOutputFile())
+  if(!getDistOutputFile().isEmpty() && getDistOutputFile() == getErrOutputFile())
   {
-    setErrorCondition(-1006);
     QString ss = QObject::tr("The output files must be different");
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-1006, ss);
   }
 
   // Crystal Structures
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_CrystalStructuresPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<unsigned int>, AbstractFilter>(this, getCrystalStructuresArrayPath(),
                                                                                                                     cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_CrystalStructuresPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -597,9 +556,8 @@ void FindGBPDMetricBased::dataCheck()
   {
     if(getPhaseOfInterest() >= static_cast<int>(m_CrystalStructuresPtr.lock()->getNumberOfTuples()) || getPhaseOfInterest() <= 0)
     {
-      setErrorCondition(-1007);
       QString ss = QObject::tr("The phase index is either larger than the number of Ensembles or smaller than 1");
-      notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+      setErrorCondition(-1007, ss);
     }
   }
 
@@ -718,10 +676,10 @@ void FindGBPDMetricBased::appendSamplPtsFixedAzimuth(QVector<float>* xVec, QVect
 // -----------------------------------------------------------------------------
 void FindGBPDMetricBased::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -741,14 +699,14 @@ void FindGBPDMetricBased::execute()
   if(m_CrystalStructures[m_PhaseOfInterest] > 10)
   {
     QString ss = QObject::tr("Unsupported CrystalStructure");
-    notifyErrorMessage(getHumanLabel(), ss, -1);
+    setErrorCondition(-1, ss);
     return;
   }
 
   DataContainer::Pointer sm = getDataContainerArray()->getDataContainer(getSurfaceMeshFaceAreasArrayPath().getDataContainerName());
   TriangleGeom::Pointer triangleGeom = sm->getGeometryAs<TriangleGeom>();
   SharedTriList::Pointer m_TrianglesPtr = triangleGeom->getTriangles();
-  int64_t* m_Triangles = m_TrianglesPtr->getPointer(0);
+  MeshIndexType* m_Triangles = m_TrianglesPtr->getPointer(0);
 
   // -------------------- check if directiories are ok and if output files can be opened -----------
 
@@ -761,8 +719,7 @@ void FindGBPDMetricBased::execute()
   {
     QString ss;
     ss = QObject::tr("Error creating parent path '%1'").arg(distOutFileDir.path());
-    notifyErrorMessage(getHumanLabel(), ss, -1);
-    setErrorCondition(-1);
+    setErrorCondition(-1, ss);
     return;
   }
 
@@ -770,8 +727,7 @@ void FindGBPDMetricBased::execute()
   if(!distOutFile.open(QIODevice::WriteOnly | QIODevice::Text))
   {
     QString ss = QObject::tr("Error opening output file '%1'").arg(getDistOutputFile());
-    setErrorCondition(-100);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-100, ss);
     return;
   }
 
@@ -782,8 +738,7 @@ void FindGBPDMetricBased::execute()
   {
     QString ss;
     ss = QObject::tr("Error creating parent path '%1'").arg(errOutFileDir.path());
-    notifyErrorMessage(getHumanLabel(), ss, -1);
-    setErrorCondition(-1);
+    setErrorCondition(-1, ss);
     return;
   }
 
@@ -791,8 +746,7 @@ void FindGBPDMetricBased::execute()
   if(!errOutFile.open(QIODevice::WriteOnly | QIODevice::Text))
   {
     QString ss = QObject::tr("Error opening output file '%1'").arg(getDistOutputFile());
-    setErrorCondition(-100);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-100, ss);
     return;
   }
 
@@ -802,8 +756,7 @@ void FindGBPDMetricBased::execute()
   if(nullptr == fDist)
   {
     QString ss = QObject::tr("Error opening distribution output file '%1'").arg(m_DistOutputFile);
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-1, ss);
     return;
   }
 
@@ -812,8 +765,7 @@ void FindGBPDMetricBased::execute()
   if(nullptr == fErr)
   {
     QString ss = QObject::tr("Error opening distribution errors output file '%1'").arg(m_ErrOutputFile);
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-1, ss);
     return;
   }
 
@@ -826,7 +778,7 @@ void FindGBPDMetricBased::execute()
   // ------------------------------ generation of sampling points ----------------------------------
 
   QString ss = QObject::tr("--> Generating sampling points");
-  notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+  notifyStatusMessage(ss);
 
   // generate "Golden Section Spiral", see http://www.softimageblog.com/archives/115
   int numSamplPts_WholeSph = 2 * m_NumSamplPts; // here we generate points on the whole sphere
@@ -1044,14 +996,14 @@ void FindGBPDMetricBased::execute()
       return;
     }
     ss = QObject::tr("--> Selecting triangles corresponding to Phase Of Interest");
-    notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+    notifyStatusMessage(ss);
     if(i + trisChunkSize >= numMeshTris)
     {
       trisChunkSize = numMeshTris - i;
     }
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-    if(doParallel == true)
+    if(doParallel)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(i, i + trisChunkSize),
                         GBPDMetricBased::TrisSelector(m_ExcludeTripleLines, m_Triangles, m_NodeTypes, &selectedTris, m_PhaseOfInterest, m_CrystalStructures, m_Eulers, m_Phases, m_FaceLabels,
@@ -1115,14 +1067,14 @@ void FindGBPDMetricBased::execute()
       return;
     }
     ss = QObject::tr("--> Determining GBPD values (%1%)").arg(int(100.0 * float(i) / float(samplPtsX.size())));
-    notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+    notifyStatusMessage(ss);
     if(i + pointsChunkSize >= samplPtsX.size())
     {
       pointsChunkSize = samplPtsX.size() - i;
     }
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-    if(doParallel == true)
+    if(doParallel)
     {
       tbb::parallel_for(tbb::blocked_range<size_t>(i, i + pointsChunkSize),
                         GBPDMetricBased::ProbeDistrib(&distribValues, &errorValues, &samplPtsX, &samplPtsY, &samplPtsZ, selectedTris, m_LimitDist, totalFaceArea, numDistinctGBs, ballVolume, cryst),
@@ -1166,7 +1118,7 @@ void FindGBPDMetricBased::execute()
 
       fprintf(fDist, "%.2f %.2f %.4f\n", azimuthDeg, 90.0f - zenithDeg, distribValues[ptIdx]);
 
-      if(m_SaveRelativeErr == false)
+      if(!m_SaveRelativeErr)
       {
         fprintf(fErr, "%.2f %.2f %.4f\n", azimuthDeg, 90.0f - zenithDeg, errorValues[ptIdx]);
       }
@@ -1184,15 +1136,13 @@ void FindGBPDMetricBased::execute()
   fclose(fDist);
   fclose(fErr);
 
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     QString ss = QObject::tr("Something went wrong");
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-1, ss);
     return;
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -1201,7 +1151,7 @@ void FindGBPDMetricBased::execute()
 AbstractFilter::Pointer FindGBPDMetricBased::newFilterInstance(bool copyFilterParameters) const
 {
   FindGBPDMetricBased::Pointer filter = FindGBPDMetricBased::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

@@ -51,7 +51,6 @@
 IdentifySample::IdentifySample()
 : m_FillHoles(false)
 , m_GoodVoxelsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Mask)
-, m_GoodVoxels(nullptr)
 {
 }
 
@@ -64,7 +63,7 @@ IdentifySample::~IdentifySample() = default;
 // -----------------------------------------------------------------------------
 void IdentifySample::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_BOOL_FP("Fill Holes in Largest Feature", FillHoles, FilterParameter::Parameter, IdentifySample));
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
   {
@@ -98,12 +97,12 @@ void IdentifySample::initialize()
 // -----------------------------------------------------------------------------
 void IdentifySample::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getGoodVoxelsArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_GoodVoxelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getGoodVoxelsArrayPath(),
                                                                                                      cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_GoodVoxelsPtr.lock())                                                                      /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -130,10 +129,10 @@ void IdentifySample::preflight()
 // -----------------------------------------------------------------------------
 void IdentifySample::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -141,8 +140,7 @@ void IdentifySample::execute()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_GoodVoxelsArrayPath.getDataContainerName());
   int64_t totalPoints = static_cast<int64_t>(m_GoodVoxelsPtr.lock()->getNumberOfTuples());
 
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -173,7 +171,7 @@ void IdentifySample::execute()
   // are flipped to be called 'bad' voxels or 'not sample'
   for(int64_t i = 0; i < totalPoints; i++)
   {
-    if(checked[i] == false && m_GoodVoxels[i] == true)
+    if(!checked[i] && m_GoodVoxels[i])
     {
       currentvlist.push_back(i);
       count = 0;
@@ -211,7 +209,7 @@ void IdentifySample::execute()
           {
             good = 0;
           }
-          if(good == 1 && checked[neighbor] == false && m_GoodVoxels[neighbor] == true)
+          if(good == 1 && !checked[neighbor] && m_GoodVoxels[neighbor])
           {
             currentvlist.push_back(neighbor);
             checked[neighbor] = true;
@@ -233,7 +231,7 @@ void IdentifySample::execute()
   }
   for(int64_t i = 0; i < totalPoints; i++)
   {
-    if(sample[i] == false && m_GoodVoxels[i] == true)
+    if(!sample[i] && m_GoodVoxels[i])
     {
       m_GoodVoxels[i] = false;
     }
@@ -243,12 +241,12 @@ void IdentifySample::execute()
 
   // In this loop we are going to 'close' all of the 'holes' inside of the region already identified as the 'sample' if the user chose to do so.
   // This is done by flipping all 'bad' voxel features that do not touch the outside of the sample (i.e. they are fully contained inside of the 'sample'.
-  if(m_FillHoles == true)
+  if(m_FillHoles)
   {
     bool touchesBoundary = false;
     for(int64_t i = 0; i < totalPoints; i++)
     {
-      if(checked[i] == false && m_GoodVoxels[i] == false)
+      if(!checked[i] && !m_GoodVoxels[i])
       {
         currentvlist.push_back(i);
         count = 0;
@@ -291,7 +289,7 @@ void IdentifySample::execute()
             {
               good = 0;
             }
-            if(good == 1 && checked[neighbor] == false && m_GoodVoxels[neighbor] == false)
+            if(good == 1 && !checked[neighbor] && !m_GoodVoxels[neighbor])
             {
               currentvlist.push_back(neighbor);
               checked[neighbor] = true;
@@ -299,7 +297,7 @@ void IdentifySample::execute()
           }
           count++;
         }
-        if(touchesBoundary == false)
+        if(!touchesBoundary)
         {
           for(size_t j = 0; j < currentvlist.size(); j++)
           {
@@ -312,8 +310,7 @@ void IdentifySample::execute()
   }
   checked.clear();
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -322,7 +319,7 @@ void IdentifySample::execute()
 AbstractFilter::Pointer IdentifySample::newFilterInstance(bool copyFilterParameters) const
 {
   IdentifySample::Pointer filter = IdentifySample::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

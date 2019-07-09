@@ -54,7 +54,7 @@ class OrientationAnalysis_EXPORT ReadH5Ebsd : public AbstractFilter
 {
   Q_OBJECT
     PYB11_CREATE_BINDINGS(ReadH5Ebsd SUPERCLASS AbstractFilter)
-    PYB11_PROPERTY(QString DataContainerName READ getDataContainerName WRITE setDataContainerName)
+    PYB11_PROPERTY(DataArrayPath DataContainerName READ getDataContainerName WRITE setDataContainerName)
     PYB11_PROPERTY(QString CellEnsembleAttributeMatrixName READ getCellEnsembleAttributeMatrixName WRITE setCellEnsembleAttributeMatrixName)
     PYB11_PROPERTY(QString CellAttributeMatrixName READ getCellAttributeMatrixName WRITE setCellAttributeMatrixName)
     PYB11_PROPERTY(QString InputFile READ getInputFile WRITE setInputFile)
@@ -62,6 +62,8 @@ class OrientationAnalysis_EXPORT ReadH5Ebsd : public AbstractFilter
     PYB11_PROPERTY(int ZEndIndex READ getZEndIndex WRITE setZEndIndex)
     PYB11_PROPERTY(bool UseTransformations READ getUseTransformations WRITE setUseTransformations)
     PYB11_PROPERTY(int AngleRepresentation READ getAngleRepresentation WRITE setAngleRepresentation)
+    PYB11_PROPERTY(QSet<QString> SelectedArrayNames READ getSelectedArrayNames WRITE setSelectedArrayNames)
+
 public:
   SIMPL_SHARED_POINTERS(ReadH5Ebsd)
   SIMPL_FILTER_NEW_MACRO(ReadH5Ebsd)
@@ -69,8 +71,8 @@ public:
 
   ~ReadH5Ebsd() override;
 
-  SIMPL_FILTER_PARAMETER(QString, DataContainerName)
-  Q_PROPERTY(QString DataContainerName READ getDataContainerName WRITE setDataContainerName)
+  SIMPL_FILTER_PARAMETER(DataArrayPath, DataContainerName)
+  Q_PROPERTY(DataArrayPath DataContainerName READ getDataContainerName WRITE setDataContainerName)
 
   SIMPL_FILTER_PARAMETER(QString, CellEnsembleAttributeMatrixName)
   Q_PROPERTY(QString CellEnsembleAttributeMatrixName READ getCellEnsembleAttributeMatrixName WRITE setCellEnsembleAttributeMatrixName)
@@ -107,7 +109,7 @@ public:
   // Not sure why these are here. We would be reading all of these from the file
   //
   SIMPL_INSTANCE_PROPERTY(uint32_t, RefFrameZDir)
-  SIMPL_INSTANCE_PROPERTY(int32_t, Manufacturer)
+  SIMPL_INSTANCE_PROPERTY(Ebsd::OEM, Manufacturer)
   SIMPL_INSTANCE_PROPERTY(AxisAngleInput_t, SampleTransformation)
   SIMPL_INSTANCE_PROPERTY(AxisAngleInput_t, EulerTransformation)
   //-------------------------------------------------------
@@ -280,19 +282,18 @@ protected:
     QVector<typename EbsdPhase::Pointer> phases = reader->getPhases();
     if(phases.size() == 0)
     {
-      setErrorCondition(reader->getErrorCode());
-      notifyErrorMessage(getHumanLabel(), reader->getErrorMessage(), getErrorCondition());
-      return getErrorCondition();
+      setErrorCondition(reader->getErrorCode(), reader->getErrorMessage());
+      return getErrorCode();
     }
 
     // Resize the Ensemble Attribute Matrix to be the correct number of phases.
-    QVector<size_t> tDims(1, phases.size() + 1);
+    std::vector<size_t> tDims(1, phases.size() + 1);
     attrMatrix->resizeAttributeArrays(tDims);
 
-    DataArray<uint32_t>::Pointer crystalStructures = DataArray<uint32_t>::CreateArray(phases.size() + 1, getCrystalStructuresArrayName());
+    DataArray<uint32_t>::Pointer crystalStructures = DataArray<uint32_t>::CreateArray(phases.size() + 1, getCrystalStructuresArrayName(), true);
     StringDataArray::Pointer materialNames = StringDataArray::CreateArray(phases.size() + 1, getMaterialNameArrayName());
-    QVector<size_t> cDims(1, 6);
-    FloatArrayType::Pointer latticeConstants = FloatArrayType::CreateArray(phases.size() + 1, cDims, getLatticeConstantsArrayName());
+    std::vector<size_t> cDims(1, 6);
+    FloatArrayType::Pointer latticeConstants = FloatArrayType::CreateArray(phases.size() + 1, cDims, getLatticeConstantsArrayName(), true);
 
     // Initialize the zero'th element to unknowns. The other elements will
     // be filled in based on values from the data file
@@ -308,7 +309,7 @@ protected:
     for(size_t i = 0; i < phases.size(); i++)
     {
       int32_t phaseID = phases[i]->getPhaseIndex();
-      crystalStructures->setValue(phaseID, phases[i]->determineCrystalStructure());
+      crystalStructures->setValue(phaseID, phases[i]->determineLaueGroup());
       materialNames->setValue(phaseID, phases[i]->getMaterialName());
       QVector<float> lc = phases[i]->getLatticeConstants();
 
@@ -320,13 +321,13 @@ protected:
       latticeConstants->setComponent(phaseID, 5, lc[5]);
     }
 
-    attrMatrix->addAttributeArray(SIMPL::EnsembleData::CrystalStructures, crystalStructures);
+    attrMatrix->insertOrAssign(crystalStructures);
     m_CrystalStructuresPtr = crystalStructures;
     m_CrystalStructures = crystalStructures->getPointer(0);
-    attrMatrix->addAttributeArray(SIMPL::EnsembleData::LatticeConstants, latticeConstants);
+    attrMatrix->insertOrAssign(latticeConstants);
     m_LatticeConstantsPtr = latticeConstants;
     m_LatticeConstants = latticeConstants->getPointer(0);
-    attrMatrix->addAttributeArray(SIMPL::EnsembleData::MaterialName, materialNames);
+    attrMatrix->insertOrAssign(materialNames);
     m_MaterialNamesPtr = materialNames;
     return 0;
   }
@@ -339,8 +340,10 @@ private:
 
   StringDataArray::WeakPointer m_MaterialNamesPtr;
 
-  ReadH5Ebsd(const ReadH5Ebsd&);     // Copy Constructor Not Implemented
+public:
+  ReadH5Ebsd(const ReadH5Ebsd&) = delete;            // Copy Constructor Not Implemented
+  ReadH5Ebsd(ReadH5Ebsd&&) = delete;                 // Move Constructor Not Implemented
   ReadH5Ebsd& operator=(const ReadH5Ebsd&) = delete; // Copy Assignment Not Implemented
-  ReadH5Ebsd& operator=(ReadH5Ebsd&&) = delete;      // Move Assignment
+  ReadH5Ebsd& operator=(ReadH5Ebsd&&) = delete;      // Move Assignment Not Implemented
 };
 

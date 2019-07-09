@@ -43,6 +43,7 @@
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/FloatFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Math/GeometryMath.h"
@@ -55,12 +56,21 @@
 
 #include "EbsdLib/EbsdConstants.h"
 
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  AttributeMatrixID21 = 21,
+
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
+
 namespace
 {
-static const float unit110 = 1.0 / sqrtf(2.0);
-static const float unit111 = 1.0 / sqrtf(3.0);
-static const float unit112_1 = 1.0 / sqrtf(6.0);
-static const float unit112_2 = 2.0 / sqrtf(6.0);
+const float unit110 = 1.0 / sqrtf(2.0);
+const float unit111 = 1.0 / sqrtf(3.0);
+const float unit112_1 = 1.0 / sqrtf(6.0);
+const float unit112_2 = 2.0 / sqrtf(6.0);
 
 float crystalDirections[12][3][3] = {{{unit111, unit112_1, unit110}, {-unit111, -unit112_1, unit110}, {unit111, -unit112_2, 0}},
 
@@ -105,15 +115,6 @@ MergeColonies::MergeColonies()
 , m_AngleTolerance(1.0f)
 , m_RandomizeParentIds(true)
 , m_IdentifyGlobAlpha(false)
-, m_FeatureIds(nullptr)
-, m_CellPhases(nullptr)
-, m_AvgQuats(nullptr)
-, m_FeaturePhases(nullptr)
-, m_CrystalStructures(nullptr)
-, m_CellParentIds(nullptr)
-, m_FeatureParentIds(nullptr)
-, m_GlobAlpha(nullptr)
-, m_Active(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 
@@ -133,7 +134,7 @@ void MergeColonies::setupFilterParameters()
 {
   GroupFeatures::setupFilterParameters();
 
-  FilterParameterVector parameters = getFilterParameters();
+  FilterParameterVectorType parameters = getFilterParameters();
   parameters.push_back(SIMPL_NEW_FLOAT_FP("Axis Tolerance (Degrees)", AxisTolerance, FilterParameter::Parameter, MergeColonies));
   parameters.push_back(SIMPL_NEW_FLOAT_FP("Angle Tolerance (Degrees)", AngleTolerance, FilterParameter::Parameter, MergeColonies));
   QStringList linkedProps("GlobAlphaArrayName");
@@ -161,12 +162,12 @@ void MergeColonies::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Crystal Structures", CrystalStructuresArrayPath, FilterParameter::RequiredArray, MergeColonies, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Element Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Parent Ids", CellParentIdsArrayName, FilterParameter::CreatedArray, MergeColonies));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Glob Alpha", GlobAlphaArrayName, FilterParameter::CreatedArray, MergeColonies));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Parent Ids", CellParentIdsArrayName, FeatureIdsArrayPath, FeatureIdsArrayPath, FilterParameter::CreatedArray, MergeColonies));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Glob Alpha", GlobAlphaArrayName, FeatureIdsArrayPath, FeatureIdsArrayPath, FilterParameter::CreatedArray, MergeColonies));
   parameters.push_back(SeparatorFilterParameter::New("Feature Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Feature Attribute Matrix", NewCellFeatureAttributeMatrixName, FilterParameter::CreatedArray, MergeColonies));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Parent Ids", FeatureParentIdsArrayName, FilterParameter::CreatedArray, MergeColonies));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Active", ActiveArrayName, FilterParameter::CreatedArray, MergeColonies));
+  parameters.push_back(SIMPL_NEW_AM_WITH_LINKED_DC_FP("Feature Attribute Matrix", NewCellFeatureAttributeMatrixName, FeatureIdsArrayPath, FilterParameter::CreatedArray, MergeColonies));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Parent Ids", FeatureParentIdsArrayName, FeaturePhasesArrayPath, FeaturePhasesArrayPath, FilterParameter::CreatedArray, MergeColonies));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Active", ActiveArrayName, FeatureIdsArrayPath, NewCellFeatureAttributeMatrixName, FilterParameter::CreatedArray, MergeColonies));
   setFilterParameters(parameters);
 }
 
@@ -198,8 +199,8 @@ void MergeColonies::readFilterParameters(AbstractFilterParametersReader* reader,
 // -----------------------------------------------------------------------------
 void MergeColonies::updateFeatureInstancePointers()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   if(nullptr != m_ActivePtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
@@ -220,28 +221,28 @@ void MergeColonies::initialize()
 // -----------------------------------------------------------------------------
 void MergeColonies::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
 
   DataArrayPath tempPath;
 
   GroupFeatures::dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   DataContainer::Pointer m = getDataContainerArray()->getPrereqDataContainer(this, m_FeatureIdsArrayPath.getDataContainerName(), false);
-  if(getErrorCondition() < 0 || nullptr == m.get())
+  if(getErrorCode() < 0 || nullptr == m.get())
   {
     return;
   }
 
-  QVector<size_t> tDims(1, 0);
-  m->createNonPrereqAttributeMatrix(this, getNewCellFeatureAttributeMatrixName(), tDims, AttributeMatrix::Type::CellFeature);
+  std::vector<size_t> tDims(1, 0);
+  m->createNonPrereqAttributeMatrix(this, getNewCellFeatureAttributeMatrixName(), tDims, AttributeMatrix::Type::CellFeature, AttributeMatrixID21);
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
 
   QVector<DataArrayPath> cellDataArrayPaths;
   QVector<DataArrayPath> featureDataArrayPaths;
@@ -253,7 +254,7 @@ void MergeColonies::dataCheck()
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     cellDataArrayPaths.push_back(getFeatureIdsArrayPath());
   }
@@ -264,7 +265,7 @@ void MergeColonies::dataCheck()
   {
     m_CellPhases = m_CellPhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     cellDataArrayPaths.push_back(getCellPhasesArrayPath());
   }
@@ -277,7 +278,7 @@ void MergeColonies::dataCheck()
     m_CellParentIds = m_CellParentIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
-  if(m_IdentifyGlobAlpha == true)
+  if(m_IdentifyGlobAlpha)
   {
     tempPath.update(getFeatureIdsArrayPath().getDataContainerName(), getFeatureIdsArrayPath().getAttributeMatrixName(), getGlobAlphaArrayName());
     m_GlobAlphaPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter, int32_t>(
@@ -295,7 +296,7 @@ void MergeColonies::dataCheck()
   {
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     featureDataArrayPaths.push_back(getFeaturePhasesArrayPath());
   }
@@ -315,7 +316,7 @@ void MergeColonies::dataCheck()
   {
     m_AvgQuats = m_AvgQuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     featureDataArrayPaths.push_back(getAvgQuatsArrayPath());
   }
@@ -323,8 +324,7 @@ void MergeColonies::dataCheck()
   // NewFeature Data
   cDims[0] = 1;
   tempPath.update(m_FeatureIdsArrayPath.getDataContainerName(), getNewCellFeatureAttributeMatrixName(), getActiveArrayName());
-  m_ActivePtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<bool>, AbstractFilter, bool>(this, tempPath, true,
-                                                                                                             cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_ActivePtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<bool>, AbstractFilter, bool>(this, tempPath, true, cDims, "", DataArrayID31);
   if(nullptr != m_ActivePtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Active = m_ActivePtr.lock()->getPointer(0);
@@ -357,8 +357,8 @@ void MergeColonies::preflight()
 // -----------------------------------------------------------------------------
 int32_t MergeColonies::getSeed(int32_t newFid)
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   int32_t numfeatures = static_cast<int32_t>(m_FeaturePhasesPtr.lock()->getNumberOfTuples());
 
@@ -387,7 +387,7 @@ int32_t MergeColonies::getSeed(int32_t newFid)
   if(seed >= 0)
   {
     m_FeatureParentIds[seed] = newFid;
-    QVector<size_t> tDims(1, newFid + 1);
+    std::vector<size_t> tDims(1, newFid + 1);
     getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName())->getAttributeMatrix(getNewCellFeatureAttributeMatrixName())->resizeAttributeArrays(tDims);
     updateFeatureInstancePointers();
   }
@@ -455,7 +455,7 @@ bool MergeColonies::determineGrouping(int32_t referenceFeature, int32_t neighbor
       {
         colony = true;
       }
-      if(colony == true)
+      if(colony)
       {
         m_FeatureParentIds[neighborFeature] = newFid;
         return true;
@@ -464,7 +464,7 @@ bool MergeColonies::determineGrouping(int32_t referenceFeature, int32_t neighbor
     else if(Ebsd::CrystalStructure::Cubic_High == phase2 && Ebsd::CrystalStructure::Hexagonal_High == phase1)
     {
       colony = check_for_burgers(q2, q1);
-      if(colony == true)
+      if(colony)
       {
         m_FeatureParentIds[neighborFeature] = newFid;
         return true;
@@ -473,7 +473,7 @@ bool MergeColonies::determineGrouping(int32_t referenceFeature, int32_t neighbor
     else if(Ebsd::CrystalStructure::Cubic_High == phase1 && Ebsd::CrystalStructure::Hexagonal_High == phase2)
     {
       colony = check_for_burgers(q1, q2);
-      if(colony == true)
+      if(colony)
       {
         m_FeatureParentIds[neighborFeature] = newFid;
         return true;
@@ -488,7 +488,6 @@ bool MergeColonies::determineGrouping(int32_t referenceFeature, int32_t neighbor
 // -----------------------------------------------------------------------------
 void MergeColonies::characterize_colonies()
 {
-  return;
 }
 
 // -----------------------------------------------------------------------------
@@ -611,10 +610,10 @@ void MergeColonies::identify_globAlpha()
 // -----------------------------------------------------------------------------
 void MergeColonies::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -626,8 +625,7 @@ void MergeColonies::execute()
   size_t totalFeatures = m_ActivePtr.lock()->getNumberOfTuples();
   if(totalFeatures < 2)
   {
-    setErrorCondition(-87000);
-    notifyErrorMessage(getHumanLabel(), "The number of Grouped Features was 0 or 1 which means no grouped Features were detected. A grouping value may be set too high", getErrorCondition());
+    setErrorCondition(-87000, "The number of Grouped Features was 0 or 1 which means no grouped Features were detected. A grouping value may be set too high");
     return;
   }
 
@@ -644,10 +642,10 @@ void MergeColonies::execute()
   }
   numParents += 1;
 
-  notifyStatusMessage(getHumanLabel(), "Characterizing Colonies");
+  notifyStatusMessage("Characterizing Colonies");
   characterize_colonies();
 
-  if(true == m_RandomizeParentIds)
+  if(m_RandomizeParentIds)
   {
     // Generate all the numbers up front
     const int32_t rangeMin = 1;
@@ -656,7 +654,7 @@ void MergeColonies::execute()
     std::mt19937_64 generator(seed); // Standard mersenne_twister_engine seeded with milliseconds
     std::uniform_int_distribution<int32_t> distribution(rangeMin, rangeMax);
 
-    DataArray<int32_t>::Pointer rndNumbers = DataArray<int32_t>::CreateArray(numParents, "_INTERNAL_USE_ONLY_NewParentIds");
+    DataArray<int32_t>::Pointer rndNumbers = DataArray<int32_t>::CreateArray(numParents, "_INTERNAL_USE_ONLY_NewParentIds", true);
     int32_t* pid = rndNumbers->getPointer(0);
     pid[0] = 0;
     QSet<int32_t> parentIdSet;
@@ -691,12 +689,11 @@ void MergeColonies::execute()
     }
   }
 
-  if(m_IdentifyGlobAlpha == true)
+  if(m_IdentifyGlobAlpha)
   {
     identify_globAlpha();
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -705,7 +702,7 @@ void MergeColonies::execute()
 AbstractFilter::Pointer MergeColonies::newFilterInstance(bool copyFilterParameters) const
 {
   MergeColonies::Pointer filter = MergeColonies::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

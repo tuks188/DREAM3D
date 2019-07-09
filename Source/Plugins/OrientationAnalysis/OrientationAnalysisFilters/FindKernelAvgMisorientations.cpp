@@ -39,6 +39,7 @@
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/IntVec3FilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
@@ -57,18 +58,12 @@ FindKernelAvgMisorientations::FindKernelAvgMisorientations()
 , m_CrystalStructuresArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::CrystalStructures)
 , m_QuatsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Quats)
 , m_KernelAverageMisorientationsArrayName(SIMPL::CellData::KernelAverageMisorientations)
-, m_FeatureIds(nullptr)
-, m_CellPhases(nullptr)
-, m_Quats(nullptr)
-, m_CrystalStructures(nullptr)
-, m_KernelAverageMisorientations(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 
-  m_KernelSize.x = 1;
-  m_KernelSize.y = 1;
-  m_KernelSize.z = 1;
-
+  m_KernelSize[0] = 1;
+  m_KernelSize[1] = 1;
+  m_KernelSize[2] = 1;
 }
 
 // -----------------------------------------------------------------------------
@@ -81,7 +76,7 @@ FindKernelAvgMisorientations::~FindKernelAvgMisorientations() = default;
 // -----------------------------------------------------------------------------
 void FindKernelAvgMisorientations::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_INT_VEC3_FP("Kernel Radius", KernelSize, FilterParameter::Parameter, FindKernelAvgMisorientations));
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
 
@@ -107,7 +102,7 @@ void FindKernelAvgMisorientations::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Crystal Structures", CrystalStructuresArrayPath, FilterParameter::RequiredArray, FindKernelAvgMisorientations, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Kernel Average Misorientations", KernelAverageMisorientationsArrayName, FilterParameter::CreatedArray, FindKernelAvgMisorientations));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Kernel Average Misorientations", KernelAverageMisorientationsArrayName, FeatureIdsArrayPath, FeatureIdsArrayPath, FilterParameter::CreatedArray, FindKernelAvgMisorientations));
   setFilterParameters(parameters);
 }
 
@@ -136,22 +131,22 @@ void FindKernelAvgMisorientations::initialize()
 // -----------------------------------------------------------------------------
 void FindKernelAvgMisorientations::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
 
   QVector<DataArrayPath> dataArrayPaths;
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeatureIdsArrayPath());
   }
@@ -162,7 +157,7 @@ void FindKernelAvgMisorientations::dataCheck()
   {
     m_CellPhases = m_CellPhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getCellPhasesArrayPath());
   }
@@ -189,7 +184,7 @@ void FindKernelAvgMisorientations::dataCheck()
   {
     m_Quats = m_QuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getQuatsArrayPath());
   }
@@ -215,10 +210,10 @@ void FindKernelAvgMisorientations::preflight()
 // -----------------------------------------------------------------------------
 void FindKernelAvgMisorientations::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -236,8 +231,7 @@ void FindKernelAvgMisorientations::execute()
   float n1 = 0.0f, n2 = 0.0f, n3 = 0.0f;
   uint32_t phase1 = Ebsd::CrystalStructure::UnknownCrystalStructure;
   uint32_t phase2 = Ebsd::CrystalStructure::UnknownCrystalStructure;
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t xPoints = static_cast<int64_t>(udims[0]);
   int64_t yPoints = static_cast<int64_t>(udims[1]);
@@ -260,13 +254,13 @@ void FindKernelAvgMisorientations::execute()
           numVoxel = 0;
           QuaternionMathF::Copy(quats[point], q1);
           phase1 = m_CrystalStructures[m_CellPhases[point]];
-          for(int32_t j = -m_KernelSize.z; j < m_KernelSize.z + 1; j++)
+          for(int32_t j = -m_KernelSize[2]; j < m_KernelSize[2] + 1; j++)
           {
             jStride = j * xPoints * yPoints;
-            for(int32_t k = -m_KernelSize.y; k < m_KernelSize.y + 1; k++)
+            for(int32_t k = -m_KernelSize[1]; k < m_KernelSize[1] + 1; k++)
             {
               kStride = k * xPoints;
-              for(int32_t l = -m_KernelSize.x; l < m_KernelSize.z + 1; l++)
+              for(int32_t l = -m_KernelSize[0]; l < m_KernelSize[0] + 1; l++)
               {
                 good = true;
                 neighbor = point + (jStride) + (kStride) + (l);
@@ -294,7 +288,7 @@ void FindKernelAvgMisorientations::execute()
                 {
                   good = false;
                 }
-                if(good == true && m_FeatureIds[point] == m_FeatureIds[neighbor])
+                if(good && m_FeatureIds[point] == m_FeatureIds[neighbor])
                 {
                   w = std::numeric_limits<float>::max();
                   QuaternionMathF::Copy(quats[neighbor], q2);
@@ -321,7 +315,6 @@ void FindKernelAvgMisorientations::execute()
     }
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -330,7 +323,7 @@ void FindKernelAvgMisorientations::execute()
 AbstractFilter::Pointer FindKernelAvgMisorientations::newFilterInstance(bool copyFilterParameters) const
 {
   FindKernelAvgMisorientations::Pointer filter = FindKernelAvgMisorientations::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

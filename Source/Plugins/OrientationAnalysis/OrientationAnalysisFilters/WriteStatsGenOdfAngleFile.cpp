@@ -35,7 +35,7 @@
 
 #include "WriteStatsGenOdfAngleFile.h"
 
-#include <stdio.h>
+#include <cstdio>
 
 #include <iostream>
 
@@ -46,10 +46,6 @@
 #include <QtCore/QString>
 #include <QtCore/QString>
 
-#include <QtGui/QColor>
-#include <QtGui/QFont>
-#include <QtGui/QImage>
-#include <QtGui/QPainter>
 
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/BooleanFilterParameter.h"
@@ -61,6 +57,7 @@
 #include "SIMPLib/FilterParameters/OutputFileFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/Math/SIMPLibMath.h"
+#include "SIMPLib/Utilities/FileSystemPathHelper.h"
 
 #include "OrientationAnalysis/OrientationAnalysisConstants.h"
 #include "OrientationAnalysis/OrientationAnalysisVersion.h"
@@ -98,7 +95,7 @@ WriteStatsGenOdfAngleFile::~WriteStatsGenOdfAngleFile() = default;
 // -----------------------------------------------------------------------------
 void WriteStatsGenOdfAngleFile::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   /* For String input use this code */
   parameters.push_back(SIMPL_NEW_OUTPUT_FILE_FP("Output File", OutputFile, FilterParameter::Parameter, WriteStatsGenOdfAngleFile));
@@ -169,40 +166,25 @@ void WriteStatsGenOdfAngleFile::initialize()
 // -----------------------------------------------------------------------------
 void WriteStatsGenOdfAngleFile::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
+
+  FileSystemPathHelper::CheckOutputFile(this, "Output File Path", getOutputFile(), true);
 
   QString ss;
-  if(getOutputFile().isEmpty() == true)
-  {
-    ss = QObject::tr("The output file must be set");
-    setErrorCondition(-94000);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
-  }
-  QFileInfo fi(getOutputFile());
-  QDir parentPath = fi.path();
-  if(parentPath.exists() == false)
-  {
-    setWarningCondition(-94001);
-    ss = QObject::tr("The directory path for the output file does not exist");
-    notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
-  }
-
   if(getWeight() < 1.0f)
   {
     ss = QObject::tr("The default 'Weight' value should be at least 1.0. Undefined results will occur from this filter.");
-    setErrorCondition(-94002);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-94002, ss);
   }
 
   if(getSigma() < 1)
   {
     ss = QObject::tr("The default 'Sigma' value should be at least 1. Undefined results will occur from this filter.");
-    setErrorCondition(-94003);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-94003, ss);
   }
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_CellPhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getCellPhasesArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_CellPhasesPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -218,7 +200,7 @@ void WriteStatsGenOdfAngleFile::dataCheck()
     m_CellEulerAngles = m_CellEulerAnglesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
-  if(getUseGoodVoxels() == true)
+  if(getUseGoodVoxels())
   {
     // The good voxels array is optional, If it is available we are going to use it, otherwise we are going to create it
     cDims[0] = 1;
@@ -255,10 +237,10 @@ void WriteStatsGenOdfAngleFile::preflight()
 // -----------------------------------------------------------------------------
 void WriteStatsGenOdfAngleFile::execute()
 {
-  int err = 0;
-  setErrorCondition(err);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -281,8 +263,7 @@ void WriteStatsGenOdfAngleFile::execute()
   {
     QString ss;
     ss = QObject::tr("Error creating parent path '%1'").arg(dir.path());
-    setErrorCondition(-45001);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-45001, ss);
     return;
   }
 
@@ -298,21 +279,20 @@ void WriteStatsGenOdfAngleFile::execute()
     if(lineCount == 0)
     {
       QString ss = QObject::tr("No valid data for phase '%1'. No ODF Angle file written for phase.").arg(*iter);
-      notifyWarningMessage(getHumanLabel(), ss, 0);
+      setWarningCondition(0, ss);
       continue;
     }
 
     QString ss = QObject::tr("Writing file for phase '%1'").arg(*iter);
-    notifyStatusMessage(getHumanLabel(), ss);
+    notifyStatusMessage(ss);
 
     QString absFilePath = absPath + "/" + fname + "_Phase_" + QString::number(*iter) + "." + suffix;
 
     QFile file(absFilePath);
     if(!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
     {
-      setErrorCondition(-99000);
       QString ss = QObject::tr("Error creating output file '%1'").arg(absFilePath);
-      notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+      setErrorCondition(-99000, ss);
       return;
     }
 
@@ -321,17 +301,15 @@ void WriteStatsGenOdfAngleFile::execute()
     int err = writeOutputFile(out, lineCount, totalPoints, *iter);
     if(err < 0)
     {
-      setErrorCondition(-99001);
       QString ss = QObject::tr("Error writing output file '%1'").arg(absFilePath);
-      notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+      setErrorCondition(-99001, ss);
       return;
     }
     out.flush();
     file.close(); // Close the file
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -344,11 +322,11 @@ int WriteStatsGenOdfAngleFile::determineOutputLineCount(int64_t totalPoints, int
   {
     if(m_CellPhases[i] == phase)
     {
-      if(m_UseGoodVoxels == false)
+      if(!m_UseGoodVoxels)
       {
         lineCount++;
       }
-      else if(m_UseGoodVoxels == true && m_GoodVoxels[i] == true)
+      else if(m_UseGoodVoxels && m_GoodVoxels[i])
       {
         lineCount++;
       }
@@ -373,7 +351,7 @@ int WriteStatsGenOdfAngleFile::writeOutputFile(QTextStream& out, int32_t lineCou
 
   out << "# Angle Data is " << delStr[m_Delimiter] << " delimited.\n";
 
-  if(m_ConvertToDegrees == true)
+  if(m_ConvertToDegrees)
   {
     out << "# Euler angles are expressed in degrees\n";
   }
@@ -390,22 +368,22 @@ int WriteStatsGenOdfAngleFile::writeOutputFile(QTextStream& out, int32_t lineCou
 
     if(m_CellPhases[i] == phase)
     {
-      if(m_UseGoodVoxels == false)
+      if(!m_UseGoodVoxels)
       {
         writeLine = true;
       }
-      else if(m_UseGoodVoxels == true && m_GoodVoxels[i] == true)
+      else if(m_UseGoodVoxels && m_GoodVoxels[i])
       {
         writeLine = true;
       }
     }
 
-    if(writeLine == true)
+    if(writeLine)
     {
       float e0 = m_CellEulerAngles[i * 3 + 0];
       float e1 = m_CellEulerAngles[i * 3 + 1];
       float e2 = m_CellEulerAngles[i * 3 + 2];
-      if(m_ConvertToDegrees == true)
+      if(m_ConvertToDegrees)
       {
         e0 = e0 * static_cast<float>(SIMPLib::Constants::k_180OverPi);
         e1 = e1 * static_cast<float>(SIMPLib::Constants::k_180OverPi);
@@ -424,7 +402,7 @@ int WriteStatsGenOdfAngleFile::writeOutputFile(QTextStream& out, int32_t lineCou
 AbstractFilter::Pointer WriteStatsGenOdfAngleFile::newFilterInstance(bool copyFilterParameters) const
 {
   WriteStatsGenOdfAngleFile::Pointer filter = WriteStatsGenOdfAngleFile::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

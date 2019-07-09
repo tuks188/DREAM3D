@@ -36,7 +36,6 @@
 
 #pragma once
 
-#include <QtCore/QObject>
 #include <QtCore/QString>
 
 #include "SIMPLib/SIMPLib.h"
@@ -64,8 +63,7 @@ class EMMPMLib_EXPORT EMMPM : public Observable
     SIMPL_INSTANCE_PROPERTY(EMMPM_Data::Pointer, Data);
     SIMPL_INSTANCE_PROPERTY(InitializationFunction::Pointer, InitializationFunction)
     SIMPL_POINTER_PROPERTY(StatsDelegate, StatsDelegate)
-    SIMPL_INSTANCE_PROPERTY(int, ErrorCondition)
-    SIMPL_INSTANCE_PROPERTY(QString, MessagePrefix)
+    SIMPL_INSTANCE_PROPERTY(int, ErrorCode)
 
     /**
     * @brief This returns a string that is displayed in the GUI. It should be readable
@@ -89,9 +87,11 @@ class EMMPMLib_EXPORT EMMPM : public Observable
   protected:
     EMMPM();
 
-  private:
+  public:
     EMMPM(const EMMPM&) = delete;          // Copy Constructor Not Implemented
-    void operator=(const EMMPM&) = delete; // Move assignment Not Implemented
+    EMMPM(EMMPM&&) = delete;               // Move Constructor Not Implemented
+    EMMPM& operator=(const EMMPM&) = delete; // Copy Assignment Not Implemented
+    EMMPM& operator=(EMMPM&&) = delete;      // Move Assignment Not Implemented
 };
 
 

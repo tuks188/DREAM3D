@@ -62,13 +62,11 @@ public:
   : m_Triangles(triangles)
   {
   }
-  virtual ~ReverseWindingImpl()
-  {
-  }
+  virtual ~ReverseWindingImpl() = default;
 
   void generate(size_t start, size_t end) const
   {
-    int64_t* triangles = m_Triangles->getPointer(0);
+    MeshIndexType* triangles = m_Triangles->getPointer(0);
 
     for(size_t i = start; i < end; i++)
     {
@@ -112,7 +110,7 @@ ReverseTriangleWinding::~ReverseTriangleWinding() = default;
 void ReverseTriangleWinding::setupFilterParameters()
 {
   SurfaceMeshFilter::setupFilterParameters();
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   {
     DataContainerSelectionFilterParameter::RequirementType req;
     req.dcGeometryTypes = IGeometry::Types(1, IGeometry::Type::Triangle);
@@ -127,7 +125,7 @@ void ReverseTriangleWinding::setupFilterParameters()
 void ReverseTriangleWinding::readFilterParameters(AbstractFilterParametersReader* reader, int index)
 {
   reader->openFilterGroup(this, index);
-  setSurfaceDataContainerName(reader->readString("SurfaceDataContainerName", getSurfaceDataContainerName()));
+  setSurfaceDataContainerName(reader->readDataArrayPath("SurfaceDataContainerName", getSurfaceDataContainerName()));
   reader->closeFilterGroup();
 }
 
@@ -164,10 +162,10 @@ void ReverseTriangleWinding::preflight()
 // -----------------------------------------------------------------------------
 void ReverseTriangleWinding::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -181,7 +179,7 @@ void ReverseTriangleWinding::execute()
   TriangleGeom::Pointer triangleGeom = sm->getGeometryAs<TriangleGeom>();
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, triangleGeom->getNumberOfTris()), ReverseWindingImpl(triangleGeom->getTriangles()), tbb::auto_partitioner());
   }
@@ -192,8 +190,7 @@ void ReverseTriangleWinding::execute()
     serial.generate(0, triangleGeom->getNumberOfTris());
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -202,7 +199,7 @@ void ReverseTriangleWinding::execute()
 AbstractFilter::Pointer ReverseTriangleWinding::newFilterInstance(bool copyFilterParameters) const
 {
   ReverseTriangleWinding::Pointer filter = ReverseTriangleWinding::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

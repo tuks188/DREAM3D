@@ -35,9 +35,8 @@
 
 #include <string.h>
 
-#include <QtCore/QDir>
+#include <QtCore/QDebug>
 #include <QtCore/QFile>
-#include <QtCore/QtDebug>
 
 #include "EbsdLib/EbsdLib.h"
 
@@ -56,12 +55,8 @@
 class AngImportTest
 {
 public:
-  AngImportTest()
-  {
-  }
-  virtual ~AngImportTest()
-  {
-  }
+  AngImportTest() = default;
+  virtual ~AngImportTest() = default;
 
   // -----------------------------------------------------------------------------
   //
@@ -174,6 +169,8 @@ public:
   {
     int err = EXIT_SUCCESS;
 
+    std::cout << "#-- AngImportTest Starting " << std::endl;
+
     DREAM3D_REGISTER_TEST(TestMissingHeaders())
     DREAM3D_REGISTER_TEST(TestHexGrid())
     DREAM3D_REGISTER_TEST(TestMissingGrid())
@@ -181,4 +178,10 @@ public:
     DREAM3D_REGISTER_TEST(TestNormalFile())
     DREAM3D_REGISTER_TEST(RemoveTestFiles())
   }
+
+public:
+  AngImportTest(const AngImportTest&) = delete;            // Copy Constructor Not Implemented
+  AngImportTest(AngImportTest&&) = delete;                 // Move Constructor Not Implemented
+  AngImportTest& operator=(const AngImportTest&) = delete; // Copy Assignment Not Implemented
+  AngImportTest& operator=(AngImportTest&&) = delete;      // Move Assignment Not Implemented
 };

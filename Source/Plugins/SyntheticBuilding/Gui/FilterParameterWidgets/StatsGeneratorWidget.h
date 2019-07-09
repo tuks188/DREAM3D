@@ -37,9 +37,7 @@
 
 #include <vector>
 
-#include <QtCore/QObject>
 
-#include <QtWidgets/QMainWindow>
 #include <QtWidgets/QMessageBox>
 
 #include "SIMPLib/Common/SIMPLibSetGetMacros.h"
@@ -105,13 +103,6 @@ protected:
   void setupGui();
 
   /**
-   * @brief Verifies that a path exists on the file system.
-   * @param outFilePath The file path to check
-   * @param lineEdit The QLineEdit object to modify visuals of (Usually by placing a red line around the QLineEdit widget)
-   */
-  bool verifyPathExists(const QString& outFilePath, QLineEdit* lineEdit);
-
-  /**
    * @brief Verifies that a parent path exists on the file system.
    * @param outFilePath The parent file path to check
    * @param lineEdit The QLineEdit object to modify visuals of (Usually by placing a red line around the QLineEdit widget)
@@ -134,7 +125,10 @@ private:
   bool m_NeedDataLoad = false;
   AttributeMatrix::Pointer m_CellEnsembleAttrMat = AttributeMatrix::NullPointer();
 
+public:
   StatsGeneratorWidget(const StatsGeneratorWidget&) = delete; // Copy Constructor Not Implemented
-  void operator=(const StatsGeneratorWidget&) = delete;       // Move assignment Not Implemented
+  StatsGeneratorWidget(StatsGeneratorWidget&&) = delete;      // Move Constructor Not Implemented
+  StatsGeneratorWidget& operator=(const StatsGeneratorWidget&) = delete; // Copy Assignment Not Implemented
+  StatsGeneratorWidget& operator=(StatsGeneratorWidget&&) = delete;      // Move Assignment Not Implemented
 };
 

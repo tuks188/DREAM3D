@@ -43,6 +43,7 @@
 
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
@@ -89,9 +90,7 @@ public:
   , m_CrystalStructures(crystalStructures)
   {
   }
-  virtual ~CalculateFaceIPFColorsImpl()
-  {
-  }
+  virtual ~CalculateFaceIPFColorsImpl() = default;
 
   void generate(size_t start, size_t end) const
   {
@@ -211,12 +210,6 @@ GenerateFaceIPFColoring::GenerateFaceIPFColoring()
 , m_FeaturePhasesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, SIMPL::FeatureData::Phases)
 , m_CrystalStructuresArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::CrystalStructures)
 , m_SurfaceMeshFaceIPFColorsArrayName(SIMPL::FaceData::SurfaceMeshFaceIPFColors)
-, m_SurfaceMeshFaceLabels(nullptr)
-, m_SurfaceMeshFaceNormals(nullptr)
-, m_FeatureEulerAngles(nullptr)
-, m_FeaturePhases(nullptr)
-, m_CrystalStructures(nullptr)
-, m_SurfaceMeshFaceIPFColors(nullptr)
 {
 }
 
@@ -230,7 +223,7 @@ GenerateFaceIPFColoring::~GenerateFaceIPFColoring() = default;
 // -----------------------------------------------------------------------------
 void GenerateFaceIPFColoring::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req = DataArraySelectionFilterParameter::CreateRequirement(SIMPL::TypeNames::Int32, 2, AttributeMatrix::Type::Face, IGeometry::Type::Triangle);
@@ -261,7 +254,7 @@ void GenerateFaceIPFColoring::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Crystal Structures", CrystalStructuresArrayPath, FilterParameter::RequiredArray, GenerateFaceIPFColoring, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("IPF Colors", SurfaceMeshFaceIPFColorsArrayName, FilterParameter::CreatedArray, GenerateFaceIPFColoring));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("IPF Colors", SurfaceMeshFaceIPFColorsArrayName, SurfaceMeshFaceLabelsArrayPath, SurfaceMeshFaceLabelsArrayPath, FilterParameter::CreatedArray, GenerateFaceIPFColoring));
   setFilterParameters(parameters);
 }
 
@@ -285,27 +278,27 @@ void GenerateFaceIPFColoring::readFilterParameters(AbstractFilterParametersReade
 // -----------------------------------------------------------------------------
 void GenerateFaceIPFColoring::dataCheckSurfaceMesh()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
   TriangleGeom::Pointer triangles = getDataContainerArray()->getPrereqGeometryFromDataContainer<TriangleGeom, AbstractFilter>(this, m_SurfaceMeshFaceLabelsArrayPath.getDataContainerName());
 
   QVector<IDataArray::Pointer> dataArrays;
 
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(triangles->getTriangles());
   }
 
-  QVector<size_t> cDims(1, 2);
+  std::vector<size_t> cDims(1, 2);
   m_SurfaceMeshFaceLabelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath(),
                                                                                                                    cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_SurfaceMeshFaceLabelsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshFaceLabels = m_SurfaceMeshFaceLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshFaceLabelsPtr.lock());
   }
@@ -317,7 +310,7 @@ void GenerateFaceIPFColoring::dataCheckSurfaceMesh()
   {
     m_SurfaceMeshFaceNormals = m_SurfaceMeshFaceNormalsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshFaceNormalsPtr.lock());
   }
@@ -339,22 +332,22 @@ void GenerateFaceIPFColoring::dataCheckSurfaceMesh()
 // -----------------------------------------------------------------------------
 void GenerateFaceIPFColoring::dataCheckVoxel()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
   QVector<DataArrayPath> dataArrayPaths;
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureEulerAnglesArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 3);
+  std::vector<size_t> cDims(1, 3);
   m_FeatureEulerAnglesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getFeatureEulerAnglesArrayPath(),
                                                                                                               cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureEulerAnglesPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureEulerAngles = m_FeatureEulerAnglesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeatureEulerAnglesArrayPath());
   }
@@ -366,7 +359,7 @@ void GenerateFaceIPFColoring::dataCheckVoxel()
   {
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeaturePhasesArrayPath());
   }
@@ -400,15 +393,15 @@ void GenerateFaceIPFColoring::preflight()
 // -----------------------------------------------------------------------------
 void GenerateFaceIPFColoring::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheckSurfaceMesh();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
   dataCheckVoxel();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -420,7 +413,7 @@ void GenerateFaceIPFColoring::execute()
 #endif
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, numTriangles),
                       CalculateFaceIPFColorsImpl(m_SurfaceMeshFaceLabels, m_FeaturePhases, m_SurfaceMeshFaceNormals, m_FeatureEulerAngles, m_SurfaceMeshFaceIPFColors, m_CrystalStructures),
@@ -433,8 +426,7 @@ void GenerateFaceIPFColoring::execute()
     serial.generate(0, numTriangles);
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -443,7 +435,7 @@ void GenerateFaceIPFColoring::execute()
 AbstractFilter::Pointer GenerateFaceIPFColoring::newFilterInstance(bool copyFilterParameters) const
 {
   GenerateFaceIPFColoring::Pointer filter = GenerateFaceIPFColoring::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

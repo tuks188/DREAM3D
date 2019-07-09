@@ -41,10 +41,7 @@
 // -----------------------------------------------------------------------------
 EbsdTransform::EbsdTransform()
 
-{
-
-}
-
+    = default;
 
 Ebsd::EbsdToSampleCoordinateMapping EbsdTransform::IdentifyStandardTransformation(AxisAngleInput_t sampleTransformation, AxisAngleInput_t eulerTransformation)
 {
@@ -52,58 +49,33 @@ Ebsd::EbsdToSampleCoordinateMapping EbsdTransform::IdentifyStandardTransformatio
 
 
   // TSL/EDAX
-  if (      sampleTransformation.angle == 180.0f
-            && sampleTransformation.h == 0.0f
-            && sampleTransformation.k == 1.0f
-            && sampleTransformation.l == 0.0f
+  if(sampleTransformation.angle == 180.0f && sampleTransformation.h == 0.0f && sampleTransformation.k == 1.0f && sampleTransformation.l == 0.0f
 
-
-            && eulerTransformation.angle == 90.0f
-            && eulerTransformation.h == 0.0f
-            && eulerTransformation.k == 0.0f
-            && eulerTransformation.l == 1.0f
-     )
-
+     && eulerTransformation.angle == 90.0f && eulerTransformation.h == 0.0f && eulerTransformation.k == 0.0f && eulerTransformation.l == 1.0f)
 
   {
     return Ebsd::TSLdefault;
   }
 
-  else if (       sampleTransformation.angle == 180.0f    // HKL
-                  && sampleTransformation.h == 0.0f
-                  && sampleTransformation.k == 1.0f
-                  && sampleTransformation.l == 0.0f
+  if(sampleTransformation.angle == 180.0f // HKL
+     && sampleTransformation.h == 0.0f && sampleTransformation.k == 1.0f && sampleTransformation.l == 0.0f
 
-                  && eulerTransformation.angle == 0.0f
-                  && eulerTransformation.h == 0.0f
-                  && eulerTransformation.k == 0.0f
-                  && eulerTransformation.l == 1.0f
-          )
+     && eulerTransformation.angle == 0.0f && eulerTransformation.h == 0.0f && eulerTransformation.k == 0.0f && eulerTransformation.l == 1.0f)
 
   {
     return Ebsd::HKLdefault;
   }
 
+  if(sampleTransformation.angle == 0.0f // HEDM
+     && sampleTransformation.h == 0.0f && sampleTransformation.k == 0.0f && sampleTransformation.l == 1.0f
 
-  else if (       sampleTransformation.angle == 0.0f     // HEDM
-                  && sampleTransformation.h == 0.0f
-                  && sampleTransformation.k == 0.0f
-                  && sampleTransformation.l == 1.0f
-
-                  && eulerTransformation.angle == 0.0f
-                  && eulerTransformation.h == 0.0f
-                  && eulerTransformation.k == 0.0f
-                  && eulerTransformation.l == 1.0f
-          )
+     && eulerTransformation.angle == 0.0f && eulerTransformation.h == 0.0f && eulerTransformation.k == 0.0f && eulerTransformation.l == 1.0f)
 
   {
     return Ebsd::HEDMdefault;
   }
 
-
-  else {return Ebsd::UnknownCoordinateMapping;}
-
-
+  return Ebsd::UnknownCoordinateMapping;
 }
 
 
@@ -113,15 +85,3 @@ Ebsd::EbsdToSampleCoordinateMapping EbsdTransform::IdentifyStandardTransformatio
 //
 // -----------------------------------------------------------------------------
 EbsdTransform::~EbsdTransform() = default;
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-//void EbsdTransform::appendOriginalHeader(const QString& more)
-//{
-//  m_OriginalHeader.append(more);
-//}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------

@@ -38,10 +38,6 @@
 #include <iostream>
 #include <limits>
 
-#include <QtCore/QSettings>
-#include <QtGui/QDoubleValidator>
-#include <QtGui/QIntValidator>
-#include <QtWidgets/QLineEdit>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QProgressDialog>
 
@@ -56,6 +52,7 @@
 #include "SIMPLib/SIMPLib.h"
 #include "SIMPLib/StatsData/PrimaryStatsData.h"
 #include "SIMPLib/StatsData/StatsData.h"
+#include "SIMPLib/Utilities/ColorUtilities.h"
 
 #include "OrientationLib/Texture/StatsGen.hpp"
 
@@ -89,42 +86,6 @@ PrimaryPhaseWidget::PrimaryPhaseWidget(QWidget* parent)
 //
 // -----------------------------------------------------------------------------
 PrimaryPhaseWidget::~PrimaryPhaseWidget() = default;
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void PrimaryPhaseWidget::on_m_Omega3Btn_clicked(bool b)
-{
-  Q_UNUSED(b)
-  plotToolbox->setCurrentIndex(0);
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void PrimaryPhaseWidget::on_m_BOverABtn_clicked(bool b)
-{
-  Q_UNUSED(b)
-  plotToolbox->setCurrentIndex(1);
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void PrimaryPhaseWidget::on_m_COverABtn_clicked(bool b)
-{
-  Q_UNUSED(b)
-  plotToolbox->setCurrentIndex(2);
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void PrimaryPhaseWidget::on_m_NeighborBtn_clicked(bool b)
-{
-  Q_UNUSED(b)
-  plotToolbox->setCurrentIndex(3);
-}
 
 // -----------------------------------------------------------------------------
 //
@@ -291,6 +252,22 @@ StatsGenAxisODFWidget* PrimaryPhaseWidget::getAxisODFWidget()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
+void PrimaryPhaseWidget::setMDFWidget(StatsGenMDFWidget* w)
+{
+  m_MDFWidget = w;
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+StatsGenMDFWidget* PrimaryPhaseWidget::getMDFWidget()
+{
+  return m_MDFWidget;
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
 void PrimaryPhaseWidget::setFeatureSizeWidget(StatsGenFeatureSizeWidget* w)
 {
   m_FeatureSizeDistWidget = w;
@@ -309,7 +286,7 @@ StatsGenFeatureSizeWidget* PrimaryPhaseWidget::getFeatureSizeWidget()
 // -----------------------------------------------------------------------------
 QTabWidget* PrimaryPhaseWidget::getTabWidget()
 {
-  return primaryPhaseTabWidget;
+  return statsGenPhaseTabWidget;
 }
 
 // -----------------------------------------------------------------------------
@@ -325,10 +302,10 @@ QPushButton* PrimaryPhaseWidget::getGenerateDefaultDataBtn()
 // -----------------------------------------------------------------------------
 void PrimaryPhaseWidget::removeNeighborsPlotWidget()
 {
-  plotToolbox->removeWidget(m_NeighborPlot);
   m_NeighborPlot->setParent(nullptr);
   delete m_NeighborPlot;
   m_NeighborPlot = nullptr;
+  statsGenPhaseTabWidget->setTabEnabled(5, false);
 }
 
 // -----------------------------------------------------------------------------
@@ -448,8 +425,8 @@ void PrimaryPhaseWidget::setupGui()
 
   setSGPlotWidgets(plotWidgets);
 
-  // For the ODF Tab we want the MDF functionality
-  m_ODFWidget->enableMDFTab(true);
+  SGODFTableModel* odfTableModel = m_ODFWidget->tableModel();
+  m_MDFWidget->setODFTableModel(odfTableModel);
 
   // Remove any Axis Decorations. The plots are explicitly know to have a -1 to 1 axis min/max
   m_ODFWidget->setEnableAxisDecorations(false);
@@ -460,17 +437,13 @@ void PrimaryPhaseWidget::setupGui()
   connect(m_ODFWidget, SIGNAL(dataChanged()), this, SIGNAL(dataChanged()));
   connect(m_ODFWidget, SIGNAL(bulkLoadEvent(bool)), this, SLOT(bulkLoadEvent(bool)));
   connect(m_AxisODFWidget, SIGNAL(dataChanged()), this, SIGNAL(dataChanged()));
+  connect(m_MDFWidget, SIGNAL(dataChanged()), this, SIGNAL(dataChanged()));
 
+  connect(m_ODFWidget, SIGNAL(odfDataChanged()), m_MDFWidget, SLOT(updatePlots()));
   connect(m_FeatureSizeDistWidget, SIGNAL(dataChanged()), this, SIGNAL(dataChanged()));
 
   connect(m_FeatureSizeDistWidget, SIGNAL(userEnteredValidData(bool)), m_GenerateDefaultData, SLOT(setEnabled(bool)));
 
-  m_Omega3Btn->setChecked(true);
-  m_DistButtonGroup.addButton(m_Omega3Btn);
-  m_DistButtonGroup.addButton(m_BOverABtn);
-  m_DistButtonGroup.addButton(m_COverABtn);
-  m_DistButtonGroup.addButton(m_NeighborBtn);
-  on_m_Omega3Btn_clicked(true);
 }
 
 // -----------------------------------------------------------------------------
@@ -482,11 +455,12 @@ void PrimaryPhaseWidget::setPhaseIndex(const int& index)
   m_Omega3Plot->setPhaseIndex(index);
   m_BOverAPlot->setPhaseIndex(index);
   m_COverAPlot->setPhaseIndex(index);
-  if(m_NeighborPlot)
+  if(m_NeighborPlot != nullptr)
   {
     m_NeighborPlot->setPhaseIndex(index);
   }
   m_ODFWidget->setPhaseIndex(index);
+  m_MDFWidget->setPhaseIndex(index);
   m_AxisODFWidget->setPhaseIndex(index);
   m_FeatureSizeDistWidget->setPhaseIndex(index);
 }
@@ -500,12 +474,13 @@ void PrimaryPhaseWidget::setCrystalStructure(const unsigned int& xtal)
   m_Omega3Plot->setCrystalStructure(xtal);
   m_BOverAPlot->setCrystalStructure(xtal);
   m_COverAPlot->setCrystalStructure(xtal);
-  if(m_NeighborPlot)
+  if(m_NeighborPlot != nullptr)
   {
     m_NeighborPlot->setCrystalStructure(xtal);
   }
   m_ODFWidget->setCrystalStructure(xtal);
   m_FeatureSizeDistWidget->setCrystalStructure(xtal);
+  m_MDFWidget->setCrystalStructure(xtal);
   /* Note that we do NOT want to set the crystal structure for the AxisODF widget
    * because we need that crystal structure to be OrthoRhombic in order for those
    * calculations to be performed correctly */
@@ -534,10 +509,10 @@ QString PrimaryPhaseWidget::getComboString()
 // -----------------------------------------------------------------------------
 void PrimaryPhaseWidget::setTabsPlotTabsEnabled(bool b)
 {
-  qint32 count = this->primaryPhaseTabWidget->count();
+  qint32 count = this->statsGenPhaseTabWidget->count();
   for(qint32 i = 1; i < count; ++i)
   {
-    this->primaryPhaseTabWidget->setTabEnabled(i, b);
+    this->statsGenPhaseTabWidget->setTabEnabled(i, b);
   }
 }
 
@@ -567,7 +542,7 @@ void PrimaryPhaseWidget::setWidgetListEnabled(bool b)
 // -----------------------------------------------------------------------------
 void PrimaryPhaseWidget::updatePlots()
 {
-  if(getDataHasBeenGenerated() == true)
+  if(getDataHasBeenGenerated())
   {
     QProgressDialog progress("Generating Data ....", "Cancel", 0, 4, this);
     progress.setWindowModality(Qt::WindowModal);
@@ -584,13 +559,13 @@ void PrimaryPhaseWidget::updatePlots()
     QwtArray<float> binSizes = m_FeatureSizeDistWidget->getBinSizes();
     QMap<QString, QVector<float>> data;
     data[AbstractMicrostructurePreset::kBinNumbers] = binSizes;
-    QVector<SIMPL::Rgb> colors;
+    QVector<SIMPL::Rgb> colors = ColorUtilities::GenerateColors(binSizes.size(), SyntheticBuildingConstants::k_HSV_Saturation, SyntheticBuildingConstants::k_HSV_Value);
 
-    getMicroPreset()->initializeOmega3TableModel(data, colors);
+    getMicroPreset()->initializeOmega3TableModel(data);
     m_Omega3Plot->setDistributionType(getMicroPreset()->getDistributionType(AbstractMicrostructurePreset::kOmega3Distribution), false);
 
     SGAbstractTableModel* tmodel = m_Omega3Plot->tableModel();
-    if(tmodel)
+    if(tmodel != nullptr)
     {
       QVector<QVector<float>> colData;
       colData.push_back(data[AbstractMicrostructurePreset::kAlpha]);
@@ -598,10 +573,10 @@ void PrimaryPhaseWidget::updatePlots()
       tmodel->setTableData(binSizes, colData, colors);
     }
 
-    getMicroPreset()->initializeBOverATableModel(data, colors);
+    getMicroPreset()->initializeBOverATableModel(data);
     m_BOverAPlot->setDistributionType(getMicroPreset()->getDistributionType(AbstractMicrostructurePreset::kBOverADistribution), false);
     tmodel = m_BOverAPlot->tableModel();
-    if(tmodel)
+    if(tmodel != nullptr)
     {
       QVector<QVector<float>> colData;
       colData.push_back(data[AbstractMicrostructurePreset::kAlpha]);
@@ -609,10 +584,10 @@ void PrimaryPhaseWidget::updatePlots()
       tmodel->setTableData(binSizes, colData, colors);
     }
 
-    getMicroPreset()->initializeCOverATableModel(data, colors);
+    getMicroPreset()->initializeCOverATableModel(data);
     m_COverAPlot->setDistributionType(getMicroPreset()->getDistributionType(AbstractMicrostructurePreset::kCOverADistribution), false);
     tmodel = m_COverAPlot->tableModel();
-    if(tmodel)
+    if(tmodel != nullptr)
     {
       QVector<QVector<float>> colData;
       colData.push_back(data[AbstractMicrostructurePreset::kAlpha]);
@@ -620,12 +595,12 @@ void PrimaryPhaseWidget::updatePlots()
       tmodel->setTableData(binSizes, colData, colors);
     }
 
-    if(m_NeighborPlot)
+    if(m_NeighborPlot != nullptr)
     {
-      getMicroPreset()->initializeNeighborTableModel(data, colors);
+      getMicroPreset()->initializeNeighborTableModel(data);
       m_NeighborPlot->setDistributionType(getMicroPreset()->getDistributionType(AbstractMicrostructurePreset::kNeighborDistribution), false);
       tmodel = m_NeighborPlot->tableModel();
-      if(tmodel)
+      if(tmodel != nullptr)
       {
         QVector<QVector<float>> colData;
         colData.push_back(data[AbstractMicrostructurePreset::kMu]);
@@ -641,7 +616,7 @@ void PrimaryPhaseWidget::updatePlots()
     {
       getMicroPreset()->initializeODFTableModel(data);
       SGODFTableModel* model = m_ODFWidget->tableModel();
-      if(model)
+      if(model != nullptr)
       {
         model->setTableData(data[AbstractMicrostructurePreset::kEuler1], data[AbstractMicrostructurePreset::kEuler2], data[AbstractMicrostructurePreset::kEuler3],
                             data[AbstractMicrostructurePreset::kWeight], data[AbstractMicrostructurePreset::kSigma]);
@@ -649,8 +624,8 @@ void PrimaryPhaseWidget::updatePlots()
 
       // m_MicroPreset->initializeMDFTableModel(m_ODFWidget->getMDFWidget());
       getMicroPreset()->initializeMDFTableModel(data);
-      SGMDFTableModel* mdfModel = (m_ODFWidget->getMDFWidget()->tableModel());
-      if(mdfModel)
+      SGMDFTableModel* mdfModel = (m_MDFWidget->tableModel());
+      if(mdfModel != nullptr)
       {
         mdfModel->setTableData(data[AbstractMicrostructurePreset::kAngles], data[AbstractMicrostructurePreset::kAxis], data[AbstractMicrostructurePreset::kWeight]);
       }
@@ -660,7 +635,7 @@ void PrimaryPhaseWidget::updatePlots()
       // m_AxisODFWidget->updatePlots();
       getMicroPreset()->initializeAxisODFTableModel(data);
       model = m_AxisODFWidget->tableModel();
-      if(model)
+      if(model != nullptr)
       {
         model->setTableData(data[AbstractMicrostructurePreset::kEuler1], data[AbstractMicrostructurePreset::kEuler2], data[AbstractMicrostructurePreset::kEuler3],
                             data[AbstractMicrostructurePreset::kWeight], data[AbstractMicrostructurePreset::kSigma]);
@@ -670,6 +645,7 @@ void PrimaryPhaseWidget::updatePlots()
     {
       m_ODFWidget->updatePlots();
       m_AxisODFWidget->updatePlots();
+      m_MDFWidget->updatePlots();
       // Get any presets for the ODF/AxisODF/MDF also
     }
     progress.setValue(4);
@@ -775,7 +751,7 @@ int PrimaryPhaseWidget::gatherStatsData(AttributeMatrix::Pointer attrMat, bool p
       primaryStatsData->setFeatureSize_COverA(data);
       primaryStatsData->setCOverA_DistType(m_COverAPlot->getDistributionType());
     }
-    if(m_NeighborPlot)
+    if(m_NeighborPlot != nullptr)
     {
       VectorOfFloatArray data = m_NeighborPlot->getStatisticsData();
       primaryStatsData->setFeatureSize_Neighbors(data);
@@ -783,6 +759,7 @@ int PrimaryPhaseWidget::gatherStatsData(AttributeMatrix::Pointer attrMat, bool p
     }
 
     m_ODFWidget->getOrientationData(primaryStatsData.get(), PhaseType::Type::Primary, preflight);
+    m_MDFWidget->getMisorientationData(primaryStatsData.get(), PhaseType::Type::Primary, !preflight);
 
     err = m_AxisODFWidget->getOrientationData(primaryStatsData.get(), PhaseType::Type::Primary, preflight);
   }
@@ -839,44 +816,6 @@ void PrimaryPhaseWidget::extractStatsData(AttributeMatrix::Pointer attrMat, int 
   {
     return;
   }
-#if 0
-  /* Set the Feature_Diameter_Info Data */
-
-  binStepSize = primaryStatsData->getBinStepSize();
-  m_BinStepSize->blockSignals(true);
-  m_BinStepSize->setValue(binStepSize);
-  m_BinStepSize->blockSignals(false);
-  maxFeatureSize = primaryStatsData->getMaxFeatureDiameter();
-  minFeatureSize = primaryStatsData->getMinFeatureDiameter();
-
-  /* Set the Feature_Size_Distribution Data */
-  VectorOfFloatArray distData = primaryStatsData->getFeatureSizeDistribution();
-  mu = distData[0]->getValue(0);
-  sigma = distData[1]->getValue(0);
-  m_Mu_SizeDistribution->blockSignals(true);
-  m_Sigma_SizeDistribution->blockSignals(true);
-
-  m_Mu_SizeDistribution->setText(QString::number(mu));
-  m_Sigma_SizeDistribution->setText(QString::number(sigma));
-
-  m_Mu_SizeDistribution->blockSignals(false);
-  m_Sigma_SizeDistribution->blockSignals(false);
-
-  minCutOff = (mu - log(minFeatureSize)) / sigma;
-  maxCutOff = (log(maxFeatureSize) - mu) / sigma;
-
-  m_MinSigmaCutOff->blockSignals(true);
-  m_MinSigmaCutOff->setText(QString::number(minCutOff));
-  m_MinSigmaCutOff->blockSignals(false);
-
-  m_MaxSigmaCutOff->blockSignals(true);
-  m_MaxSigmaCutOff->setText(QString::number(maxCutOff));
-  m_MaxSigmaCutOff->blockSignals(false);
-
-  // Update the Size/Weights Plot
-  updateSizeDistributionPlot();
-  m_NumberBinsGenerated->setText(QString::number(bins->getNumberOfTuples()));
-#endif
 
   // Now have each of the plots set it's own data
   QVector<float> qbins(bins->getNumberOfTuples());
@@ -913,7 +852,7 @@ void PrimaryPhaseWidget::extractStatsData(AttributeMatrix::Pointer attrMat, int 
   m_COverAPlot->extractStatsData(index, qbins, primaryStatsData->getFeatureSize_COverA());
   m_COverAPlot->setSizeDistributionValues(mu, sigma, minCutOff, maxCutOff, binStepSize);
 
-  if(m_NeighborPlot)
+  if(m_NeighborPlot != nullptr)
   {
     emit progressText(QString("Extracting Neighbor Distribution Values"));
     qApp->processEvents();
@@ -926,6 +865,11 @@ void PrimaryPhaseWidget::extractStatsData(AttributeMatrix::Pointer attrMat, int 
   qApp->processEvents();
   // Set the ODF Data
   m_ODFWidget->extractStatsData(index, primaryStatsData.get(), PhaseType::Type::Primary);
+
+  emit progressText(QString("Extracting MDF Distribution Values"));
+  qApp->processEvents();
+  // Set the ODF Data
+  m_MDFWidget->extractStatsData(index, primaryStatsData.get(), PhaseType::Type::Primary);
 
   emit progressText(QString("Extracting Axis ODF Distribution Values"));
   qApp->processEvents();

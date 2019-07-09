@@ -38,10 +38,6 @@
 
 
 #include <QtCore/QString>
-#include <QtCore/QStringList>
-#include <QtCore/QSettings>
-#include <QtCore/QVector>
-#include <QtCore/QUrl>
 
 #include "EbsdLib/EbsdConstants.h"
 
@@ -140,14 +136,6 @@ class ConvertHexGridToSquareGridWidget : public FilterParameterWidget, private U
     void validateInputFile();
 
     /**
-     * @brief verifyPathExists
-     * @param outFilePath
-     * @param lineEdit
-     * @return
-     */
-    bool verifyPathExists(QString outFilePath, QLineEdit* lineEdit);
-
-    /**
      * @brief setWidgetListEnabled
      */
     void setWidgetListEnabled(bool v);
@@ -178,7 +166,10 @@ class ConvertHexGridToSquareGridWidget : public FilterParameterWidget, private U
 
     bool m_DidCausePreflight;
 
+  public:
     ConvertHexGridToSquareGridWidget(const ConvertHexGridToSquareGridWidget&) = delete; // Copy Constructor Not Implemented
-    void operator=(const ConvertHexGridToSquareGridWidget&) = delete;                   // Move assignment Not Implemented
+    ConvertHexGridToSquareGridWidget(ConvertHexGridToSquareGridWidget&&) = delete;      // Move Constructor Not Implemented
+    ConvertHexGridToSquareGridWidget& operator=(const ConvertHexGridToSquareGridWidget&) = delete; // Copy Assignment Not Implemented
+    ConvertHexGridToSquareGridWidget& operator=(ConvertHexGridToSquareGridWidget&&) = delete;      // Move Assignment Not Implemented
 };
 

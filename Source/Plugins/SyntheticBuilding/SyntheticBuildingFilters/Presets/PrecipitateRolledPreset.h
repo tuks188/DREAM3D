@@ -38,7 +38,7 @@
 //-- C++ includes
 #include <string>
 
-//-- MXA Includes
+//-- SIMPLib Includes
 #include "SIMPLib/Common/SIMPLibSetGetMacros.h"
 
 //-- StatsGen Includes
@@ -64,15 +64,15 @@ public:
 
   virtual QString getName();
 
-  void initializeOmega3TableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors);
-  void initializeBOverATableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors);
-  void initializeCOverATableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors);
-  void initializeNeighborTableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors);
-  void initializeClusteringTableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors);
+  void initializeOmega3TableModel(QMap<QString, QVector<float>>& data) override;
+  void initializeBOverATableModel(QMap<QString, QVector<float>>& data) override;
+  void initializeCOverATableModel(QMap<QString, QVector<float>>& data) override;
+  void initializeNeighborTableModel(QMap<QString, QVector<float>>& data) override;
+  void initializeClusteringTableModel(QMap<QString, QVector<float>>& data) override;
+
+  unsigned int getDistributionType(const QString& distType) override;
 
   void initializeAxisODFTableModel(QMap<QString, QVector<float>>& data);
-
-  unsigned int getDistributionType(const QString& distType);
 
   SIMPL_INSTANCE_PROPERTY(float, AspectRatio1)
   SIMPL_INSTANCE_PROPERTY(float, AspectRatio2)
@@ -80,9 +80,11 @@ public:
 protected:
   PrecipitateRolledPreset();
 
-private:
+public:
   PrecipitateRolledPreset(const PrecipitateRolledPreset&) = delete; // Copy Constructor Not Implemented
-  void operator=(const PrecipitateRolledPreset&) = delete;          // Move assignment Not Implemented
+  PrecipitateRolledPreset(PrecipitateRolledPreset&&) = delete;      // Move Constructor Not Implemented
+  PrecipitateRolledPreset& operator=(const PrecipitateRolledPreset&) = delete; // Copy Assignment Not Implemented
+  PrecipitateRolledPreset& operator=(PrecipitateRolledPreset&&) = delete;      // Move Assignment Not Implemented
 };
 
 DECLARE_FACTORY_CLASS(PrecipitateRolledPresetFactory, PrecipitateRolledPreset, "Precipitate Rolled")

@@ -51,7 +51,6 @@
 // -----------------------------------------------------------------------------
 AlignSectionsFeature::AlignSectionsFeature()
 : m_GoodVoxelsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Mask)
-, m_GoodVoxels(nullptr)
 {
   // only setting up the child parameters because the parent constructor has already been called
 }
@@ -68,7 +67,7 @@ void AlignSectionsFeature::setupFilterParameters()
 {
   // getting the current parameters that were set by the parent and adding to it before resetting it
   AlignSections::setupFilterParameters();
-  FilterParameterVector parameters = getFilterParameters();
+  FilterParameterVectorType parameters = getFilterParameters();
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req =
@@ -101,21 +100,21 @@ void AlignSectionsFeature::initialize()
 // -----------------------------------------------------------------------------
 void AlignSectionsFeature::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   // Set the DataContainerName and AttributematrixName for the Parent Class (AlignSections) to Use.
   // These are checked for validity in the Parent Class dataCheck
-  setDataContainerName(m_GoodVoxelsArrayPath.getDataContainerName());
+  setDataContainerName(DataArrayPath(m_GoodVoxelsArrayPath.getDataContainerName(), "", ""));
   setCellAttributeMatrixName(m_GoodVoxelsArrayPath.getAttributeMatrixName());
 
   AlignSections::dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_GoodVoxelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getGoodVoxelsArrayPath(),
                                                                                                      cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_GoodVoxelsPtr.lock())                                                                      /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -145,12 +144,11 @@ void AlignSectionsFeature::find_shifts(std::vector<int64_t>& xshifts, std::vecto
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getDataContainerName());
 
   std::ofstream outFile;
-  if(getWriteAlignmentShifts() == true)
+  if(getWriteAlignmentShifts())
   {
     outFile.open(getAlignmentShiftFileName().toLatin1().data());
   }
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -176,7 +174,7 @@ void AlignSectionsFeature::find_shifts(std::vector<int64_t>& xshifts, std::vecto
   for(int64_t iter = 1; iter < dims[2]; iter++)
   {
     QString ss = QObject::tr("Aligning Sections || Determining Shifts || %1% Complete").arg(((float)iter / dims[2]) * 100);
-    notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+    notifyStatusMessage(ss);
     mindisorientation = std::numeric_limits<float>::max();
     slice = (dims[2] - 1) - iter;
     oldxshift = -1;
@@ -235,12 +233,12 @@ void AlignSectionsFeature::find_shifts(std::vector<int64_t>& xshifts, std::vecto
     }
     xshifts[iter] = xshifts[iter - 1] + newxshift;
     yshifts[iter] = yshifts[iter - 1] + newyshift;
-    if(getWriteAlignmentShifts() == true)
+    if(getWriteAlignmentShifts())
     {
       outFile << slice << "	" << slice + 1 << "	" << newxshift << "	" << newyshift << "	" << xshifts[iter] << "	" << yshifts[iter] << std::endl;
     }
   }
-  if(getWriteAlignmentShifts() == true)
+  if(getWriteAlignmentShifts())
   {
     outFile.close();
   }
@@ -251,18 +249,17 @@ void AlignSectionsFeature::find_shifts(std::vector<int64_t>& xshifts, std::vecto
 // -----------------------------------------------------------------------------
 void AlignSectionsFeature::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   AlignSections::execute();
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -271,7 +268,7 @@ void AlignSectionsFeature::execute()
 AbstractFilter::Pointer AlignSectionsFeature::newFilterInstance(bool copyFilterParameters) const
 {
   AlignSectionsFeature::Pointer filter = AlignSectionsFeature::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

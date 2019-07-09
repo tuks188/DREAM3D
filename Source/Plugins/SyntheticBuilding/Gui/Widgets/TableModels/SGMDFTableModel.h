@@ -38,7 +38,6 @@
 #include <QtCore/QAbstractTableModel>
 #include <QtCore/QVariant>
 #include <QtCore/QVector>
-#include <QtGui/QColor>
 
 class QAbstractItemDelegate;
 
@@ -175,7 +174,10 @@ private:
   QVector<QString> m_Axis;
   QVector<float> m_Weights;
 
+public:
   SGMDFTableModel(const SGMDFTableModel&) = delete; // Copy Constructor Not Implemented
-  void operator=(const SGMDFTableModel&) = delete;  // Move assignment Not Implemented
+  SGMDFTableModel(SGMDFTableModel&&) = delete;      // Move Constructor Not Implemented
+  SGMDFTableModel& operator=(const SGMDFTableModel&) = delete; // Copy Assignment Not Implemented
+  SGMDFTableModel& operator=(SGMDFTableModel&&) = delete;      // Move Assignment Not Implemented
 };
 

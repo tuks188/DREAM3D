@@ -38,7 +38,6 @@
 #include <QtCore/QAbstractTableModel>
 #include <QtCore/QVariant>
 #include <QtCore/QVector>
-#include <QtGui/QColor>
 
 class QAbstractItemDelegate;
 
@@ -166,7 +165,10 @@ private:
 
   QVector<float> m_Frequencies;
 
+public:
   SGRDFTableModel(const SGRDFTableModel&) = delete; // Copy Constructor Not Implemented
-  void operator=(const SGRDFTableModel&) = delete;  // Move assignment Not Implemented
+  SGRDFTableModel(SGRDFTableModel&&) = delete;      // Move Constructor Not Implemented
+  SGRDFTableModel& operator=(const SGRDFTableModel&) = delete; // Copy Assignment Not Implemented
+  SGRDFTableModel& operator=(SGRDFTableModel&&) = delete;      // Move Assignment Not Implemented
 };
 

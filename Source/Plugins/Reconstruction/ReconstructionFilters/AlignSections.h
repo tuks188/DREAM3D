@@ -49,7 +49,7 @@ class Reconstruction_EXPORT AlignSections : public AbstractFilter
 {
   Q_OBJECT
   PYB11_CREATE_BINDINGS(AlignSections SUPERCLASS AbstractFilter)
-  PYB11_PROPERTY(QString DataContainerName READ getDataContainerName WRITE setDataContainerName)
+  PYB11_PROPERTY(DataArrayPath DataContainerName READ getDataContainerName WRITE setDataContainerName)
   PYB11_PROPERTY(QString CellAttributeMatrixName READ getCellAttributeMatrixName WRITE setCellAttributeMatrixName)
   PYB11_PROPERTY(bool WriteAlignmentShifts READ getWriteAlignmentShifts WRITE WriteAlignmentShifts)
   PYB11_PROPERTY(QString AlignmentShiftFileName READ getAlignmentShiftFileName WRITE setAlignmentShiftFileName)
@@ -61,8 +61,8 @@ public:
 
   ~AlignSections() override;
 
-  SIMPL_FILTER_PARAMETER(QString, DataContainerName)
-  Q_PROPERTY(QString DataContainerName READ getDataContainerName WRITE setDataContainerName)
+  SIMPL_FILTER_PARAMETER(DataArrayPath, DataContainerName)
+  Q_PROPERTY(DataArrayPath DataContainerName READ getDataContainerName WRITE setDataContainerName)
 
   SIMPL_FILTER_PARAMETER(QString, CellAttributeMatrixName)
 
@@ -71,6 +71,9 @@ public:
 
   SIMPL_FILTER_PARAMETER(QString, AlignmentShiftFileName)
   Q_PROPERTY(QString AlignmentShiftFileName READ getAlignmentShiftFileName WRITE setAlignmentShiftFileName)
+
+  SIMPL_FILTER_PARAMETER(QVector<DataArrayPath>, IgnoredDataArrayPaths)
+  Q_PROPERTY(QVector<DataArrayPath> IgnoredDataArrayPaths READ getIgnoredDataArrayPaths WRITE setIgnoredDataArrayPaths)
 
   void updateProgress(size_t p);
 
@@ -185,8 +188,10 @@ private:
   size_t m_Progress = 0;
   size_t m_TotalProgress = 0;
 
-  AlignSections(const AlignSections&);  // Copy Constructor Not Implemented
+public:
+  AlignSections(const AlignSections&) = delete;  // Copy Constructor Not Implemented
+  AlignSections(AlignSections&&) = delete;       // Move Constructor Not Implemented
   AlignSections& operator=(const AlignSections&) = delete; // Copy Assignment Not Implemented
-  AlignSections& operator=(AlignSections&&) = delete;      // Move Assignment
+  AlignSections& operator=(AlignSections&&) = delete;      // Move Assignment Not Implemented
 };
 

@@ -38,14 +38,11 @@
 #include "SIMPLib/Common/Constants.h"
 #include "SIMPLib/Math/SIMPLibMath.h"
 #include "SIMPLib/Math/SIMPLibRandom.h"
-#include "SIMPLib/Utilities/ColorUtilities.h"
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-PrimaryRecrystallizedPreset::PrimaryRecrystallizedPreset()
-{
-}
+PrimaryRecrystallizedPreset::PrimaryRecrystallizedPreset() = default;
 
 // -----------------------------------------------------------------------------
 //
@@ -63,7 +60,7 @@ QString PrimaryRecrystallizedPreset::getName()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PrimaryRecrystallizedPreset::initializeOmega3TableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors)
+void PrimaryRecrystallizedPreset::initializeOmega3TableModel(QMap<QString, QVector<float>>& data)
 {
   QVector<float>& binNumbers = data[kBinNumbers];
   qint32 count = binNumbers.count();
@@ -73,8 +70,6 @@ void PrimaryRecrystallizedPreset::initializeOmega3TableModel(QMap<QString, QVect
 
   QVector<float> alphas;
   QVector<float> betas;
-  colors.clear();
-  colors.append(ColorUtilities::GenerateColors(count, 160, 255));
 
   for(qint32 i = 0; i < count; ++i)
   {
@@ -91,7 +86,7 @@ void PrimaryRecrystallizedPreset::initializeOmega3TableModel(QMap<QString, QVect
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PrimaryRecrystallizedPreset::initializeBOverATableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors)
+void PrimaryRecrystallizedPreset::initializeBOverATableModel(QMap<QString, QVector<float>>& data)
 {
   QVector<float>& binNumbers = data[kBinNumbers];
   qint32 count = binNumbers.count();
@@ -101,8 +96,6 @@ void PrimaryRecrystallizedPreset::initializeBOverATableModel(QMap<QString, QVect
 
   QVector<float> alphas;
   QVector<float> betas;
-  colors.clear();
-  colors.append(ColorUtilities::GenerateColors(count, 160, 255));
 
   for(qint32 i = 0; i < count; ++i)
   {
@@ -119,7 +112,7 @@ void PrimaryRecrystallizedPreset::initializeBOverATableModel(QMap<QString, QVect
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PrimaryRecrystallizedPreset::initializeCOverATableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors)
+void PrimaryRecrystallizedPreset::initializeCOverATableModel(QMap<QString, QVector<float>>& data)
 {
   QVector<float>& binNumbers = data[kBinNumbers];
   qint32 count = binNumbers.count();
@@ -129,8 +122,6 @@ void PrimaryRecrystallizedPreset::initializeCOverATableModel(QMap<QString, QVect
 
   QVector<float> alphas;
   QVector<float> betas;
-  colors.clear();
-  colors.append(ColorUtilities::GenerateColors(count, 160, 255));
 
   for(qint32 i = 0; i < count; ++i)
   {
@@ -147,7 +138,7 @@ void PrimaryRecrystallizedPreset::initializeCOverATableModel(QMap<QString, QVect
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PrimaryRecrystallizedPreset::initializeNeighborTableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors)
+void PrimaryRecrystallizedPreset::initializeNeighborTableModel(QMap<QString, QVector<float>>& data)
 {
   QVector<float>& binNumbers = data[kBinNumbers];
   qint32 count = binNumbers.count();
@@ -157,8 +148,6 @@ void PrimaryRecrystallizedPreset::initializeNeighborTableModel(QMap<QString, QVe
 
   QVector<float> mus;
   QVector<float> sigmas;
-  colors.clear();
-  colors.append(ColorUtilities::GenerateColors(count, 160, 255));
 
   int middlebin = count / 2;
   for(qint32 i = 0; i < count; ++i)
@@ -176,7 +165,7 @@ void PrimaryRecrystallizedPreset::initializeNeighborTableModel(QMap<QString, QVe
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PrimaryRecrystallizedPreset::initializeClusteringTableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors)
+void PrimaryRecrystallizedPreset::initializeClusteringTableModel(QMap<QString, QVector<float>>& data)
 {
   Q_ASSERT(false);
 }
@@ -190,15 +179,15 @@ unsigned int PrimaryRecrystallizedPreset::getDistributionType(const QString& dis
   {
     return SIMPL::DistributionType::Beta;
   }
-  else if(distType == AbstractMicrostructurePreset::kBOverADistribution)
+  if(distType == AbstractMicrostructurePreset::kBOverADistribution)
   {
     return SIMPL::DistributionType::Beta;
   }
-  else if(distType == AbstractMicrostructurePreset::kCOverADistribution)
+  if(distType == AbstractMicrostructurePreset::kCOverADistribution)
   {
     return SIMPL::DistributionType::Beta;
   }
-  else if(distType == AbstractMicrostructurePreset::kClusterDistribution)
+  if(distType == AbstractMicrostructurePreset::kClusterDistribution)
   {
     return SIMPL::DistributionType::UnknownDistributionType;
   }

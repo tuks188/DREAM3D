@@ -58,10 +58,10 @@ class EbsdLib_EXPORT CtfFields : public AbstractEbsdFields
 {
   public:
     CtfFields();
-    virtual ~CtfFields();
+    ~CtfFields() override;
     EBSD_TYPE_MACRO_SUPER(CtfFields, AbstractEbsdFields)
 
-    virtual QVector<QString> getFieldNames();
+    QVector<QString> getFieldNames() override;
 
     template<typename T>
     T getFilterFeatures()
@@ -78,9 +78,11 @@ class EbsdLib_EXPORT CtfFields : public AbstractEbsdFields
       return features;
     }
 
-  private:
+  public:
     CtfFields(const CtfFields&) = delete;      // Copy Constructor Not Implemented
-    void operator=(const CtfFields&) = delete; // Move assignment Not Implemented
+    CtfFields(CtfFields&&) = delete;           // Move Constructor Not Implemented
+    CtfFields& operator=(const CtfFields&) = delete; // Copy Assignment Not Implemented
+    CtfFields& operator=(CtfFields&&) = delete;      // Move Assignment Not Implemented
 };
 
 

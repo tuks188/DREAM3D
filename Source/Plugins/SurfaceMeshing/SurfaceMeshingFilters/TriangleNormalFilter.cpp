@@ -51,6 +51,13 @@
 #include "SurfaceMeshing/SurfaceMeshingConstants.h"
 #include "SurfaceMeshing/SurfaceMeshingVersion.h"
 
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
+
 /**
  * @brief The CalculateNormalsImpl class implements a threaded algorithm that computes the normal for
  * each triangle in a set of triangles
@@ -68,15 +75,13 @@ public:
   , m_Normals(normals)
   {
   }
-  virtual ~CalculateNormalsImpl()
-  {
-  }
+  virtual ~CalculateNormalsImpl() = default;
 
   void generate(size_t start, size_t end) const
   {
     float* nodes = m_Nodes->getPointer(0);
-    int64_t* triangles = m_Triangles->getPointer(0);
-    int64_t nIdx0 = 0, nIdx1 = 0, nIdx2 = 0;
+    MeshIndexType* triangles = m_Triangles->getPointer(0);
+    MeshIndexType nIdx0 = 0, nIdx1 = 0, nIdx2 = 0;
     for(size_t i = start; i < end; i++)
     {
       nIdx0 = triangles[i * 3] * 3;
@@ -110,7 +115,6 @@ public:
 // -----------------------------------------------------------------------------
 TriangleNormalFilter::TriangleNormalFilter()
 : m_SurfaceMeshTriangleNormalsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceNormals)
-, m_SurfaceMeshTriangleNormals(nullptr)
 {
 }
 
@@ -125,7 +129,7 @@ TriangleNormalFilter::~TriangleNormalFilter() = default;
 void TriangleNormalFilter::setupFilterParameters()
 {
   SurfaceMeshFilter::setupFilterParameters();
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::CreatedArray));
   {
     DataArrayCreationFilterParameter::RequirementType req = DataArrayCreationFilterParameter::CreateRequirement(AttributeMatrix::Type::Face, IGeometry::Type::Triangle);
@@ -156,26 +160,26 @@ void TriangleNormalFilter::initialize()
 // -----------------------------------------------------------------------------
 void TriangleNormalFilter::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   TriangleGeom::Pointer triangles = getDataContainerArray()->getPrereqGeometryFromDataContainer<TriangleGeom, AbstractFilter>(this, getSurfaceMeshTriangleNormalsArrayPath().getDataContainerName());
 
   QVector<IDataArray::Pointer> dataArrays;
 
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(triangles->getTriangles());
   }
 
-  QVector<size_t> cDims(1, 3);
-  m_SurfaceMeshTriangleNormalsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<double>, AbstractFilter, double>(
-      this, getSurfaceMeshTriangleNormalsArrayPath(), 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  std::vector<size_t> cDims(1, 3);
+  m_SurfaceMeshTriangleNormalsPtr =
+      getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<double>, AbstractFilter, double>(this, getSurfaceMeshTriangleNormalsArrayPath(), 0, cDims, "", DataArrayID31);
   if(nullptr != m_SurfaceMeshTriangleNormalsPtr.lock())          /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshTriangleNormals = m_SurfaceMeshTriangleNormalsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshTriangleNormalsPtr.lock());
   }
@@ -201,10 +205,10 @@ void TriangleNormalFilter::preflight()
 // -----------------------------------------------------------------------------
 void TriangleNormalFilter::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -218,7 +222,7 @@ void TriangleNormalFilter::execute()
 #endif
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, triangleGeom->getNumberOfTris()), CalculateNormalsImpl(triangleGeom->getVertices(), triangleGeom->getTriangles(), m_SurfaceMeshTriangleNormals),
                       tbb::auto_partitioner());
@@ -230,8 +234,7 @@ void TriangleNormalFilter::execute()
     serial.generate(0, triangleGeom->getNumberOfTris());
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 // -----------------------------------------------------------------------------
 //
@@ -239,7 +242,7 @@ void TriangleNormalFilter::execute()
 AbstractFilter::Pointer TriangleNormalFilter::newFilterInstance(bool copyFilterParameters) const
 {
   TriangleNormalFilter::Pointer filter = TriangleNormalFilter::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

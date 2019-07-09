@@ -67,9 +67,7 @@ public:
   {
     m_OrientationOps = LaueOps::getOrientationOpsQVector();
   }
-  virtual ~FindMisorientationVectorsImpl()
-  {
-  }
+  virtual ~FindMisorientationVectorsImpl() = default;
 
   void convert(size_t start, size_t end) const
   {
@@ -119,17 +117,12 @@ FindOrientationFieldCurl::FindOrientationFieldCurl()
 , m_CrystalStructuresArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::CrystalStructures)
 , m_QuatsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Quats)
 , m_DislocationTensorsArrayName(SIMPL::CellData::DislocationTensors)
-, m_CellPhases(nullptr)
-, m_DislocationTensors(nullptr)
-, m_Quats(nullptr)
-, m_CrystalStructures(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 
-  m_CurlSize.x = 1;
-  m_CurlSize.y = 1;
-  m_CurlSize.z = 1;
-
+  m_CurlSize[0] = 1;
+  m_CurlSize[1] = 1;
+  m_CurlSize[2] = 1;
 }
 
 // -----------------------------------------------------------------------------
@@ -142,7 +135,7 @@ FindOrientationFieldCurl::~FindOrientationFieldCurl() = default;
 // -----------------------------------------------------------------------------
 void FindOrientationFieldCurl::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   parameters.push_back(SIMPL_NEW_INT_VEC3_FP("Curl Radius (Pixels)", CurlSize, FilterParameter::Parameter, FindOrientationFieldCurl));
 
@@ -189,23 +182,23 @@ void FindOrientationFieldCurl::initialize()
 void FindOrientationFieldCurl::dataCheck()
 {
   DataArrayPath tempPath;
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> dims(1, 1);
+  std::vector<size_t> dims(1, 1);
   m_CellPhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getCellPhasesArrayPath(),
                                                                                                         dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_CellPhasesPtr.lock())                                                                        /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_CellPhases = m_CellPhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   ImageGeom::Pointer image = getDataContainerArray()->getDataContainer(getCellPhasesArrayPath().getDataContainerName())->getPrereqGeometry<ImageGeom, AbstractFilter>(this);
-  if(getErrorCondition() < 0 || nullptr == image.get())
+  if(getErrorCode() < 0 || nullptr == image.get())
   {
     return;
   }
@@ -255,10 +248,10 @@ void FindOrientationFieldCurl::preflight()
 // -----------------------------------------------------------------------------
 void FindOrientationFieldCurl::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -270,16 +263,16 @@ void FindOrientationFieldCurl::execute()
 
   QuatF* quats = reinterpret_cast<QuatF*>(m_Quats);
   size_t totalFaces = ((xP + 1) * yP * zP) + ((yP + 1) * xP * zP) + ((zP + 1) * xP * yP);
-  QVector<size_t> tDims(1, totalFaces);
-  QVector<size_t> cDims(1, 3);
-  FloatArrayType::Pointer misoVecsPtr = FloatArrayType::CreateArray(tDims, cDims, "misoVecs");
+  std::vector<size_t> tDims(1, totalFaces);
+  std::vector<size_t> cDims(1, 3);
+  FloatArrayType::Pointer misoVecsPtr = FloatArrayType::CreateArray(tDims, cDims, "misoVecs", true);
   misoVecsPtr->initializeWithValue(0);
   float* misoVecs = misoVecsPtr->getPointer(0);
   tDims[0] = (xP * yP * zP);
-  Int64ArrayType::Pointer neighborsPtr = Int64ArrayType::CreateArray(tDims, cDims, "neighbors");
+  Int64ArrayType::Pointer neighborsPtr = Int64ArrayType::CreateArray(tDims, cDims, "neighbors", true);
   neighborsPtr->initializeWithValue(-1);
   int64_t* neighbors = neighborsPtr->getPointer(0);
-  Int64ArrayType::Pointer faceIdsPtr = Int64ArrayType::CreateArray(tDims, cDims, "faceIds");
+  Int64ArrayType::Pointer faceIdsPtr = Int64ArrayType::CreateArray(tDims, cDims, "faceIds", true);
   faceIdsPtr->initializeWithValue(-1);
   int64_t* faceIds = faceIdsPtr->getPointer(0);
 
@@ -317,7 +310,7 @@ void FindOrientationFieldCurl::execute()
 
 // first determine the misorientation vectors on all the voxel faces
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, (xP * yP * zP)), FindMisorientationVectorsImpl(quats, misoVecs, neighbors, faceIds), tbb::auto_partitioner());
   }
@@ -334,8 +327,7 @@ void FindOrientationFieldCurl::execute()
   //  float n1, n2, n3;
   //  unsigned int phase1 = Ebsd::CrystalStructure::UnknownCrystalStructure;
   //  unsigned int phase2 = Ebsd::CrystalStructure::UnknownCrystalStructure;
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t xPoints = static_cast<int64_t>(udims[0]);
   int64_t yPoints = static_cast<int64_t>(udims[1]);
@@ -378,7 +370,7 @@ void FindOrientationFieldCurl::execute()
           kappa13 = 0;
           kappa23 = 0;
           kappa33 = 0;
-          for(int j = -m_CurlSize.z; j < m_CurlSize.z; j++)
+          for(int j = -m_CurlSize[2]; j < m_CurlSize[2]; j++)
           {
             good = 1;
             if(plane + j < 0)
@@ -407,7 +399,7 @@ void FindOrientationFieldCurl::execute()
           }
 
           count = 0;
-          for(int k = -m_CurlSize.y; k < m_CurlSize.y; k++)
+          for(int k = -m_CurlSize[1]; k < m_CurlSize[1]; k++)
           {
             good = 1;
             if(row + k < 0)
@@ -435,7 +427,7 @@ void FindOrientationFieldCurl::execute()
             count = 0;
           }
 
-          for(int l = -m_CurlSize.x; l < m_CurlSize.z; l++)
+          for(int l = -m_CurlSize[0]; l < m_CurlSize[2]; l++)
           {
             good = 1;
             if(col + l < 0)
@@ -477,7 +469,7 @@ void FindOrientationFieldCurl::execute()
     }
   }
 
-  notifyStatusMessage(getHumanLabel(), "FindOrientationFieldCurl Completed");
+  notifyStatusMessage("FindOrientationFieldCurl Completed");
 }
 
 // -----------------------------------------------------------------------------
@@ -486,7 +478,7 @@ void FindOrientationFieldCurl::execute()
 AbstractFilter::Pointer FindOrientationFieldCurl::newFilterInstance(bool copyFilterParameters) const
 {
   FindOrientationFieldCurl::Pointer filter = FindOrientationFieldCurl::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

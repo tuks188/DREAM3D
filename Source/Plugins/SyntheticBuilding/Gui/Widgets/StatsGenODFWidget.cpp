@@ -41,15 +41,12 @@
 #include <iostream>
 
 //-- Qt Includes
-#include <QtConcurrent/QtConcurrentMap>
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
-#include <QtCore/QSettings>
 #include <QtCore/QString>
 #include <QtCore/QVector>
 
-#include <QtGui/QCloseEvent>
 #include <QtWidgets/QAbstractItemDelegate>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
@@ -93,7 +90,6 @@ StatsGenODFWidget::StatsGenODFWidget(QWidget* parent)
 , m_Initializing(true)
 , m_PhaseIndex(-1)
 , m_CrystalStructure(Ebsd::CrystalStructure::Cubic_High)
-, m_ODFTableModel(nullptr)
 {
   m_OpenDialogLastFilePath = QDir::homePath();
   this->setupUi(this);
@@ -140,31 +136,6 @@ void StatsGenODFWidget::on_m_WeightSpreadsBulkLoad_clicked(bool /* checked */)
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void StatsGenODFWidget::on_m_ODFParametersBtn_clicked(bool /* b */)
-{
-  stackedWidget->setCurrentIndex(0);
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void StatsGenODFWidget::on_m_MDFParametersBtn_clicked(bool /* b */)
-{
-  stackedWidget->setCurrentIndex(1);
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-// void StatsGenODFWidget::on_pfImageSize_editingFinished()
-//{
-//  updatePlots();
-//  m_PoleFigureLabel->focusWidget();
-//}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 void StatsGenODFWidget::extractStatsData(int index, StatsData* statsData, PhaseType::Type phaseType)
 {
   VectorOfFloatArray arrays;
@@ -183,7 +154,7 @@ void StatsGenODFWidget::extractStatsData(int index, StatsData* statsData, PhaseT
     TransformationStatsData* tp = dynamic_cast<TransformationStatsData*>(statsData);
     arrays = tp->getODF_Weights();
   }
-  if(arrays.size() > 0)
+  if(!arrays.empty())
   {
     QVector<float> e1(static_cast<int>(arrays[0]->getNumberOfTuples()));
     ::memcpy(e1.data(), arrays[0]->getVoidPointer(0), sizeof(float) * static_cast<size_t>(e1.size()));
@@ -208,16 +179,11 @@ void StatsGenODFWidget::extractStatsData(int index, StatsData* statsData, PhaseT
       e3[i] = e3[i] * static_cast<float>(SIMPLib::Constants::k_RadToDeg);
     }
 
-    if(e1.size() > 0)
+    if(!e1.empty())
     {
       // Load the data into the table model
       m_ODFTableModel->setTableData(e1, e2, e3, weights, sigmas);
     }
-  }
-  // Write the MDF Data if we have that functionality enabled
-  if(m_MDFWidget != nullptr)
-  {
-    m_MDFWidget->extractStatsData(index, statsData, phaseType);
   }
   updatePlots();
 }
@@ -262,24 +228,7 @@ int StatsGenODFWidget::getOrientationData(StatsData* statsData, PhaseType::Type 
 
   StatsGeneratorUtilities::GenerateODFBinData(statsData, phaseType, m_CrystalStructure, e1s, e2s, e3s, weights, sigmas, !preflight);
 
-  // Write the MDF Data if we have that functionality enabled
-  if(m_MDFWidget != nullptr)
-  {
-    m_MDFWidget->getMisorientationData(statsData, phaseType, !preflight);
-  }
   return retErr;
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void StatsGenODFWidget::enableMDFTab(bool b)
-{
-  if(b)
-  {
-    m_MDFWidget->setODFTableModel(m_ODFTableModel);
-    connect(m_MDFWidget, SIGNAL(dataChanged()), this, SIGNAL(dataChanged()));
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -290,10 +239,6 @@ void StatsGenODFWidget::setCrystalStructure(unsigned int value)
   if(m_CrystalStructure != value)
   {
     this->m_CrystalStructure = value;
-    if(m_MDFWidget != nullptr)
-    {
-      m_MDFWidget->setCrystalStructure(m_CrystalStructure);
-    }
     m_ODFTableModel->setCrystalStructure(m_CrystalStructure);
     QAbstractItemDelegate* idelegate = m_ODFTableModel->getItemDelegate();
     m_ODFTableView->setItemDelegate(idelegate);
@@ -314,10 +259,6 @@ unsigned int StatsGenODFWidget::getCrystalStructure()
 void StatsGenODFWidget::setPhaseIndex(int value)
 {
   this->m_PhaseIndex = value;
-  if(m_MDFWidget != nullptr)
-  {
-    m_MDFWidget->setPhaseIndex(m_PhaseIndex);
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -427,18 +368,6 @@ void StatsGenODFWidget::setupGui()
     m_PFLambertSize->hide();
     m_PFLambertLabel->hide();
   }
-
-  m_ODFGroup.addButton(m_ODFParametersBtn);
-  m_ODFGroup.addButton(m_MDFParametersBtn);
-
-  // Style the buttons
-  addODFTextureBtn->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(addODFTextureBtn->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::AddImagePath));  
-  deleteODFTextureBtn->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(deleteODFTextureBtn->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::DeleteImagePath));
-  m_CalculateODFBtn->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(m_CalculateODFBtn->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::ReloadImagePath));
-  savePoleFigureImage->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(savePoleFigureImage->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::SaveImagePath));
-  
-  
-  on_m_ODFParametersBtn_clicked(true);
 }
 
 // -----------------------------------------------------------------------------
@@ -557,6 +486,7 @@ void StatsGenODFWidget::updatePlots()
   calculateODF();
   m_AbortUpdate = true;
   updatePFStatus(QString(""));
+  emit odfDataChanged();
 }
 
 // -----------------------------------------------------------------------------
@@ -622,8 +552,8 @@ void StatsGenODFWidget::calculateODF()
   int lamberSize = m_PFLambertSize->value();
   int numColors = 16;
 
-  QVector<size_t> dims(1, 3);
-  FloatArrayType::Pointer eulers = FloatArrayType::CreateArray(npoints, dims, "Eulers");
+  std::vector<size_t> dims(1, 3);
+  FloatArrayType::Pointer eulers = FloatArrayType::CreateArray(npoints, dims, "Eulers", true);
   PoleFigureConfiguration_t config;
   config.eulers = eulers.get();
   config.imageDim = imageSize;
@@ -692,12 +622,6 @@ void StatsGenODFWidget::calculateODF()
   QImage image = PoleFigureImageUtilities::Create3ImagePoleFigure(figures[0].get(), figures[1].get(), figures[2].get(), config, m_ImageLayoutCB->currentIndex());
   m_PoleFigureLabel->setPixmap(QPixmap::fromImage(image));
     
-  // Enable the MDF tab
-  if(m_MDFWidget != nullptr)
-  {
-    m_MDFWidget->setEnabled(true);
-    m_MDFWidget->updateMDFPlot(odf);
-  }
   delete progressDialog;
   emit dataChanged();
 }
@@ -743,12 +667,12 @@ void StatsGenODFWidget::on_addODFTextureBtn_clicked()
 void StatsGenODFWidget::on_selectAnglesFile_clicked()
 {
   QString proposedFile = m_OpenDialogLastFilePath;
-  if(false == angleFilePath->text().isEmpty())
+  if(!angleFilePath->text().isEmpty())
   {
     proposedFile = angleFilePath->text();
   }
   QString file = QFileDialog::getOpenFileName(this, tr("Select Angles File"), proposedFile, tr("Text Document (*.txt)"));
-  if(false == file.isEmpty())
+  if(!file.isEmpty())
   {
     angleFilePath->setText(file);
     m_OpenDialogLastFilePath = file;
@@ -763,7 +687,7 @@ void StatsGenODFWidget::on_angleFilePath_textChanged()
   // If the text has changed, we don't know if the file exists/is valid,
   // so blow away the bulk table model, if it exists, and emit that
   // the user needs to select a valid file and reload
-  if(m_OdfBulkTableModel)
+  if(m_OdfBulkTableModel != nullptr)
   {
     delete m_OdfBulkTableModel;
     m_OdfBulkTableModel = nullptr;
@@ -782,14 +706,14 @@ void StatsGenODFWidget::on_angleFilePath_textChanged()
 void StatsGenODFWidget::on_loadODFTextureBtn_clicked()
 {
   QString file = angleFilePath->text();
-  if(true == file.isEmpty())
+  if(file.isEmpty())
   {
     emit bulkLoadEvent(true);
     return;
   }
 
   QFileInfo fi(angleFilePath->text());
-  if(fi.exists() == false)
+  if(!fi.exists())
   {
     emit bulkLoadEvent(true);
     return;
@@ -873,7 +797,7 @@ void StatsGenODFWidget::on_loadODFTextureBtn_clicked()
     }
 #endif
   }
-  else if(fi.suffix().compare(Ebsd::Ctf::FileExt) == 0)
+  if(fi.suffix().compare(Ebsd::Ctf::FileExt) == 0)
   {
     QMessageBox::critical(this, "CTF File Loading not Supported",
                           "Please use the 'Write StatsGenerator ODF Angle File' filter from DREAM.3D to generate a file. See that filter's help for the proper format.", QMessageBox::Ok);
@@ -935,8 +859,7 @@ void StatsGenODFWidget::on_loadODFTextureBtn_clicked()
     }
 #endif
   }
-  else
-  {
+
     anglesInDegrees->setEnabled(true);
     angleRepresentation->setEnabled(true);
     delimiter->setEnabled(true);
@@ -989,14 +912,13 @@ void StatsGenODFWidget::on_loadODFTextureBtn_clicked()
       weights[i] = data->getComponent(i, 3);
       sigmas[i] = data->getComponent(i, 4);
     }
-  }
 
   progress.setValue(2);
   progress.setLabelText("[2/3] Rendering Pole Figure ...");
 
   // Just blow away our table and create a new one. Quicker than removing all the rows
   // first, the repopulating them
-  if(m_OdfBulkTableModel)
+  if(m_OdfBulkTableModel != nullptr)
   {
     delete m_OdfBulkTableModel;
     m_OdfBulkTableModel = nullptr;
@@ -1057,14 +979,6 @@ SGODFTableModel* StatsGenODFWidget::tableModel()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-StatsGenMDFWidget* StatsGenODFWidget::getMDFWidget()
-{
-  return m_MDFWidget;
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 void StatsGenODFWidget::on_savePoleFigureImage_clicked()
 {
   QString Ftype = "Image Files";
@@ -1073,7 +987,7 @@ void StatsGenODFWidget::on_savePoleFigureImage_clicked()
   QString defaultName = m_OpenDialogLastFilePath;
   QString file = QFileDialog::getSaveFileName(this, tr("Save File As"), defaultName, s);
 
-  if(true == file.isEmpty())
+  if(file.isEmpty())
   {
     return;
   }

@@ -35,8 +35,7 @@
 
 #pragma once
 
-#include <string.h>
-
+#include <cstring>
 
 #include <QtCore/QVector>
 #include <QtCore/QString>
@@ -86,7 +85,7 @@ class EbsdLib_EXPORT CtfPhase
     /**
      * @brief Returns the type of crystal structure for this phase.
      */
-    unsigned int determineCrystalStructure();
+    unsigned int determineLaueGroup();
 
     QString getMaterialName();
 
@@ -95,8 +94,10 @@ class EbsdLib_EXPORT CtfPhase
 
     void convertEuropeanDecimals(QByteArray& line);
 
-  private:
+  public:
     CtfPhase(const CtfPhase&) = delete;       // Copy Constructor Not Implemented
-    void operator=(const CtfPhase&) = delete; // Move assignment Not Implemented
+    CtfPhase(CtfPhase&&) = delete;            // Move Constructor Not Implemented
+    CtfPhase& operator=(const CtfPhase&) = delete; // Copy Assignment Not Implemented
+    CtfPhase& operator=(CtfPhase&&) = delete;      // Move Assignment Not Implemented
 };
 

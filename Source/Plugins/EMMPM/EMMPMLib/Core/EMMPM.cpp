@@ -33,9 +33,15 @@
 *
 * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+#include "SIMPLib/Messages/AbstractMessageHandler.h"
+#include "SIMPLib/Messages/GenericProgressMessage.h"
+#include "SIMPLib/Messages/GenericStatusMessage.h"
+#include "SIMPLib/Messages/GenericErrorMessage.h"
+#include "SIMPLib/Messages/GenericWarningMessage.h"
 
 #include "EMMPMLib/Common/EMMPM_Math.h"
 #include "EMMPMLib/Common/EMTime.h"
@@ -45,13 +51,56 @@
 #include "EMMPMLib/Core/InitializationFunctions.h"
 #include "EMMPMLib/EMMPMLib.h"
 
+/**
+ * @brief This message handler is used by EMMPM instances to re-emit incoming generic messages from the
+ * EMCalculation observable object as its own generic messages
+ */
+class EMMPMMessageHandler : public AbstractMessageHandler
+{
+  public:
+    explicit EMMPMMessageHandler(EMMPM* emmpmObj) : m_EmmpmObject(emmpmObj) {}
+
+    /**
+     * @brief Re-emits incoming GenericProgressMessages as FilterProgressMessages.
+     */
+    void processMessage(const GenericProgressMessage* msg) const override
+    {
+      emit m_EmmpmObject->notifyProgressMessage(msg->getProgressValue(), msg->getMessageText());
+    }
+
+    /**
+     * @brief Re-emits incoming GenericStatusMessages as FilterStatusMessages.
+     */
+    void processMessage(const GenericStatusMessage* msg) const override
+    {
+      emit m_EmmpmObject->notifyStatusMessage(msg->getMessageText());
+    }
+
+    /**
+     * @brief Re-emits incoming GenericErrorMessages as FilterErrorMessages.
+     */
+    void processMessage(const GenericErrorMessage* msg) const override
+    {
+      emit m_EmmpmObject->setErrorCondition(msg->getCode(), msg->getMessageText());
+    }
+
+    /**
+     * @brief Re-emits incoming GenericWarningMessages as FilterWarningMessages.
+     */
+    void processMessage(const GenericWarningMessage* msg) const override
+    {
+      emit m_EmmpmObject->setWarningCondition(msg->getCode(), msg->getMessageText());
+    }
+
+  private:
+    EMMPM* m_EmmpmObject = nullptr;
+};
+
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
 EMMPM::EMMPM()
-: Observable()
-, m_StatsDelegate(nullptr)
-, m_ErrorCondition(0)
+: m_ErrorCode(0)
 {
 }
 
@@ -186,7 +235,7 @@ void EMMPM::execute()
   //  millis = millis >> 32; // bring back the low bits
   // data->rngVars = init_genrand( (unsigned long)(millis));
 
-  if(data->cancel)
+  if(data->cancel != 0)
   {
     data->progress = 100.0;
     return;
@@ -194,15 +243,14 @@ void EMMPM::execute()
 
   /* Initialize the Curvature Penalty variables:  */
   data->ccost = nullptr;
-  if(data->useCurvaturePenalty)
+  if(data->useCurvaturePenalty != 0)
   {
     CurvatureInitialization::Pointer curvatureInit = CurvatureInitialization::New();
     curvatureInit->initCurvatureVariables(m_Data);
 
     if(data->ccost == nullptr)
     {
-      setErrorCondition(-55100);
-      notifyErrorMessage(getHumanLabel(), "Error Allocating Curvature Variables Memory", getErrorCondition());
+      setErrorCondition(-55100, "Error Allocating Curvature Variables Memory");
       return;
     }
   }
@@ -212,15 +260,14 @@ void EMMPM::execute()
   data->ew = nullptr;
   data->sw = nullptr;
   data->nw = nullptr;
-  if(data->useGradientPenalty)
+  if(data->useGradientPenalty != 0)
   {
     GradientVariablesInitialization::Pointer gradientInit = GradientVariablesInitialization::New();
     gradientInit->initialize(m_Data);
 
     if(data->ns == nullptr || data->ew == nullptr || data->nw == nullptr || data->sw == nullptr)
     {
-      setErrorCondition(-55000);
-      notifyErrorMessage(getHumanLabel(), "Error Allocating Gradient Variables Memory", getErrorCondition());
+      setErrorCondition(-55000, "Error Allocating Gradient Variables Memory");
       return;
     }
   }
@@ -232,7 +279,7 @@ void EMMPM::execute()
   XtArrayInitialization::Pointer xtInit = XtArrayInitialization::New();
   xtInit->initialize(m_Data);
 
-  if(data->cancel)
+  if(data->cancel != 0)
   {
     data->progress = 100.0;
     return;
@@ -254,10 +301,12 @@ void EMMPM::execute()
   EMCalculation::Pointer em = EMCalculation::New();
   em->setData(getData());
   em->setStatsDelegate(getStatsDelegate());
-  em->setMessagePrefix(getMessagePrefix());
 
   // Connect up the Error/Warning/Progress object so the filter can report those things
-  connect(em.get(), SIGNAL(filterGeneratedMessage(const PipelineMessage&)), this, SLOT(broadcastPipelineMessage(const PipelineMessage&)));
+  connect(em.get(), &EMCalculation::messageGenerated, [=] (AbstractMessage::Pointer msg) {
+    EMMPMMessageHandler msgHandler(this);
+    msg->visit(&msgHandler);
+  });
 
   em->execute();
 

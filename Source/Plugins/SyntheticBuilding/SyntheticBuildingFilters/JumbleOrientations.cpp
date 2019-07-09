@@ -38,11 +38,11 @@
 #include <random>
 #include <chrono>
 
-#include <QtCore/QDateTime>
 
 #include "SIMPLib/Common/Constants.h"
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 
@@ -51,6 +51,14 @@
 
 #include "SyntheticBuilding/SyntheticBuildingConstants.h"
 #include "SyntheticBuilding/SyntheticBuildingVersion.h"
+
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+  DataArrayID32 = 32,
+};
 
 // -----------------------------------------------------------------------------
 //
@@ -61,11 +69,6 @@ JumbleOrientations::JumbleOrientations()
 , m_FeaturePhasesArrayPath("", "", "")
 , m_FeatureEulerAnglesArrayPath("", "", "")
 , m_AvgQuatsArrayName(SIMPL::FeatureData::AvgQuats)
-, m_FeatureIds(nullptr)
-, m_CellEulerAngles(nullptr)
-, m_FeaturePhases(nullptr)
-, m_FeatureEulerAngles(nullptr)
-, m_AvgQuats(nullptr)
 {
 }
 
@@ -79,7 +82,7 @@ JumbleOrientations::~JumbleOrientations() = default;
 // -----------------------------------------------------------------------------
 void JumbleOrientations::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Element Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req = DataArraySelectionFilterParameter::CreateCategoryRequirement(SIMPL::TypeNames::Int32, 1, AttributeMatrix::Category::Element);
@@ -95,9 +98,9 @@ void JumbleOrientations::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Phases", FeaturePhasesArrayPath, FilterParameter::RequiredArray, JumbleOrientations, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Element Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Euler Angles", CellEulerAnglesArrayName, FilterParameter::CreatedArray, JumbleOrientations));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Euler Angles", CellEulerAnglesArrayName, FeatureIdsArrayPath, FeatureIdsArrayPath, FilterParameter::CreatedArray, JumbleOrientations));
   parameters.push_back(SeparatorFilterParameter::New("Feature Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Average Quaternions", AvgQuatsArrayName, FilterParameter::CreatedArray, JumbleOrientations));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Average Quaternions", AvgQuatsArrayName, FeaturePhasesArrayPath, FeaturePhasesArrayPath, FilterParameter::CreatedArray, JumbleOrientations));
   setFilterParameters(parameters);
 }
 
@@ -127,11 +130,11 @@ void JumbleOrientations::initialize()
 // -----------------------------------------------------------------------------
 void JumbleOrientations::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   // Cell Data
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
@@ -142,8 +145,7 @@ void JumbleOrientations::dataCheck()
 
   cDims[0] = 3;
   tempPath.update(getFeatureIdsArrayPath().getDataContainerName(), getFeatureIdsArrayPath().getAttributeMatrixName(), getCellEulerAnglesArrayName());
-  m_CellEulerAnglesPtr =
-      getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, tempPath, 0.0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_CellEulerAnglesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, tempPath, 0.0, cDims, "", DataArrayID31);
   if(nullptr != m_CellEulerAnglesPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_CellEulerAngles = m_CellEulerAnglesPtr.lock()->getPointer(0);
@@ -168,8 +170,7 @@ void JumbleOrientations::dataCheck()
 
   cDims[0] = 4;
   tempPath.update(getFeaturePhasesArrayPath().getDataContainerName(), getFeaturePhasesArrayPath().getAttributeMatrixName(), getAvgQuatsArrayName());
-  m_AvgQuatsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0,
-                                                                                                                 cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_AvgQuatsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0, cDims, "", DataArrayID32);
   if(nullptr != m_AvgQuatsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AvgQuats = m_AvgQuatsPtr.lock()->getPointer(0);
@@ -194,10 +195,10 @@ void JumbleOrientations::preflight()
 // -----------------------------------------------------------------------------
 void JumbleOrientations::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -221,7 +222,7 @@ void JumbleOrientations::execute()
   for(int32_t i = 1; i < totalFeatures; i++)
   {
     bool good = false;
-    while(good == false)
+    while(!good)
     {
       good = true;
       r = distribution(generator); // Random remaining position.
@@ -260,8 +261,7 @@ void JumbleOrientations::execute()
     QuaternionMathF::Copy(quat.toQuaternion(), avgQuats[i]);
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -270,7 +270,7 @@ void JumbleOrientations::execute()
 AbstractFilter::Pointer JumbleOrientations::newFilterInstance(bool copyFilterParameters) const
 {
   JumbleOrientations::Pointer filter = JumbleOrientations::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

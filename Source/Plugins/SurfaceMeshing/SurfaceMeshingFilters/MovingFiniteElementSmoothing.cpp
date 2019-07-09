@@ -153,7 +153,7 @@ MovingFiniteElementSmoothing::~MovingFiniteElementSmoothing() = default;
 void MovingFiniteElementSmoothing::setupFilterParameters()
 {
   SurfaceMeshFilter::setupFilterParameters();
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Iteration Steps", IterationSteps, FilterParameter::Uncategorized, MovingFiniteElementSmoothing));
   parameters.push_back(SIMPL_NEW_BOOL_FP("Apply Node Contraints", NodeConstraints, FilterParameter::Uncategorized, MovingFiniteElementSmoothing));
   parameters.push_back(SIMPL_NEW_BOOL_FP("Constrain Surface Nodes", ConstrainSurfaceNodes, FilterParameter::Uncategorized, MovingFiniteElementSmoothing));
@@ -193,8 +193,8 @@ void MovingFiniteElementSmoothing::initialize()
 // -----------------------------------------------------------------------------
 void MovingFiniteElementSmoothing::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   DataContainer::Pointer sm = getDataContainerArray()->getPrereqDataContainer(this, getSurfaceMeshNodeTypeArrayPath().getDataContainerName(), false);
   if(getErrorCondition() < 0)
@@ -205,22 +205,20 @@ void MovingFiniteElementSmoothing::dataCheck()
   // We MUST have Nodes
   if(sm->getVertices().get() == nullptr)
   {
-    setErrorCondition(-384);
-    notifyErrorMessage(getHumanLabel(), "SurfaceMesh DataContainer missing Nodes", getErrorCondition());
+    setErrorCondition(-384, "SurfaceMesh DataContainer missing Nodes");
   }
 
   // We MUST have Triangles defined also.
   if(sm->getFaces().get() == nullptr)
   {
-    setErrorCondition(-385);
-    notifyErrorMessage(getHumanLabel(), "SurfaceMesh DataContainer missing Triangles", getErrorCondition());
+    setErrorCondition(-385, "SurfaceMesh DataContainer missing Triangles");
   }
 
   if(getErrorCondition() >= 0)
   {
     // Check for Node Type Array
     // int size = sm->getVertices()->getNumberOfTuples();
-    QVector<size_t> dims(1, 1);
+    std::vector<size_t> dims(1, 1);
     m_SurfaceMeshNodeTypePtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int8_t>, AbstractFilter>(this, getSurfaceMeshNodeTypeArrayPath(),
                                                                                                                   dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
     if(nullptr != m_SurfaceMeshNodeTypePtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -233,8 +231,7 @@ void MovingFiniteElementSmoothing::dataCheck()
   {
     if(sm->getEdges().get() == nullptr)
     {
-      setErrorCondition(-385);
-      notifyErrorMessage(getHumanLabel(), "Constraining Quad Points or Triples lines requires Edges array", getErrorCondition());
+      setErrorCondition(-385, "Constraining Quad Points or Triples lines requires Edges array");
     }
   }
 }
@@ -252,9 +249,8 @@ void MovingFiniteElementSmoothing::preflight()
   setInPreflight(false);
 
   /* *** THIS FILTER NEEDS TO BE CHECKED *** */
-  setErrorCondition(0xABABABAB);
   QString ss = QObject::tr("Filter is NOT updated for IGeometry Redesign. A Programmer needs to check this filter. Please report this to the DREAM3D developers.");
-  notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+  setErrorCondition(0xABABABAB, ss);
   /* *** THIS FILTER NEEDS TO BE CHECKED *** */
 }
 
@@ -263,8 +259,8 @@ void MovingFiniteElementSmoothing::preflight()
 // -----------------------------------------------------------------------------
 void MovingFiniteElementSmoothing::execute()
 {
-  int err = 0;
-  setErrorCondition(err);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
   if(getErrorCondition() < 0)
   {
@@ -276,8 +272,8 @@ void MovingFiniteElementSmoothing::execute()
   VertexArray::Pointer floatNodesPtr = sm->getVertices();
   FaceArray::Pointer trianglesPtr = sm->getFaces();
 
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   /* Place all your code to execute your filter here. */
   VertexArray::Vert_t* nodesF = floatNodesPtr->getPointer(0); // Get the pointer to the from of the array so we can use [] notation
   FaceArray::Face_t* triangles = trianglesPtr->getPointer(0); // Get the pointer to the from of the array so we can use [] notation
@@ -286,7 +282,7 @@ void MovingFiniteElementSmoothing::execute()
   int numberNodes = floatNodesPtr->getNumberOfTuples();
   int ntri = trianglesPtr->getNumberOfTuples();
 
-  StructArray<VertexArray::VertD_t>::Pointer nodesDPtr = StructArray<VertexArray::VertD_t>::CreateArray(numberNodes, "MFE_Double_Nodes");
+  StructArray<VertexArray::VertD_t>::Pointer nodesDPtr = StructArray<VertexArray::VertD_t>::CreateArray(numberNodes, "MFE_Double_Nodes", true);
   nodesDPtr->initializeWithZeros();
   VertexArray::VertD_t* nodes = nodesDPtr->getPointer(0);
 
@@ -301,7 +297,7 @@ void MovingFiniteElementSmoothing::execute()
   bool isVerbose = true;
 
   // We need a few more arrays to support the code from CMU:
-  StructArray<TripleNN>::Pointer triplennPtr = StructArray<TripleNN>::CreateArray(numberNodes, "TripleLine_Neighbors_Or_IDS");
+  StructArray<TripleNN>::Pointer triplennPtr = StructArray<TripleNN>::CreateArray(numberNodes, "TripleLine_Neighbors_Or_IDS", true);
   triplennPtr->initializeWithZeros();
   TripleNN* triplenn = triplennPtr->getPointer(0);
 
@@ -361,11 +357,7 @@ void MovingFiniteElementSmoothing::execute()
     IDataArray::Pointer iEdgesDataArray = m->getPointData(SIMPL::CellData::SurfaceMeshInternalEdges);
     if((edgesDataArray.get() == nullptr || iEdgesDataArray.get() == nullptr) && m_SmoothTripleLines == true)
     {
-      setErrorCondition(-596);
-      notifyErrorMessage(
-          getHumanLabel(),
-          "Either the Edges or Internal Edges array was nullptr which means those arrays have not been created and you have selected to smooth triple lines. Disable the smoothing of triple lines.",
-          -556);
+      setErrorCondition(-596, "Either the Edges or Internal Edges array was nullptr which means those arrays have not been created and you have selected to smooth triple lines. Disable the smoothing of triple lines.");
       return;
     }
 
@@ -436,8 +428,7 @@ void MovingFiniteElementSmoothing::execute()
               {
                 qDebug() << "triplenn[nid[1]].triplenn2 != 0 was TRUE. This is bad"
                          << "\n";
-                setErrorCondition(-666);
-                notifyErrorMessage(getHumanLabel(), "triplenn[nid[1]].triplenn2 != 0 was TRUE. This is bad", -666);
+                setErrorCondition(-666, "triplenn[nid[1]].triplenn2 != 0 was TRUE. This is bad");
               }
               return;
             }
@@ -462,8 +453,7 @@ void MovingFiniteElementSmoothing::execute()
               {
                 qDebug() << "triplenn[nid[1]].triplenn2 != 0 was TRUE. This is bad"
                          << "\n";
-                setErrorCondition(-666);
-                notifyErrorMessage(getHumanLabel(), "triplenn[nid[1]].triplenn2 != 0 was TRUE. This is bad", -666);
+                setErrorCondition(-666, "triplenn[nid[1]].triplenn2 != 0 was TRUE. This is bad");
               }
               return;
             }
@@ -726,7 +716,7 @@ void MovingFiniteElementSmoothing::execute()
       qDebug() << "Update loop: " << updates << "\n";
     }
     QString ss = QObject::tr("Iteration: %1").arg(updates);
-    notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+    notifyStatusMessage(ss);
 
     Dihedral_min = 180.;
     Dihedral_max = 0.;
@@ -1081,8 +1071,7 @@ void MovingFiniteElementSmoothing::execute()
     nodesF[n].pos[2] = nodes[n].pos[2];
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -1091,7 +1080,7 @@ void MovingFiniteElementSmoothing::execute()
 AbstractFilter::Pointer MovingFiniteElementSmoothing::newFilterInstance(bool copyFilterParameters) const
 {
   MovingFiniteElementSmoothing::Pointer filter = MovingFiniteElementSmoothing::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

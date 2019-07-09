@@ -39,7 +39,6 @@
 #include <limits>
 #include <random>
 
-#include <QtCore/QDateTime>
 
 #include "SIMPLib/Math/SIMPLibRandom.h"
 #include "SIMPLib/Utilities/ColorTable.h"
@@ -80,9 +79,7 @@ namespace Detail
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-LaueOps::LaueOps()
-{
-}
+LaueOps::LaueOps() = default;
 
 // -----------------------------------------------------------------------------
 //
@@ -410,7 +407,11 @@ std::vector<QString> LaueOps::GetLaueNames()
   std::vector<QString> names;
 
   std::vector<LaueOps::Pointer> ops = getOrientationOpsVector();
-  std::for_each(ops.begin(), ops.end(), [&](LaueOps::Pointer op) { names.push_back(op->getSymmetryName()); });
+
+  for(const auto& op : ops)
+  {
+    names.push_back(op->getSymmetryName());
+  }
 
   return names;
 }

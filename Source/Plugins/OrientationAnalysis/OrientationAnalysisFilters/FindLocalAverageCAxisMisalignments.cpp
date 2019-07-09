@@ -69,14 +69,6 @@ FindLocalAverageCAxisMisalignments::FindLocalAverageCAxisMisalignments()
 , m_CrystalStructuresArrayPath("", "", "")
 , m_UnbiasedLocalCAxisMisalignmentsArrayName(SIMPL::FeatureData::UnbiasedLocalCAxisMisalignments)
 , m_NumFeaturesPerParentArrayName(SIMPL::FeatureData::NumFeaturesPerParent)
-, m_FeatureIds(nullptr)
-, m_CellParentIds(nullptr)
-, m_FeatureParentIds(nullptr)
-, m_NumFeaturesPerParent(nullptr)
-, m_AvgCAxisMisalignments(nullptr)
-, m_LocalCAxisMisalignments(nullptr)
-, m_UnbiasedLocalCAxisMisalignments(nullptr)
-, m_CrystalStructures(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 
@@ -92,7 +84,7 @@ FindLocalAverageCAxisMisalignments::~FindLocalAverageCAxisMisalignments() = defa
 // -----------------------------------------------------------------------------
 void FindLocalAverageCAxisMisalignments::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   QStringList linkedProps("LocalCAxisMisalignmentsArrayName");
   parameters.push_back(SIMPL_NEW_LINKED_BOOL_FP("Calculate Local C-Axis Misalignments", CalcBiasedAvg, FilterParameter::Parameter, FindLocalAverageCAxisMisalignments, linkedProps));
@@ -178,11 +170,11 @@ void FindLocalAverageCAxisMisalignments::initialize()
 void FindLocalAverageCAxisMisalignments::dataCheck()
 {
   DataArrayPath tempPath;
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   // Cell Data
-  QVector<size_t> dims(1, 1);
+  std::vector<size_t> dims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                        /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -197,7 +189,7 @@ void FindLocalAverageCAxisMisalignments::dataCheck()
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
   // Feature Data
-  if(m_CalcUnbiasedAvg == true)
+  if(m_CalcUnbiasedAvg)
   {
     tempPath.update(getNewCellFeatureAttributeMatrixName().getDataContainerName(), getNewCellFeatureAttributeMatrixName().getAttributeMatrixName(), getUnbiasedLocalCAxisMisalignmentsArrayName());
     m_UnbiasedLocalCAxisMisalignmentsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
@@ -211,7 +203,7 @@ void FindLocalAverageCAxisMisalignments::dataCheck()
     m_CAxisMisalignmentList = getDataContainerArray()->getPrereqArrayFromPath<NeighborList<float>, AbstractFilter>(this, getCAxisMisalignmentListArrayPath(), dims);
   }
 
-  if(m_CalcBiasedAvg == true)
+  if(m_CalcBiasedAvg)
   {
     m_AvgCAxisMisalignmentsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getAvgCAxisMisalignmentsArrayPath(),
                                                                                                                    dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
@@ -272,11 +264,11 @@ void FindLocalAverageCAxisMisalignments::preflight()
 // -----------------------------------------------------------------------------
 void FindLocalAverageCAxisMisalignments::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -286,7 +278,7 @@ void FindLocalAverageCAxisMisalignments::execute()
 
   std::vector<int32_t> NumUnbiasedFeaturesPerParent(numFeatures, 0);
 
-  if(m_CalcUnbiasedAvg == true)
+  if(m_CalcUnbiasedAvg)
   {
     NeighborList<int>& neighborlist = *(m_NeighborList.lock());
     NeighborList<float>& caxismisalignmentList = *(m_CAxisMisalignmentList.lock());
@@ -304,7 +296,7 @@ void FindLocalAverageCAxisMisalignments::execute()
     }
   }
 
-  if(m_CalcBiasedAvg == true)
+  if(m_CalcBiasedAvg)
   {
     for(size_t i = 1; i < numFeatures; i++)
     {
@@ -316,11 +308,11 @@ void FindLocalAverageCAxisMisalignments::execute()
 
   for(size_t i = 1; i < newNumFeatures; i++)
   {
-    if(m_CalcBiasedAvg == true)
+    if(m_CalcBiasedAvg)
     {
       m_LocalCAxisMisalignments[i] /= m_NumFeaturesPerParent[i];
     }
-    if(m_CalcUnbiasedAvg == true)
+    if(m_CalcUnbiasedAvg)
     {
       if(NumUnbiasedFeaturesPerParent[i] > 0)
       {
@@ -333,8 +325,7 @@ void FindLocalAverageCAxisMisalignments::execute()
     }
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 // -----------------------------------------------------------------------------
 //
@@ -342,7 +333,7 @@ void FindLocalAverageCAxisMisalignments::execute()
 AbstractFilter::Pointer FindLocalAverageCAxisMisalignments::newFilterInstance(bool copyFilterParameters) const
 {
   FindLocalAverageCAxisMisalignments::Pointer filter = FindLocalAverageCAxisMisalignments::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

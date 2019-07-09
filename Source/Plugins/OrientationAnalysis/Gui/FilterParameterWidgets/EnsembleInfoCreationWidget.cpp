@@ -35,9 +35,7 @@
 
 #include "EnsembleInfoCreationWidget.h"
 
-#include <QtCore/QSignalMapper>
 
-#include <QtWidgets/QMenu>
 
 #include "SVWidgetsLib/Core/SVWidgetsLibConstants.h"
 #include "SVWidgetsLib/Widgets/SVStyle.h"
@@ -126,10 +124,7 @@ void EnsembleInfoCreationWidget::setupGui()
   EnsembleInfo info = getFilter()->property(PROPERTY_NAME_AS_CHAR).value<EnsembleInfo>();
   m_EnsembleInfoTableModel->setTableData(info);
 
-//  addBtn->setStyleSheet(SVStyle::StyleSheetForButton(addBtn->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::AddImagePath));
-//  deleteBtn->setStyleSheet(SVStyle::StyleSheetForButton(deleteBtn->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::DeleteImagePath));
- 
- 
+
 #if 0
   // is the filter parameter tied to a boolean property of the Filter Instance, if it is then we need to make the check box visible
   if(getFilterParameter()->isConditional())
@@ -182,37 +177,25 @@ void EnsembleInfoCreationWidget::on_conditionalCB_stateChanged(int state)
 // -----------------------------------------------------------------------------
 QStringList EnsembleInfoCreationWidget::generateAttributeArrayList(const QString& currentDCName, const QString& currentAttrMatName)
 {
-  //  std::cout << "EnsembleInfoCreationWidget::generateAttributeArrayList()" << std::endl;
   QStringList attributeArrayList;
 
   // Loop over the data containers until we find the proper data container
-  QList<DataContainerProxy> containers = m_DcaProxy.dataContainers.values();
-  QListIterator<DataContainerProxy> containerIter(containers);
-  while(containerIter.hasNext())
+  DataContainerArrayProxy::StorageType& dcMap = m_DcaProxy.getDataContainers();
+  for(auto& dc : dcMap)
   {
-    DataContainerProxy dc = containerIter.next();
-    if(dc.name.compare(currentDCName) == 0)
+    if(dc.getName() == currentDCName)
     {
       // We found the proper Data Container, now populate the AttributeMatrix List
-      QMap<QString, AttributeMatrixProxy> attrMats = dc.attributeMatricies;
-      QMapIterator<QString, AttributeMatrixProxy> attrMatsIter(attrMats);
-      while(attrMatsIter.hasNext())
+      QMap<QString, AttributeMatrixProxy>& attrMats = dc.getAttributeMatricies();
+      for(auto& amProxy : attrMats)
       {
-        attrMatsIter.next();
-        QString amName = attrMatsIter.key();
-        if(amName.compare(currentAttrMatName) == 0)
+        if(amProxy.getName() == currentAttrMatName)
         {
-
           // We found the selected AttributeMatrix, so loop over this attribute matrix arrays and populate the list widget
-          AttributeMatrixProxy amProxy = attrMatsIter.value();
-          QMap<QString, DataArrayProxy> dataArrays = amProxy.dataArrays;
-          QMapIterator<QString, DataArrayProxy> dataArraysIter(dataArrays);
-          while(dataArraysIter.hasNext())
+          QMap<QString, DataArrayProxy>& dataArrays = amProxy.getDataArrays();
+          for(auto& daProxy : dataArrays)
           {
-            dataArraysIter.next();
-            // DataArrayProxy daProxy = dataArraysIter.value();
-            QString daName = dataArraysIter.key();
-            attributeArrayList << daName;
+            attributeArrayList << daProxy.getName();
           }
         }
       }
@@ -231,11 +214,11 @@ QString EnsembleInfoCreationWidget::checkStringValues(QString curDcName, QString
   {
     return filtDcName;
   }
-  else if(!curDcName.isEmpty() && filtDcName.isEmpty())
+  if(!curDcName.isEmpty() && filtDcName.isEmpty())
   {
     return curDcName;
   }
-  else if(!curDcName.isEmpty() && !filtDcName.isEmpty() && m_DidCausePreflight)
+  if(!curDcName.isEmpty() && !filtDcName.isEmpty() && m_DidCausePreflight)
   {
     return curDcName;
   }
@@ -344,7 +327,7 @@ void EnsembleInfoCreationWidget::filterNeedsInputParameters(AbstractFilter* filt
   bool ok = false;
   // Set the value into the Filter
   ok = filter->setProperty(PROPERTY_NAME_AS_CHAR, var);
-  if(false == ok)
+  if(!ok)
   {
     getFilter()->notifyMissingProperty(getFilterParameter());
   }
@@ -385,10 +368,8 @@ EnsembleInfoTableModel* EnsembleInfoCreationWidget::createEnsembleInfoModel()
 {
   EnsembleInfoTableModel* newModel = new EnsembleInfoTableModel(m_ShowOperators);
   QAbstractItemModel* oldModel = ensemblePhasesTableView->model();
-  if(nullptr != oldModel)
-  {
+
     delete oldModel;
-  }
 
   ensemblePhasesTableView->setModel(newModel);
   newModel->setNumberOfPhases(1);

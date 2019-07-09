@@ -35,18 +35,9 @@
 
 #include "EMMPMWidget.h"
 
-#include <assert.h>
+#include <cassert>
 
-#include <QtCore/QDateTime>
-#include <QtCore/QDir>
-#include <QtCore/QFile>
-#include <QtCore/QMetaProperty>
 
-#include <QtCore/QItemSelectionModel>
-#include <QtGui/QStandardItemModel>
-#include <QtWidgets/QFileDialog>
-#include <QtWidgets/QLabel>
-#include <QtWidgets/QListWidget>
 
 #include "EMMPM/EMMPMFilters/EMMPMFilter.h"
 #include "EMMPM/FilterParameters/EMMPMFilterParameter.h"
@@ -224,7 +215,7 @@ DynamicTableData EMMPMWidget::getDynamicTableData(QTableWidget* tableWidget)
       }
       data[row][col] = item->data(Qt::DisplayRole).toDouble(&ok);
 
-      if(ok == false)
+      if(!ok)
       {
         qDebug() << "Could not set the model data into the DynamicTableData object.";
         data.clear();
@@ -303,7 +294,7 @@ void EMMPMWidget::on_m_NumClasses_valueChanged(int i)
 // -----------------------------------------------------------------------------
 void EMMPMWidget::on_enableManualInit_toggled(bool checked)
 {
-  if(checked == true)
+  if(checked)
   {
     for(int row = 0; row < tableWidget->rowCount(); row++)
     {

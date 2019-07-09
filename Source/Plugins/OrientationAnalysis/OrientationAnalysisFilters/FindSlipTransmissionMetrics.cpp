@@ -38,11 +38,22 @@
 #include "SIMPLib/Common/Constants.h"
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 
 #include "OrientationAnalysis/OrientationAnalysisConstants.h"
 #include "OrientationAnalysis/OrientationAnalysisVersion.h"
+
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+  DataArrayID32 = 32,
+  DataArrayID33 = 33,
+  DataArrayID34 = 34,
+};
 
 // -----------------------------------------------------------------------------
 //
@@ -56,9 +67,6 @@ FindSlipTransmissionMetrics::FindSlipTransmissionMetrics()
 , m_AvgQuatsArrayPath("", "", "")
 , m_FeaturePhasesArrayPath("", "", "")
 , m_CrystalStructuresArrayPath("", "", "")
-, m_FeaturePhases(nullptr)
-, m_AvgQuats(nullptr)
-, m_CrystalStructures(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 
@@ -80,7 +88,7 @@ FindSlipTransmissionMetrics::~FindSlipTransmissionMetrics() = default;
 // -----------------------------------------------------------------------------
 void FindSlipTransmissionMetrics::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Feature Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req = DataArraySelectionFilterParameter::CreateCategoryRequirement(SIMPL::TypeNames::NeighborList, 1, AttributeMatrix::Category::Feature);
@@ -100,10 +108,10 @@ void FindSlipTransmissionMetrics::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Crystal Structures", CrystalStructuresArrayPath, FilterParameter::RequiredArray, FindSlipTransmissionMetrics, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Feature Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("F1 List", F1ListArrayName, FilterParameter::CreatedArray, FindSlipTransmissionMetrics));
-  parameters.push_back(SIMPL_NEW_STRING_FP("F1spt List", F1sptListArrayName, FilterParameter::CreatedArray, FindSlipTransmissionMetrics));
-  parameters.push_back(SIMPL_NEW_STRING_FP("F7 List", F7ListArrayName, FilterParameter::CreatedArray, FindSlipTransmissionMetrics));
-  parameters.push_back(SIMPL_NEW_STRING_FP("mPrime List", mPrimeListArrayName, FilterParameter::CreatedArray, FindSlipTransmissionMetrics));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("F1 List", F1ListArrayName, NeighborListArrayPath, NeighborListArrayPath, FilterParameter::CreatedArray, FindSlipTransmissionMetrics));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("F1spt List", F1sptListArrayName, NeighborListArrayPath, NeighborListArrayPath, FilterParameter::CreatedArray, FindSlipTransmissionMetrics));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("F7 List", F7ListArrayName, NeighborListArrayPath, NeighborListArrayPath, FilterParameter::CreatedArray, FindSlipTransmissionMetrics));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("mPrime List", mPrimeListArrayName, NeighborListArrayPath, NeighborListArrayPath, FilterParameter::CreatedArray, FindSlipTransmissionMetrics));
   setFilterParameters(parameters);
 }
 
@@ -141,22 +149,22 @@ void FindSlipTransmissionMetrics::initialize()
 // -----------------------------------------------------------------------------
 void FindSlipTransmissionMetrics::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
 
   DataArrayPath tempPath;
 
   QVector<DataArrayPath> dataArrayPaths;
 
-  QVector<size_t> cDims(1, 4);
+  std::vector<size_t> cDims(1, 4);
   m_AvgQuatsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getAvgQuatsArrayPath(),
                                                                                                     cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_AvgQuatsPtr.lock())                                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AvgQuats = m_AvgQuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getAvgQuatsArrayPath());
   }
@@ -168,7 +176,7 @@ void FindSlipTransmissionMetrics::dataCheck()
   {
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeaturePhasesArrayPath());
   }
@@ -182,26 +190,22 @@ void FindSlipTransmissionMetrics::dataCheck()
 
   // Now we are going to get a "Pointer" to the NeighborList object out of the DataContainer
   m_NeighborList = getDataContainerArray()->getPrereqArrayFromPath<NeighborList<int32_t>, AbstractFilter>(this, getNeighborListArrayPath(), cDims);
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getNeighborListArrayPath());
   }
 
   tempPath.update(m_NeighborListArrayPath.getDataContainerName(), m_NeighborListArrayPath.getAttributeMatrixName(), getF1ListArrayName());
-  m_F1List = getDataContainerArray()->createNonPrereqArrayFromPath<NeighborList<float>, AbstractFilter, float>(this, tempPath, 0,
-                                                                                                               cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_F1List = getDataContainerArray()->createNonPrereqArrayFromPath<NeighborList<float>, AbstractFilter, float>(this, tempPath, 0, cDims, "", DataArrayID31);
 
   tempPath.update(m_NeighborListArrayPath.getDataContainerName(), m_NeighborListArrayPath.getAttributeMatrixName(), getF1sptListArrayName());
-  m_F1sptList = getDataContainerArray()->createNonPrereqArrayFromPath<NeighborList<float>, AbstractFilter, float>(this, tempPath, 0,
-                                                                                                                  cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_F1sptList = getDataContainerArray()->createNonPrereqArrayFromPath<NeighborList<float>, AbstractFilter, float>(this, tempPath, 0, cDims, "", DataArrayID32);
 
   tempPath.update(m_NeighborListArrayPath.getDataContainerName(), m_NeighborListArrayPath.getAttributeMatrixName(), getF7ListArrayName());
-  m_F7List = getDataContainerArray()->createNonPrereqArrayFromPath<NeighborList<float>, AbstractFilter, float>(this, tempPath, 0,
-                                                                                                               cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_F7List = getDataContainerArray()->createNonPrereqArrayFromPath<NeighborList<float>, AbstractFilter, float>(this, tempPath, 0, cDims, "", DataArrayID33);
 
   tempPath.update(m_NeighborListArrayPath.getDataContainerName(), m_NeighborListArrayPath.getAttributeMatrixName(), getmPrimeListArrayName());
-  m_mPrimeList = getDataContainerArray()->createNonPrereqArrayFromPath<NeighborList<float>, AbstractFilter, float>(this, tempPath, 0,
-                                                                                                                   cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_mPrimeList = getDataContainerArray()->createNonPrereqArrayFromPath<NeighborList<float>, AbstractFilter, float>(this, tempPath, 0, cDims, "", DataArrayID34);
 
   getDataContainerArray()->validateNumberOfTuples<AbstractFilter>(this, dataArrayPaths);
 }
@@ -224,10 +228,10 @@ void FindSlipTransmissionMetrics::preflight()
 // -----------------------------------------------------------------------------
 void FindSlipTransmissionMetrics::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -312,7 +316,6 @@ void FindSlipTransmissionMetrics::execute()
     m_mPrimeList.lock()->setList(static_cast<int32_t>(i), mPrimeL);
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -321,7 +324,7 @@ void FindSlipTransmissionMetrics::execute()
 AbstractFilter::Pointer FindSlipTransmissionMetrics::newFilterInstance(bool copyFilterParameters) const
 {
   FindSlipTransmissionMetrics::Pointer filter = FindSlipTransmissionMetrics::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

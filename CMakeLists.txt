@@ -1,14 +1,20 @@
 
-if(${CMAKE_MAJOR_VERSION} STREQUAL "3")
-# CMake 3.1 introduces if() policies on dereferencing variables in quotes
-cmake_policy(SET CMP0054 NEW)
-
 cmake_policy(SET CMP0002 NEW)
+cmake_policy(SET CMP0054 NEW)
+cmake_policy(SET CMP0079 NEW)
+cmake_policy(SET CMP0077 NEW)
 
-# cmake_policy(SET CMP0074 NEW)
-endif()
+cmake_minimum_required(VERSION 3.13.0)
 
-cmake_minimum_required(VERSION 3.10.0)
+# Request C++14 standard, using new CMake variables.
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_EXTENSIONS False)
+
+#--------------------------------------------------------------------------------------------------
+# Always write out the compile_commands.json file to help out things like QtCreator and VS Code
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 
 message(STATUS "********* STARTING DREAM.3D CONFIGURATION ***********************")
 if(NOT "${DREAM3D_SDK}" STREQUAL "")
@@ -31,8 +37,8 @@ else()
       message(STATUS "Set ITK_DIR variable to the directory where the ITKConfig.cmake is located.")
   endif()
 
-  if(NOT DEFINED EIGEN_INSTALL)
-      message(STATUS "Set EIGEN_INSTALL variable to the root directory of the Eigen installation.")
+  if(NOT DEFINED Eigen3_DIR)
+      message(STATUS "Set Eigen3_DIR variable to the directory where the Eigen3Config.cmake is located")
   endif()
 
   if(NOT DEFINED Qt5_DIR)
@@ -49,15 +55,9 @@ else()
 
 endif()
 
-# Request C++11 standard, using new CMake variables.
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CXX_EXTENSIONS False)
-
-
 #------------------------------------------------------------------------------
 # Create the Top level Project
-project(DREAM3DProj VERSION 6.5.0.0)
+project(DREAM3DProj VERSION 6.6.0.0)
 set(PROJECT_CODE_DIR ${PROJECT_SOURCE_DIR}/Source)
 
 # ---------- Setup output Directories -------------------------
@@ -458,7 +458,7 @@ message(STATUS "* CMP_SOURCE_DIR: ${CMP_SOURCE_DIR}")
 message(STATUS "* SIMPLProj_SOURCE_DIR: ${SIMPLProj_SOURCE_DIR}")
 message(STATUS "* SIMPLViewProj_SOURCE_DIR: ${SIMPLViewProj_SOURCE_DIR}")
 message(STATUS "* BrandedSIMPLView_DIR: ${BrandedSIMPLView_DIR}")
-message(STATUS "* Eigen (${EIGEN_VERSION}) ${EIGEN_INSTALL}")
+message(STATUS "* Eigen (${EIGEN3_VERSION_STRING}) ${Eigen3_DIR}")
 message(STATUS "* HDF5 (${HDF5_VERSION}) ${HDF5_INSTALL}")
 message(STATUS "* ITK (${ITK_VERSION}) ${ITK_DIR}")
 message(STATUS "* Qt5 (${Qt5_VERSION}) ${Qt5_DIR}")
@@ -467,7 +467,7 @@ message(STATUS "* TBB (${TBB_VERSION}) ${TBB_INSTALL_DIR}")
 message(STATUS "* -------------- Plugins ------------------------------------------------------")
 foreach(d3dPlugin ${DREAM3D_ALL_PLUGINS})
   get_property(PluginNumFilters GLOBAL PROPERTY ${d3dPlugin}_NumFilters)
-  message(STATUS "*   ${d3dPlugin}: [${DREAM3D_BUILD_PLUGIN_${d3dPlugin}}] ${PluginNumFilters} Filters")
+  message(STATUS "*   ${d3dPlugin}: [${DREAM3D_ENABLE_${d3dPlugin}}] ${PluginNumFilters} Filters")
 endforeach()
 message(STATUS "*******************************************************************************")
 

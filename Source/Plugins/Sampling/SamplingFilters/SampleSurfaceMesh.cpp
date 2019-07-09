@@ -35,11 +35,17 @@
 
 #include "SampleSurfaceMesh.h"
 
+#include <mutex>
+#include <thread>
+
+#include <QtCore/QDateTime>
+
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/partitioner.h>
 #include <tbb/task_scheduler_init.h>
+#include <tbb/tbb_machine.h>
 #endif
 
 #include "SIMPLib/Common/Constants.h"
@@ -51,41 +57,120 @@
 #include "SIMPLib/Geometry/VertexGeom.h"
 #include "SIMPLib/Math/GeometryMath.h"
 #include "SIMPLib/Math/SIMPLibRandom.h"
+#include "SIMPLib/Utilities/TimeUtilities.h"
 
 #include "Sampling/SamplingConstants.h"
 #include "Sampling/SamplingVersion.h"
 
-/**
- * @brief The SampleSurfaceMeshImpl class implements a threaded algorithm that samples a surface mesh based on points passed from subclassed Filters.
- */
-class SampleSurfaceMeshImpl
+class SampleSurfaceMeshImplByPoints
 {
+  SampleSurfaceMesh* m_Filter = nullptr;
   TriangleGeom::Pointer m_Faces;
   Int32Int32DynamicListArray::Pointer m_FaceIds;
   VertexGeom::Pointer m_FaceBBs;
   VertexGeom::Pointer m_Points;
-  int32_t* m_PolyIds;
+  size_t m_FeatureId = 0;
+  int32_t* m_PolyIds = nullptr;
 
 public:
-  SampleSurfaceMeshImpl(TriangleGeom::Pointer faces, Int32Int32DynamicListArray::Pointer faceIds, VertexGeom::Pointer faceBBs, VertexGeom::Pointer points, int32_t* polyIds)
-  : m_Faces(faces)
+  SampleSurfaceMeshImplByPoints(SampleSurfaceMesh* filter, TriangleGeom::Pointer faces, Int32Int32DynamicListArray::Pointer faceIds, VertexGeom::Pointer faceBBs, VertexGeom::Pointer points,
+                                size_t featureId, int32_t* polyIds)
+  : m_Filter(filter)
+  , m_Faces(faces)
   , m_FaceIds(faceIds)
   , m_FaceBBs(faceBBs)
   , m_Points(points)
+  , m_FeatureId(featureId)
   , m_PolyIds(polyIds)
   {
   }
-  virtual ~SampleSurfaceMeshImpl()
-  {
-  }
+  virtual ~SampleSurfaceMeshImplByPoints() = default;
 
   void checkPoints(size_t start, size_t end) const
   {
     float radius = 0.0f;
     float distToBoundary = 0.0f;
     int64_t numPoints = m_Points->getNumberOfVertices();
-    FloatArrayType::Pointer llPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Lower");
-    FloatArrayType::Pointer urPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Upper_Right");
+    FloatArrayType::Pointer llPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Lower", true);
+    FloatArrayType::Pointer urPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Upper_Right", true);
+    float* ll = llPtr->getPointer(0);
+    float* ur = urPtr->getPointer(0);
+    float* point = nullptr;
+    char code = ' ';
+
+    size_t iter = m_FeatureId;
+
+    // find bounding box for current feature
+    GeometryMath::FindBoundingBoxOfFaces(m_Faces.get(), m_FaceIds->getElementList(iter), ll, ur);
+    GeometryMath::FindDistanceBetweenPoints(ll, ur, radius);
+    int64_t pointsVisited = 0;
+    // check points in vertex array to see if they are in the bounding box of the feature
+    for(int64_t i = static_cast<int64_t>(start); i < static_cast<int64_t>(end); i++)
+    {
+      // Check for the filter being cancelled.
+      if(m_Filter->getCancel())
+      {
+        return;
+      }
+
+      point = m_Points->getVertexPointer(i);
+      if(m_PolyIds[i] == 0 && GeometryMath::PointInBox(point, ll, ur))
+      {
+        code = GeometryMath::PointInPolyhedron(m_Faces.get(), m_FaceIds->getElementList(iter), m_FaceBBs.get(), point, ll, ur, radius, distToBoundary);
+        if(code == 'i' || code == 'V' || code == 'E' || code == 'F')
+        {
+          m_PolyIds[i] = iter;
+        }
+      }
+      pointsVisited++;
+
+      if(pointsVisited % 1000 == 0)
+      {
+        m_Filter->sendThreadSafeProgressMessage(m_FeatureId, 1000, numPoints);
+      }
+    }
+  }
+
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
+  void operator()(const tbb::blocked_range<size_t>& r) const
+  {
+    checkPoints(r.begin(), r.end());
+  }
+#endif
+private:
+};
+
+/**
+ * @brief The SampleSurfaceMeshImpl class implements a threaded algorithm that samples a surface mesh based on points passed from subclassed Filters.
+ */
+class SampleSurfaceMeshImpl
+{
+  SampleSurfaceMesh* m_Filter = nullptr;
+  TriangleGeom::Pointer m_Faces;
+  Int32Int32DynamicListArray::Pointer m_FaceIds;
+  VertexGeom::Pointer m_FaceBBs;
+  VertexGeom::Pointer m_Points;
+  int32_t* m_PolyIds = nullptr;
+
+public:
+  SampleSurfaceMeshImpl(SampleSurfaceMesh* filter, TriangleGeom::Pointer faces, Int32Int32DynamicListArray::Pointer faceIds, VertexGeom::Pointer faceBBs, VertexGeom::Pointer points, int32_t* polyIds)
+  : m_Filter(filter)
+  , m_Faces(faces)
+  , m_FaceIds(faceIds)
+  , m_FaceBBs(faceBBs)
+  , m_Points(points)
+  , m_PolyIds(polyIds)
+  {
+  }
+  virtual ~SampleSurfaceMeshImpl() = default;
+
+  void checkPoints(size_t start, size_t end) const
+  {
+    float radius = 0.0f;
+    float distToBoundary = 0.0f;
+    int64_t numPoints = m_Points->getNumberOfVertices();
+    FloatArrayType::Pointer llPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Lower", true);
+    FloatArrayType::Pointer urPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Upper_Right", true);
     float* ll = llPtr->getPointer(0);
     float* ur = urPtr->getPointer(0);
     float* point = nullptr;
@@ -100,8 +185,14 @@ public:
       // check points in vertex array to see if they are in the bounding box of the feature
       for(int64_t i = 0; i < numPoints; i++)
       {
+        // Check for the filter being cancelled.
+        if(m_Filter->getCancel())
+        {
+          return;
+        }
+
         point = m_Points->getVertexPointer(i);
-        if(m_PolyIds[i] == 0 && GeometryMath::PointInBox(point, ll, ur) == true)
+        if(m_PolyIds[i] == 0 && GeometryMath::PointInBox(point, ll, ur))
         {
           code = GeometryMath::PointInPolyhedron(m_Faces.get(), m_FaceIds->getElementList(iter), m_FaceBBs.get(), point, ll, ur, radius, distToBoundary);
           if(code == 'i' || code == 'V' || code == 'E' || code == 'F')
@@ -127,7 +218,6 @@ private:
 // -----------------------------------------------------------------------------
 SampleSurfaceMesh::SampleSurfaceMesh()
 : m_SurfaceMeshFaceLabelsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceLabels)
-, m_SurfaceMeshFaceLabels(nullptr)
 {
 }
 
@@ -141,7 +231,7 @@ SampleSurfaceMesh::~SampleSurfaceMesh() = default;
 // -----------------------------------------------------------------------------
 void SampleSurfaceMesh::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req = DataArraySelectionFilterParameter::CreateRequirement(SIMPL::TypeNames::Int32, 2, AttributeMatrix::Type::Face, IGeometry::Type::Triangle);
@@ -173,26 +263,26 @@ void SampleSurfaceMesh::initialize()
 void SampleSurfaceMesh::dataCheck()
 {
   TriangleGeom::Pointer triangles = getDataContainerArray()->getPrereqGeometryFromDataContainer<TriangleGeom, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath().getDataContainerName());
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   QVector<IDataArray::Pointer> dataArrays;
 
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(triangles->getTriangles());
   }
 
-  QVector<size_t> cDims(1, 2);
+  std::vector<size_t> cDims(1, 2);
   m_SurfaceMeshFaceLabelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath(),
                                                                                                                    cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_SurfaceMeshFaceLabelsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshFaceLabels = m_SurfaceMeshFaceLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshFaceLabelsPtr.lock());
   }
@@ -226,7 +316,6 @@ VertexGeom::Pointer SampleSurfaceMesh::generate_points()
 // -----------------------------------------------------------------------------
 void SampleSurfaceMesh::assign_points(Int32ArrayType::Pointer iArray)
 {
-  return;
 }
 
 // -----------------------------------------------------------------------------
@@ -234,10 +323,10 @@ void SampleSurfaceMesh::assign_points(Int32ArrayType::Pointer iArray)
 // -----------------------------------------------------------------------------
 void SampleSurfaceMesh::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -245,22 +334,19 @@ void SampleSurfaceMesh::execute()
   DataContainer::Pointer sm = getDataContainerArray()->getDataContainer(m_SurfaceMeshFaceLabelsArrayPath.getDataContainerName());
   SIMPL_RANDOMNG_NEW()
 
-#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  tbb::task_scheduler_init init;
-  bool doParallel = true;
-#endif
-
   TriangleGeom::Pointer triangleGeom = sm->getGeometryAs<TriangleGeom>();
 
   // pull down faces
   int64_t numFaces = m_SurfaceMeshFaceLabelsPtr.lock()->getNumberOfTuples();
 
   // create array to hold bounding vertices for each face
-  FloatArrayType::Pointer llPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Lower_Left");
-  FloatArrayType::Pointer urPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Upper_Right");
+  FloatArrayType::Pointer llPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Lower_Left", true);
+  FloatArrayType::Pointer urPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Upper_Right", true);
   float* ll = llPtr->getPointer(0);
   float* ur = urPtr->getPointer(0);
   VertexGeom::Pointer faceBBs = VertexGeom::CreateGeometry(2 * numFaces, "_INTERNAL_USE_ONLY_faceBBs");
+
+  notifyStatusMessage("Counting number of Features...");
 
   // walk through faces to see how many features there are
   int32_t g1 = 0, g2 = 0;
@@ -278,6 +364,13 @@ void SampleSurfaceMesh::execute()
       maxFeatureId = g2;
     }
   }
+
+  // Check for user canceled flag.
+  if(getCancel())
+  {
+    return;
+  }
+
   // add one to account for feature 0
   int32_t numFeatures = maxFeatureId + 1;
 
@@ -286,9 +379,11 @@ void SampleSurfaceMesh::execute()
   std::vector<int32_t> linkCount(numFeatures, 0);
 
   // fill out lists with number of references to cells
-  Int32ArrayType::Pointer linkLocPtr = Int32ArrayType::CreateArray(numFaces, "_INTERNAL_USE_ONLY_cell refs");
+  Int32ArrayType::Pointer linkLocPtr = Int32ArrayType::CreateArray(numFaces, "_INTERNAL_USE_ONLY_cell refs", true);
   linkLocPtr->initializeWithZeros();
   int32_t* linkLoc = linkLocPtr->getPointer(0);
+
+  notifyStatusMessage("Counting number of triangle faces per feature ...");
 
   // traverse data to determine number of faces belonging to each feature
   for(int64_t i = 0; i < numFaces; i++)
@@ -305,8 +400,16 @@ void SampleSurfaceMesh::execute()
     }
   }
 
+  // Check for user canceled flag.
+  if(getCancel())
+  {
+    return;
+  }
+
   // now allocate storage for the faces
   faceLists->allocateLists(linkCount);
+
+  notifyStatusMessage("Allocating triangle faces per feature ...");
 
   // traverse data again to get the faces belonging to each feature
   for(int64_t i = 0; i < numFaces; i++)
@@ -327,9 +430,17 @@ void SampleSurfaceMesh::execute()
     faceBBs->setCoords(2 * i + 1, ur);
   }
 
+  // Check for user canceled flag.
+  if(getCancel())
+  {
+    return;
+  }
+
+  notifyStatusMessage("Vertex Geometry generating sampling points");
+
   // generate the list of sampling points from subclass
   VertexGeom::Pointer points = generate_points();
-  if(getErrorCondition() < 0 || nullptr == points.get())
+  if(getErrorCode() < 0 || nullptr == points.get())
   {
     return;
   }
@@ -337,25 +448,80 @@ void SampleSurfaceMesh::execute()
 
   // create array to hold which polyhedron (feature) each point falls in
   Int32ArrayType::Pointer iArray = Int32ArrayType::NullPointer();
-  iArray = Int32ArrayType::CreateArray(numPoints, "_INTERNAL_USE_ONLY_polyhedronIds");
+  iArray = Int32ArrayType::CreateArray(numPoints, "_INTERNAL_USE_ONLY_polyhedronIds", true);
   iArray->initializeWithZeros();
   int32_t* polyIds = iArray->getPointer(0);
 
+  notifyStatusMessage("Sampling triangle geometry ...");
+
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  tbb::task_scheduler_init init;
+  bool doParallel = true;
+#endif
+
+  // C++11 RIGHT HERE....
+  int32_t nthreads = static_cast<int32_t>(std::thread::hardware_concurrency()); // Returns ZERO if not defined on this platform
+  // If the number of features is larger than the number of cores to do the work then parallelize over the number of features
+  // otherwise parallelize over the number of triangle points.
+  if(numFeatures > nthreads)
   {
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, numFeatures), SampleSurfaceMeshImpl(triangleGeom, faceLists, faceBBs, points, polyIds), tbb::auto_partitioner());
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
+    if(doParallel)
+    {
+      tbb::parallel_for(tbb::blocked_range<size_t>(0, numFeatures), SampleSurfaceMeshImpl(this, triangleGeom, faceLists, faceBBs, points, polyIds), tbb::auto_partitioner());
+    }
+    else
+#endif
+    {
+      SampleSurfaceMeshImpl serial(this, triangleGeom, faceLists, faceBBs, points, polyIds);
+      serial.checkPoints(0, numFeatures);
+    }
   }
   else
-#endif
   {
-    SampleSurfaceMeshImpl serial(triangleGeom, faceLists, faceBBs, points, polyIds);
-    serial.checkPoints(0, numFeatures);
+    for(int featureId = 0; featureId < numFeatures; featureId++)
+    {
+      m_NumCompleted = 0;
+      m_StartMillis = QDateTime::currentMSecsSinceEpoch();
+      m_Millis = m_StartMillis;
+      size_t numPoints = points->getNumberOfVertices();
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
+      if(doParallel)
+      {
+        tbb::parallel_for(tbb::blocked_range<size_t>(0, numPoints), SampleSurfaceMeshImplByPoints(this, triangleGeom, faceLists, faceBBs, points, featureId, polyIds), tbb::auto_partitioner());
+      }
+      else
+#endif
+      {
+        SampleSurfaceMeshImplByPoints serial(this, triangleGeom, faceLists, faceBBs, points, featureId, polyIds);
+        serial.checkPoints(0, numPoints);
+      }
+    }
   }
-
   assign_points(iArray);
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
+  notifyStatusMessage("Complete");
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void SampleSurfaceMesh::sendThreadSafeProgressMessage(int featureId, size_t numCompleted, size_t totalFeatures)
+{
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lock(mutex);
+  qint64 currentMillis = QDateTime::currentMSecsSinceEpoch();
+  m_NumCompleted = m_NumCompleted + numCompleted;
+  if(currentMillis - m_Millis > 1000)
+  {
+    float inverseRate = static_cast<float>(currentMillis - m_Millis) / static_cast<float>(m_NumCompleted - m_LastCompletedPoints);
+    qint64 remainMillis = inverseRate * (totalFeatures - m_NumCompleted);
+    QString ss = QObject::tr("Feature %3 | Points Completed: %1 of %2").arg(m_NumCompleted).arg(totalFeatures).arg(featureId);
+    ss = ss + QObject::tr(" || Est. Time Remain: %1").arg(DREAM3D::convertMillisToHrsMinSecs(remainMillis));
+    notifyStatusMessage(ss);
+    m_Millis = QDateTime::currentMSecsSinceEpoch();
+    m_LastCompletedPoints = m_NumCompleted;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -364,7 +530,7 @@ void SampleSurfaceMesh::execute()
 AbstractFilter::Pointer SampleSurfaceMesh::newFilterInstance(bool copyFilterParameters) const
 {
   SampleSurfaceMesh::Pointer filter = SampleSurfaceMesh::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

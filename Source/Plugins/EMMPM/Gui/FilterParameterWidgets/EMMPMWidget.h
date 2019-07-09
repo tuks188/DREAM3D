@@ -35,8 +35,6 @@
 
 #pragma once
 
-#include <QtCore/QObject>
-#include <QtCore/QPointer>
 #include <QtWidgets/QWidget>
 
 #include "SVWidgetsLib/QtSupport/QtSFaderWidget.h"
@@ -108,7 +106,10 @@ private:
 
   DynamicTableData getDynamicTableData(QTableWidget* tableWidget);
 
-  EMMPMWidget(const EMMPMWidget&);             // Copy Constructor Not Implemented
-  void operator=(const EMMPMWidget&) = delete; // Move assignment Not Implemented
+public:
+  EMMPMWidget(const EMMPMWidget&) = delete;            // Copy Constructor Not Implemented
+  EMMPMWidget(EMMPMWidget&&) = delete;                 // Move Constructor Not Implemented
+  EMMPMWidget& operator=(const EMMPMWidget&) = delete; // Copy Assignment Not Implemented
+  EMMPMWidget& operator=(EMMPMWidget&&) = delete;      // Move Assignment Not Implemented
 };
 

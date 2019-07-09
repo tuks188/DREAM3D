@@ -51,6 +51,13 @@
 #include "SurfaceMeshing/SurfaceMeshingConstants.h"
 #include "SurfaceMeshing/SurfaceMeshingVersion.h"
 
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
+
 /**
  * @brief The CalculateDihedralAnglesImpl class implements a threaded algorithm that computes the minimum dihedral angle
  * for each triangle in a set of triangles
@@ -68,14 +75,12 @@ public:
   , m_DihedralAngles(DihedralAngles)
   {
   }
-  virtual ~CalculateDihedralAnglesImpl()
-  {
-  }
+  virtual ~CalculateDihedralAnglesImpl() = default;
 
   void generate(size_t start, size_t end) const
   {
     float* nodes = m_Nodes->getPointer(0);
-    int64_t* triangles = m_Triangles->getPointer(0);
+    MeshIndexType* triangles = m_Triangles->getPointer(0);
 
     float radToDeg = 180.0f / SIMPLib::Constants::k_Pi;
 
@@ -131,7 +136,6 @@ public:
 // -----------------------------------------------------------------------------
 TriangleDihedralAngleFilter::TriangleDihedralAngleFilter()
 : m_SurfaceMeshTriangleDihedralAnglesArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceDihedralAngles)
-, m_SurfaceMeshTriangleDihedralAngles(nullptr)
 {
 }
 
@@ -146,7 +150,7 @@ TriangleDihedralAngleFilter::~TriangleDihedralAngleFilter() = default;
 void TriangleDihedralAngleFilter::setupFilterParameters()
 {
   SurfaceMeshFilter::setupFilterParameters();
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::CreatedArray));
   {
     DataArrayCreationFilterParameter::RequirementType req = DataArrayCreationFilterParameter::CreateRequirement(AttributeMatrix::Type::Face, IGeometry::Type::Triangle);
@@ -177,27 +181,27 @@ void TriangleDihedralAngleFilter::initialize()
 // -----------------------------------------------------------------------------
 void TriangleDihedralAngleFilter::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   TriangleGeom::Pointer triangles =
       getDataContainerArray()->getPrereqGeometryFromDataContainer<TriangleGeom, AbstractFilter>(this, getSurfaceMeshTriangleDihedralAnglesArrayPath().getDataContainerName());
 
   QVector<IDataArray::Pointer> dataArrays;
 
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(triangles->getTriangles());
   }
 
-  QVector<size_t> cDims(1, 1);
-  m_SurfaceMeshTriangleDihedralAnglesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<double>, AbstractFilter, double>(
-      this, getSurfaceMeshTriangleDihedralAnglesArrayPath(), 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  std::vector<size_t> cDims(1, 1);
+  m_SurfaceMeshTriangleDihedralAnglesPtr =
+      getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<double>, AbstractFilter, double>(this, getSurfaceMeshTriangleDihedralAnglesArrayPath(), 0, cDims, "", DataArrayID31);
   if(nullptr != m_SurfaceMeshTriangleDihedralAnglesPtr.lock())          /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshTriangleDihedralAngles = m_SurfaceMeshTriangleDihedralAnglesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshTriangleDihedralAnglesPtr.lock());
   }
@@ -223,10 +227,10 @@ void TriangleDihedralAngleFilter::preflight()
 // -----------------------------------------------------------------------------
 void TriangleDihedralAngleFilter::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -241,7 +245,7 @@ void TriangleDihedralAngleFilter::execute()
   TriangleGeom::Pointer triangleGeom = sm->getGeometryAs<TriangleGeom>();
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, triangleGeom->getNumberOfTris()),
                       CalculateDihedralAnglesImpl(triangleGeom->getVertices(), triangleGeom->getTriangles(), m_SurfaceMeshTriangleDihedralAngles), tbb::auto_partitioner());
@@ -253,8 +257,7 @@ void TriangleDihedralAngleFilter::execute()
     serial.generate(0, triangleGeom->getNumberOfTris());
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 // -----------------------------------------------------------------------------
 //
@@ -262,7 +265,7 @@ void TriangleDihedralAngleFilter::execute()
 AbstractFilter::Pointer TriangleDihedralAngleFilter::newFilterInstance(bool copyFilterParameters) const
 {
   TriangleDihedralAngleFilter::Pointer filter = TriangleDihedralAngleFilter::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

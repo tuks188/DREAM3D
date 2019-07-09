@@ -33,7 +33,6 @@
 *
 * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-#include <QtCore/QCoreApplication>
 #include <QtCore/QFile>
 
 #include "SIMPLib/Common/SIMPLibSetGetMacros.h"
@@ -54,12 +53,14 @@ class FindTriangleGeomCentroidsTest
 {
 
 public:
-  FindTriangleGeomCentroidsTest()
-  {
-  }
-  virtual ~FindTriangleGeomCentroidsTest()
-  {
-  }
+  FindTriangleGeomCentroidsTest() = default;
+  ~FindTriangleGeomCentroidsTest() = default;
+
+  SIMPL_TYPE_MACRO(FindTriangleGeomCentroidsTest)
+  FindTriangleGeomCentroidsTest(const FindTriangleGeomCentroidsTest&) = delete;            // Copy Constructor Not Implemented
+  FindTriangleGeomCentroidsTest(FindTriangleGeomCentroidsTest&&) = delete;                 // Move Constructor Not Implemented
+  FindTriangleGeomCentroidsTest& operator=(const FindTriangleGeomCentroidsTest&) = delete; // Copy Assignment Not Implemented
+  FindTriangleGeomCentroidsTest& operator=(FindTriangleGeomCentroidsTest&&) = delete;      // Move Assignment Not Implemented
 
   // -----------------------------------------------------------------------------
   //
@@ -98,7 +99,7 @@ public:
     DataContainerArray::Pointer dca = DataContainerArray::New();
 
     DataContainer::Pointer tdc = DataContainer::New(SIMPL::Defaults::TriangleDataContainerName);
-    dca->addDataContainer(tdc);
+    dca->addOrReplaceDataContainer(tdc);
 
     // Basic idea is to create a surface mesh of a rectangular prism with edge lengths of 3x1x1; the
     // centroid should just be the average locations from its 8 vertices
@@ -106,7 +107,7 @@ public:
     TriangleGeom::Pointer triangle = TriangleGeom::CreateGeometry(12, vertex, SIMPL::Geometry::TriangleGeometry);
     tdc->setGeometry(triangle);
     float* vertices = triangle->getVertexPointer(0);
-    int64_t* tris = triangle->getTriPointer(0);
+    size_t* tris = triangle->getTriPointer(0);
 
     vertices[3 * 0 + 0] = -1.0f;
     vertices[3 * 0 + 1] = 0.0f;
@@ -188,16 +189,16 @@ public:
     tris[3 * 11 + 1] = 3;
     tris[3 * 11 + 2] = 0;
 
-    QVector<size_t> tDims(1, 12);
+    std::vector<size_t> tDims(1, 12);
 
     AttributeMatrix::Pointer faceAttrMat = AttributeMatrix::New(tDims, SIMPL::Defaults::FaceAttributeMatrixName, AttributeMatrix::Type::Face);
-    tdc->addAttributeMatrix(SIMPL::Defaults::FaceAttributeMatrixName, faceAttrMat);
+    tdc->addOrReplaceAttributeMatrix(faceAttrMat);
     tDims[0] = 2;
     AttributeMatrix::Pointer featAttrMat = AttributeMatrix::New(tDims, SIMPL::Defaults::FaceFeatureAttributeMatrixName, AttributeMatrix::Type::FaceFeature);
-    tdc->addAttributeMatrix(SIMPL::Defaults::FaceFeatureAttributeMatrixName, featAttrMat);
-    QVector<size_t> cDims(1, 2);
-    Int32ArrayType::Pointer faceLabels = Int32ArrayType::CreateArray(12, cDims, SIMPL::FaceData::SurfaceMeshFaceLabels);
-    faceAttrMat->addAttributeArray(SIMPL::FaceData::SurfaceMeshFaceLabels, faceLabels);
+    tdc->addOrReplaceAttributeMatrix(featAttrMat);
+    std::vector<size_t> cDims(1, 2);
+    Int32ArrayType::Pointer faceLabels = Int32ArrayType::CreateArray(12, cDims, SIMPL::FaceData::SurfaceMeshFaceLabels, true);
+    faceAttrMat->insertOrAssign(faceLabels);
     int32_t* faceLabelsPtr = faceLabels->getPointer(0);
 
     faceLabelsPtr[2 * 0 + 0] = -1;
@@ -266,7 +267,7 @@ public:
     }
 
     centroidsFilter->execute();
-    int32_t err = centroidsFilter->getErrorCondition();
+    int32_t err = centroidsFilter->getErrorCode();
     DREAM3D_REQUIRE_EQUAL(err, 0);
 
     AttributeMatrix::Pointer faceFeatAttrMat = tdc->getAttributeMatrix(SIMPL::Defaults::FaceFeatureAttributeMatrixName);
@@ -286,6 +287,7 @@ public:
   void operator()()
   {
     int err = EXIT_SUCCESS;
+    std::cout << "---- " << getNameOfClass().toStdString() << " ----" << std::endl;
 
     DREAM3D_REGISTER_TEST(TestFilterAvailability());
 
@@ -293,8 +295,4 @@ public:
 
     DREAM3D_REGISTER_TEST(RemoveTestFiles())
   }
-
-private:
-  FindTriangleGeomCentroidsTest(const FindTriangleGeomCentroidsTest&); // Copy Constructor Not Implemented
-  void operator=(const FindTriangleGeomCentroidsTest&);                // Move assignment Not Implemented
 };

@@ -50,12 +50,10 @@ CorrelateValuesWithVectorDirection::CorrelateValuesWithVectorDirection()
 : m_CorrelatedDataArrayPath("", "", "")
 , m_VectorDataArrayPath("", "", "")
 , m_Logfile("CorrelateValuesWithVectorDirection.log")
-, m_VectorData(nullptr)
 , m_MaxCoord(sqrt(SIMPLib::Constants::k_2Pi) / 2.0)
 , m_Dimension(72)
 , m_StepSize(sqrt(SIMPLib::Constants::k_2Pi) / 72.0)
 {
-
 }
 
 // -----------------------------------------------------------------------------
@@ -68,7 +66,7 @@ CorrelateValuesWithVectorDirection::~CorrelateValuesWithVectorDirection() = defa
 // -----------------------------------------------------------------------------
 void CorrelateValuesWithVectorDirection::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   {
     DataArraySelectionFilterParameter::RequirementType req;
@@ -108,11 +106,11 @@ void CorrelateValuesWithVectorDirection::initialize()
 // -----------------------------------------------------------------------------
 void CorrelateValuesWithVectorDirection::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
-  QVector<size_t> dims(1, 3);
+  std::vector<size_t> dims(1, 3);
   m_VectorDataPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getVectorDataArrayPath(),
                                                                                                       dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_VectorDataPtr.lock())                                                                      /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -120,11 +118,10 @@ void CorrelateValuesWithVectorDirection::dataCheck()
     m_VectorData = m_VectorDataPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
-  if(m_CorrelatedDataArrayPath.isEmpty() == true)
+  if(m_CorrelatedDataArrayPath.isEmpty())
   {
     QString ss = QObject::tr("The correlated data array name is empty. Please select a name for the correlated data array");
-    setErrorCondition(-11000);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-11000, ss);
     return;
   }
   IDataArray::Pointer inputData = getDataContainerArray()
@@ -134,8 +131,7 @@ void CorrelateValuesWithVectorDirection::dataCheck()
   if(nullptr == inputData.get())
   {
     QString ss = QObject::tr("Correlated Data array '%1' does not exist in the Voxel Data Container. Was it spelled correctly?").arg(m_CorrelatedDataArrayPath.getDataArrayName());
-    setErrorCondition(-11001);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-11001, ss);
     return;
   }
   if(inputData->getNumberOfTuples() != m_VectorDataPtr.lock()->getNumberOfTuples())
@@ -143,8 +139,7 @@ void CorrelateValuesWithVectorDirection::dataCheck()
     QString ss = QObject::tr("Correlated Data array '%1' has a different number of tuples from the Vector Data array '%2'")
                      .arg(m_CorrelatedDataArrayPath.getDataArrayName())
                      .arg(getVectorDataArrayPath().getDataArrayName());
-    setErrorCondition(-11002);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-11002, ss);
     return;
   }
 }
@@ -190,7 +185,7 @@ void addToLambert(IDataArray::Pointer correlatedData, size_t bin, size_t point, 
 void CorrelateValuesWithVectorDirection::execute()
 {
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -283,7 +278,7 @@ void CorrelateValuesWithVectorDirection::execute()
   createSterographicProjections(numComps);
   writePFStats(numComps);
 
-  notifyStatusMessage(getHumanLabel(), "Completed");
+  notifyStatusMessage("Completed");
 }
 
 // -----------------------------------------------------------------------------
@@ -291,9 +286,9 @@ void CorrelateValuesWithVectorDirection::execute()
 // -----------------------------------------------------------------------------
 void CorrelateValuesWithVectorDirection::makeLambertProjection(size_t numComps)
 {
-  QVector<size_t> tDims(2, m_Dimension);
-  QVector<size_t> cDims(1, numComps);
-  m_LambertProj = DoubleArrayType::CreateArray(tDims, cDims, "ModifiedLambertProjection");
+  std::vector<size_t> tDims(2, m_Dimension);
+  std::vector<size_t> cDims(1, numComps);
+  m_LambertProj = DoubleArrayType::CreateArray(tDims, cDims, "ModifiedLambertProjection", true);
   m_LambertProj->initializeWithZeros();
 }
 
@@ -396,11 +391,11 @@ void CorrelateValuesWithVectorDirection::createSterographicProjections(size_t nu
   float xtmp, ytmp;
   float xyz[3];
 
-  QVector<size_t> tDims(2, 0);
+  std::vector<size_t> tDims(2, 0);
   tDims[0] = xpoints;
   tDims[1] = ypoints;
-  QVector<size_t> cDims(1, numComps);
-  DoubleArrayType::Pointer stereoIntensity = DoubleArrayType::CreateArray(tDims, cDims, "StereoProjection");
+  std::vector<size_t> cDims(1, numComps);
+  DoubleArrayType::Pointer stereoIntensity = DoubleArrayType::CreateArray(tDims, cDims, "StereoProjection", true);
   stereoIntensity->initializeWithValue(-1000.0f);
   double* intensity = stereoIntensity->getPointer(0);
   double* m_LambertProjection = m_LambertProj->getPointer(0);
@@ -438,7 +433,7 @@ void CorrelateValuesWithVectorDirection::createSterographicProjections(size_t nu
   {
 
     QString ss = QObject::tr("Could not open GBCD viz file %1 for writing. Please check access permissions and the path to the output location exists").arg(m_OutputFile);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(getErrorCode(), ss);
     return;
   }
 
@@ -502,11 +497,11 @@ void CorrelateValuesWithVectorDirection::writeLambertProjection(size_t numComps)
   float yres = m_StepSize;
   float zres = (xres + yres) / 2.0;
 
-  QVector<size_t> tDims(2, 0);
+  std::vector<size_t> tDims(2, 0);
   tDims[0] = xpoints;
   tDims[1] = ypoints;
-  QVector<size_t> cDims(1, numComps);
-  DoubleArrayType::Pointer modLamIntensity = DoubleArrayType::CreateArray(tDims, cDims, "ModLamProjection");
+  std::vector<size_t> cDims(1, numComps);
+  DoubleArrayType::Pointer modLamIntensity = DoubleArrayType::CreateArray(tDims, cDims, "ModLamProjection", true);
   modLamIntensity->initializeWithZeros();
   double* intensity = modLamIntensity->getPointer(0);
   double* m_LambertProjection = m_LambertProj->getPointer(0);
@@ -532,7 +527,7 @@ void CorrelateValuesWithVectorDirection::writeLambertProjection(size_t numComps)
   {
 
     QString ss = QObject::tr("Could not open GBCD viz file %1 for writing. Please check access permissions and the path to the output location exists").arg(m_OutputFile);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(getErrorCode(), ss);
     return;
   }
 
@@ -650,7 +645,7 @@ void CorrelateValuesWithVectorDirection::writePFStats(size_t numComps)
   {
 
     QString ss = QObject::tr("Could not open GBCD viz file %1 for writing. Please check access permissions and the path to the output location exists").arg(m_OutputFile);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(getErrorCode(), ss);
     return;
   }
 
@@ -675,7 +670,7 @@ AbstractFilter::Pointer CorrelateValuesWithVectorDirection::newFilterInstance(bo
   /*
   */
   CorrelateValuesWithVectorDirection::Pointer filter = CorrelateValuesWithVectorDirection::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

@@ -43,6 +43,7 @@
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/IntFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
@@ -51,6 +52,14 @@
 
 #include "Statistics/StatisticsConstants.h"
 #include "Statistics/StatisticsVersion.h"
+
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+  DataArrayID32 = 32,
+};
 
 // -----------------------------------------------------------------------------
 //
@@ -67,12 +76,6 @@ FindFeatureClustering::FindFeatureClustering()
 , m_ClusteringListArrayName(SIMPL::FeatureData::ClusteringList)
 , m_NewEnsembleArrayArrayName("RDF")
 , m_MaxMinArrayName("RDFMaxMinDistances")
-, m_FeaturePhases(nullptr)
-, m_Centroids(nullptr)
-, m_EquivalentDiameters(nullptr)
-, m_NewEnsembleArray(nullptr)
-, m_MaxMinArray(nullptr)
-, m_BiasedFeatures(nullptr)
 {
 }
 
@@ -86,7 +89,7 @@ FindFeatureClustering::~FindFeatureClustering() = default;
 // -----------------------------------------------------------------------------
 void FindFeatureClustering::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Number of Bins for RDF", NumberOfBins, FilterParameter::Parameter, FindFeatureClustering));
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Phase Index", PhaseNumber, FilterParameter::Parameter, FindFeatureClustering));
   QStringList linkedProps("BiasedFeaturesArrayPath");
@@ -119,10 +122,10 @@ void FindFeatureClustering::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_AM_SELECTION_FP("Cell Ensemble Attribute Matrix", CellEnsembleAttributeMatrixName, FilterParameter::RequiredArray, FindFeatureClustering, amReq));
   }
   parameters.push_back(SeparatorFilterParameter::New("Cell Feature Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Clustering List", ClusteringListArrayName, FilterParameter::CreatedArray, FindFeatureClustering));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Clustering List", ClusteringListArrayName, FeaturePhasesArrayPath, FeaturePhasesArrayPath, FilterParameter::CreatedArray, FindFeatureClustering));
   parameters.push_back(SeparatorFilterParameter::New("Cell Ensemble Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Radial Distribution Function", NewEnsembleArrayArrayName, FilterParameter::CreatedArray, FindFeatureClustering));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Max and Min Separation Distances", MaxMinArrayName, FilterParameter::CreatedArray, FindFeatureClustering));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Radial Distribution Function", NewEnsembleArrayArrayName, CellEnsembleAttributeMatrixName, CellEnsembleAttributeMatrixName, FilterParameter::CreatedArray, FindFeatureClustering));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Max and Min Separation Distances", MaxMinArrayName, CellEnsembleAttributeMatrixName, CellEnsembleAttributeMatrixName, FilterParameter::CreatedArray, FindFeatureClustering));
   setFilterParameters(parameters);
 }
 
@@ -160,13 +163,13 @@ void FindFeatureClustering::initialize()
 // -----------------------------------------------------------------------------
 void FindFeatureClustering::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getEquivalentDiametersArrayPath().getDataContainerName());
 
   DataArrayPath tempPath;
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
 
   m_EquivalentDiametersPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getEquivalentDiametersArrayPath(),
                                                                                                                cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
@@ -190,7 +193,7 @@ void FindFeatureClustering::dataCheck()
     m_Centroids = m_CentroidsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
-  if(m_RemoveBiasedFeatures == true)
+  if(m_RemoveBiasedFeatures)
   {
     cDims[0] = 1;
     m_BiasedFeaturesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getBiasedFeaturesArrayPath(),
@@ -213,7 +216,7 @@ void FindFeatureClustering::dataCheck()
 
   cDims[0] = 2;
   tempPath.update(getCellEnsembleAttributeMatrixName().getDataContainerName(), getCellEnsembleAttributeMatrixName().getAttributeMatrixName(), getMaxMinArrayName());
-  m_MaxMinArrayPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, tempPath, 0, cDims);
+  m_MaxMinArrayPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, tempPath, 0, cDims, "", DataArrayID31);
   if(nullptr != m_MaxMinArrayPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_MaxMinArray = m_MaxMinArrayPtr.lock()->getPointer(0);
@@ -221,8 +224,7 @@ void FindFeatureClustering::dataCheck()
 
   cDims[0] = 1;
   tempPath.update(getFeaturePhasesArrayPath().getDataContainerName(), getFeaturePhasesArrayPath().getAttributeMatrixName(), getClusteringListArrayName());
-  m_ClusteringList = getDataContainerArray()->createNonPrereqArrayFromPath<NeighborList<float>, AbstractFilter, float>(
-      this, tempPath, 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_ClusteringList = getDataContainerArray()->createNonPrereqArrayFromPath<NeighborList<float>, AbstractFilter, float>(this, tempPath, 0, cDims, "", DataArrayID32);
 }
 
 // -----------------------------------------------------------------------------
@@ -246,7 +248,7 @@ void FindFeatureClustering::find_clustering()
   bool writeErrorFile = true;
   std::ofstream outFile;
 
-  if(m_ErrorOutputFile.isEmpty() == false)
+  if(!m_ErrorOutputFile.isEmpty())
   {
     outFile.open(m_ErrorOutputFile.toLatin1().data(), std::ios_base::binary);
     writeErrorFile = true;
@@ -272,17 +274,13 @@ void FindFeatureClustering::find_clustering()
   size_t totalFeatures = m_FeaturePhasesPtr.lock()->getNumberOfTuples();
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_EquivalentDiametersArrayPath.getDataContainerName());
 
-  size_t dims[3] = {0, 0, 0};
-  std::tie(dims[0], dims[1], dims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type dims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
-  float xRes = 0.0f;
-  float yRes = 0.0f;
-  float zRes = 0.0f;
-  std::tie(xRes, yRes, zRes) = m->getGeometryAs<ImageGeom>()->getResolution();
+  FloatVec3Type spacing = m->getGeometryAs<ImageGeom>()->getSpacing();
 
-  sizex = dims[0] * xRes;
-  sizey = dims[1] * yRes;
-  sizez = dims[2] * zRes;
+  sizex = dims[0] * spacing[0];
+  sizey = dims[1] * spacing[1];
+  sizez = dims[2] * spacing[2];
 
   totalvol = sizex * sizey * sizez;
   totalpoints = static_cast<float>(dims[0] * dims[1] * dims[2]);
@@ -293,8 +291,7 @@ void FindFeatureClustering::find_clustering()
   boxdims[1] = sizey;
   boxdims[2] = sizez;
 
-  std::vector<float> boxres = {0.0f, 0.0f, 0.0f};
-  std::tie(boxres.at(0), boxres.at(1), boxres.at(2)) = m->getGeometryAs<ImageGeom>()->getResolution();
+  std::vector<float> boxres = m->getGeometryAs<ImageGeom>()->getSpacing().toContainer<std::vector<float>>();
 
   for(size_t i = 1; i < totalFeatures; i++)
   {
@@ -313,7 +310,7 @@ void FindFeatureClustering::find_clustering()
       if(i % 1000 == 0)
       {
         QString ss = QObject::tr("Working on Feature %1 of %2").arg(i).arg(totalPPTfeatures);
-        notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+        notifyStatusMessage(ss);
       }
 
       x = m_Centroids[3 * i];
@@ -333,7 +330,7 @@ void FindFeatureClustering::find_clustering()
           clusteringlist[i].push_back(r);
           clusteringlist[j].push_back(r);
 
-          if(writeErrorFile == true && m_FeaturePhases[j] == 2)
+          if(writeErrorFile && m_FeaturePhases[j] == 2)
           {
             outFile << r << "\n" << r << "\n";
           }
@@ -372,7 +369,7 @@ void FindFeatureClustering::find_clustering()
     {
       if(m_FeaturePhases[i] == m_PhaseNumber)
       {
-        if(m_RemoveBiasedFeatures == false || m_BiasedFeatures[i] == false)
+        if(!m_RemoveBiasedFeatures || !m_BiasedFeatures[i])
         {
           ensemble = m_FeaturePhases[i];
           bin = (clusteringlist[i][j] - min) / stepsize;
@@ -445,17 +442,16 @@ void FindFeatureClustering::find_clustering()
 // -----------------------------------------------------------------------------
 void FindFeatureClustering::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   find_clustering();
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -464,7 +460,7 @@ void FindFeatureClustering::execute()
 AbstractFilter::Pointer FindFeatureClustering::newFilterInstance(bool copyFilterParameters) const
 {
   FindFeatureClustering::Pointer filter = FindFeatureClustering::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

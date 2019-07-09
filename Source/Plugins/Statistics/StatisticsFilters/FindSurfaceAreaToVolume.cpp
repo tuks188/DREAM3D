@@ -39,6 +39,7 @@
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
@@ -46,6 +47,13 @@
 
 #include "Statistics/StatisticsConstants.h"
 #include "Statistics/StatisticsVersion.h"
+
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
 
 // -----------------------------------------------------------------------------
 //
@@ -69,7 +77,7 @@ FindSurfaceAreaToVolume::~FindSurfaceAreaToVolume() = default;
 // -----------------------------------------------------------------------------
 void FindSurfaceAreaToVolume::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req =
@@ -84,11 +92,11 @@ void FindSurfaceAreaToVolume::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Number of Cells", NumCellsArrayPath, FilterParameter::RequiredArray, FindSurfaceAreaToVolume, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Cell Feature Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Surface Area to Volume Ratio", SurfaceAreaVolumeRatioArrayName, FilterParameter::CreatedArray, FindSurfaceAreaToVolume));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Surface Area to Volume Ratio", SurfaceAreaVolumeRatioArrayName, NumCellsArrayPath, NumCellsArrayPath, FilterParameter::CreatedArray, FindSurfaceAreaToVolume));
 
   QStringList linkedProps("SphericityArrayName");
   parameters.push_back(SIMPL_NEW_LINKED_BOOL_FP("Calculate Sphericity", CalculateSphericity, FilterParameter::Parameter, FindSurfaceAreaToVolume, linkedProps));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Sphericity Array Name", SphericityArrayName, FilterParameter::CreatedArray, FindSurfaceAreaToVolume));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Sphericity Array Name", SphericityArrayName, NumCellsArrayPath, NumCellsArrayPath, FilterParameter::CreatedArray, FindSurfaceAreaToVolume));
 
   setFilterParameters(parameters);
 }
@@ -117,13 +125,13 @@ void FindSurfaceAreaToVolume::initialize()
 // -----------------------------------------------------------------------------
 void FindSurfaceAreaToVolume::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -150,7 +158,7 @@ void FindSurfaceAreaToVolume::dataCheck()
   if(getCalculateSphericity())
   {
     tempPath.setDataArrayName(getSphericityArrayName());
-    m_SphericityPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0, cDims);
+    m_SphericityPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0, cDims, "", DataArrayID31);
     if(nullptr != m_SphericityPtr.lock())
     {
       m_Sphericity = m_SphericityPtr.lock()->getPointer(0);
@@ -176,10 +184,10 @@ void FindSurfaceAreaToVolume::preflight()
 // -----------------------------------------------------------------------------
 void FindSurfaceAreaToVolume::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -208,31 +216,27 @@ void FindSurfaceAreaToVolume::execute()
   if(mismatchedFeatures)
   {
     QString ss = QObject::tr("The number of Features in the NumCells array (%1) is larger than the largest Feature Id in the FeatureIds array").arg(numFeatures);
-    setErrorCondition(-5555);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-5555, ss);
     return;
   }
 
   if(largestFeature != (numFeatures - 1))
   {
     QString ss = QObject::tr("The number of Features in the NumCells array (%1) does not match the largest Feature Id in the FeatureIds array").arg(numFeatures);
-    setErrorCondition(-5555);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-5555, ss);
     return;
   }
 
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_NumCellsArrayPath.getDataContainerName());
-  float xRes = 0.0f;
-  float yRes = 0.0f;
-  float zRes = 0.0f;
+
   ImageGeom::Pointer imageGeom = m->getGeometryAs<ImageGeom>();
-  std::tie(xRes, yRes, zRes) = imageGeom->getResolution();
+  FloatVec3Type spacing = imageGeom->getSpacing();
 
   int64_t xPoints = static_cast<int64_t>(m->getGeometryAs<ImageGeom>()->getXPoints());
   int64_t yPoints = static_cast<int64_t>(m->getGeometryAs<ImageGeom>()->getYPoints());
   int64_t zPoints = static_cast<int64_t>(m->getGeometryAs<ImageGeom>()->getZPoints());
 
-  float voxelVol = xRes * yRes * zRes;
+  float voxelVol = spacing[0] * spacing[1] * spacing[2];
 
   std::vector<float> featureSurfaceArea(static_cast<size_t>(numFeatures), 0.0f);
 
@@ -294,15 +298,15 @@ void FindSurfaceAreaToVolume::execute()
             {
               if(l == 0 || l == 5) // XY face shared
               {
-                onsurf = onsurf + xRes * yRes;
+                onsurf = onsurf + spacing[0] * spacing[1];
               }
               if(l == 1 || l == 4) // YZ face shared
               {
-                onsurf = onsurf + yRes * zRes;
+                onsurf = onsurf + spacing[1] * spacing[2];
               }
               if(l == 2 || l == 3) // XZ face shared
               {
-                onsurf = onsurf + zRes * xRes;
+                onsurf = onsurf + spacing[2] * spacing[0];
               }
             }
           }
@@ -322,7 +326,6 @@ void FindSurfaceAreaToVolume::execute()
     m_Sphericity[i] = (thirdRootPi * std::pow((6.0f * featureVolume), 0.66666f)) / featureSurfaceArea[i];
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------

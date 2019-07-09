@@ -43,6 +43,7 @@
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Math/SIMPLibMath.h"
@@ -59,9 +60,6 @@ GenerateVectorColors::GenerateVectorColors()
 , m_GoodVoxelsArrayPath("", "", "")
 , m_CellVectorColorsArrayName(SIMPL::CellData::VectorColor)
 , m_UseGoodVoxels(false)
-, m_Vectors(nullptr)
-, m_GoodVoxels(nullptr)
-, m_CellVectorColors(nullptr)
 {
 }
 
@@ -75,7 +73,7 @@ GenerateVectorColors::~GenerateVectorColors() = default;
 // -----------------------------------------------------------------------------
 void GenerateVectorColors::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   QStringList linkedProps("GoodVoxelsArrayPath");
   parameters.push_back(SIMPL_NEW_LINKED_BOOL_FP("Apply to Good Voxels Only (Bad Voxels Will Be Black)", UseGoodVoxels, FilterParameter::Parameter, GenerateVectorColors, linkedProps));
   parameters.push_back(SeparatorFilterParameter::New("Element Data", FilterParameter::RequiredArray));
@@ -89,7 +87,7 @@ void GenerateVectorColors::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Mask", GoodVoxelsArrayPath, FilterParameter::RequiredArray, GenerateVectorColors, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Element Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Vector Colors", CellVectorColorsArrayName, FilterParameter::CreatedArray, GenerateVectorColors));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Vector Colors", CellVectorColorsArrayName, VectorsArrayPath, VectorsArrayPath, FilterParameter::CreatedArray, GenerateVectorColors));
   setFilterParameters(parameters);
 }
 
@@ -118,21 +116,21 @@ void GenerateVectorColors::initialize()
 // -----------------------------------------------------------------------------
 void GenerateVectorColors::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   DataArrayPath tempPath;
 
   QVector<DataArrayPath> dataArrayPaths;
 
-  QVector<size_t> cDims(1, 3);
+  std::vector<size_t> cDims(1, 3);
   m_VectorsPtr =
       getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getVectorsArrayPath(), cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_VectorsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Vectors = m_VectorsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getVectorsArrayPath());
   };
@@ -146,7 +144,7 @@ void GenerateVectorColors::dataCheck()
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
   // The good voxels array is optional, If it is available we are going to use it, otherwise we are going to ignore it
-  if(getUseGoodVoxels() == true)
+  if(getUseGoodVoxels())
   {
     // The good voxels array is optional, If it is available we are going to use it, otherwise we are going to create it
     cDims[0] = 1;
@@ -156,7 +154,7 @@ void GenerateVectorColors::dataCheck()
     {
       m_GoodVoxels = m_GoodVoxelsPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getGoodVoxelsArrayPath());
     };
@@ -187,10 +185,10 @@ void GenerateVectorColors::preflight()
 // -----------------------------------------------------------------------------
 void GenerateVectorColors::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -221,7 +219,7 @@ void GenerateVectorColors::execute()
     float dir[3] = {0.0f, 0.0f, 0.0f};
     float r = 0, g = 0, b = 0;
     SIMPL::Rgb argb;
-    if(missingGoodVoxels == true || m_GoodVoxels[i] == true)
+    if(missingGoodVoxels || m_GoodVoxels[i])
     {
       dir[0] = m_Vectors[index + 0];
       dir[1] = m_Vectors[index + 1];
@@ -285,8 +283,7 @@ void GenerateVectorColors::execute()
     }
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -295,7 +292,7 @@ void GenerateVectorColors::execute()
 AbstractFilter::Pointer GenerateVectorColors::newFilterInstance(bool copyFilterParameters) const
 {
   GenerateVectorColors::Pointer filter = GenerateVectorColors::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

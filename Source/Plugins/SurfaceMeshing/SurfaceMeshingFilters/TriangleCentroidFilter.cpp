@@ -50,6 +50,13 @@
 #include "SurfaceMeshing/SurfaceMeshingConstants.h"
 #include "SurfaceMeshing/SurfaceMeshingVersion.h"
 
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
+
 /**
  * @brief The CalculateCentroidsImpl class implements a threaded algorithm that computes the centroids of
  * each triangle in a set of triangles
@@ -67,16 +74,14 @@ public:
   , m_Centroids(centroids)
   {
   }
-  virtual ~CalculateCentroidsImpl()
-  {
-  }
+  virtual ~CalculateCentroidsImpl() = default;
 
   void generate(size_t start, size_t end) const
   {
     float* nodes = m_Nodes->getPointer(0);
-    int64_t* triangles = m_Triangles->getPointer(0);
+    MeshIndexType* triangles = m_Triangles->getPointer(0);
 
-    for(size_t i = start; i < end; i++)
+    for(MeshIndexType i = start; i < end; i++)
     {
       m_Centroids[i * 3] = (nodes[triangles[i * 3] * 3 + 0] + nodes[triangles[i * 3 + 1] * 3 + 0] + nodes[triangles[i * 3 + 2] * 3 + 0]) / 3.0;
       m_Centroids[i * 3 + 1] = (nodes[triangles[i * 3] * 3 + 1] + nodes[triangles[i * 3 + 1] * 3 + 1] + nodes[triangles[i * 3 + 2] * 3 + 1]) / 3.0;
@@ -97,7 +102,6 @@ public:
 // -----------------------------------------------------------------------------
 TriangleCentroidFilter::TriangleCentroidFilter()
 : m_SurfaceMeshTriangleCentroidsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceCentroids)
-, m_SurfaceMeshTriangleCentroids(nullptr)
 {
 }
 
@@ -112,7 +116,7 @@ TriangleCentroidFilter::~TriangleCentroidFilter() = default;
 void TriangleCentroidFilter::setupFilterParameters()
 {
   SurfaceMeshFilter::setupFilterParameters();
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::CreatedArray));
   {
     DataArrayCreationFilterParameter::RequirementType req = DataArrayCreationFilterParameter::CreateRequirement(AttributeMatrix::Type::Face, IGeometry::Type::Triangle);
@@ -143,26 +147,26 @@ void TriangleCentroidFilter::initialize()
 // -----------------------------------------------------------------------------
 void TriangleCentroidFilter::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   TriangleGeom::Pointer triangles = getDataContainerArray()->getPrereqGeometryFromDataContainer<TriangleGeom, AbstractFilter>(this, getSurfaceMeshTriangleCentroidsArrayPath().getDataContainerName());
 
   QVector<IDataArray::Pointer> dataArrays;
 
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(triangles->getTriangles());
   }
 
-  QVector<size_t> cDims(1, 3);
-  m_SurfaceMeshTriangleCentroidsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<double>, AbstractFilter, double>(
-      this, getSurfaceMeshTriangleCentroidsArrayPath(), 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  std::vector<size_t> cDims(1, 3);
+  m_SurfaceMeshTriangleCentroidsPtr =
+      getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<double>, AbstractFilter, double>(this, getSurfaceMeshTriangleCentroidsArrayPath(), 0, cDims, "", DataArrayID31);
   if(nullptr != m_SurfaceMeshTriangleCentroidsPtr.lock())          /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshTriangleCentroids = m_SurfaceMeshTriangleCentroidsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshTriangleCentroidsPtr.lock());
   }
@@ -188,10 +192,10 @@ void TriangleCentroidFilter::preflight()
 // -----------------------------------------------------------------------------
 void TriangleCentroidFilter::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -207,7 +211,7 @@ void TriangleCentroidFilter::execute()
   TriangleGeom::Pointer triangleGeom = sm->getGeometryAs<TriangleGeom>();
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, triangleGeom->getNumberOfTris()), CalculateCentroidsImpl(triangleGeom->getVertices(), triangleGeom->getTriangles(), m_SurfaceMeshTriangleCentroids),
                       tbb::auto_partitioner());
@@ -219,8 +223,7 @@ void TriangleCentroidFilter::execute()
     serial.generate(0, triangleGeom->getNumberOfTris());
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 // -----------------------------------------------------------------------------
 //
@@ -228,7 +231,7 @@ void TriangleCentroidFilter::execute()
 AbstractFilter::Pointer TriangleCentroidFilter::newFilterInstance(bool copyFilterParameters) const
 {
   TriangleCentroidFilter::Pointer filter = TriangleCentroidFilter::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

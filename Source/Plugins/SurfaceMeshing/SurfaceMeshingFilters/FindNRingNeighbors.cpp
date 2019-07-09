@@ -76,7 +76,7 @@ FindNRingNeighbors::UniqueFaceIds_t& FindNRingNeighbors::getNRingTriangles()
 // -----------------------------------------------------------------------------
 int32_t FindNRingNeighbors::generate(TriangleGeom::Pointer triangleGeom, int32_t* faceLabels)
 {
-  int64_t* triangles = triangleGeom->getTriPointer(0);
+  MeshIndexType* triangles = triangleGeom->getTriPointer(0);
   int32_t err = 0;
 
   // Clear out all the previous triangles.
@@ -99,7 +99,7 @@ int32_t FindNRingNeighbors::generate(TriangleGeom::Pointer triangleGeom, int32_t
   bool check1 = faceLabels[m_TriangleId * 2 + 1] == m_RegionId0 && faceLabels[m_TriangleId * 2] == m_RegionId1;
 
 #if 1
-  if(check0 == false && check1 == false)
+  if(!check0 && !check1)
   {
     qDebug() << "FindNRingNeighbors Seed triangle ID does not have a matching Region ID for " << m_RegionId0 << " & " << m_RegionId1 << "\n";
     qDebug() << "Region Ids are: " << faceLabels[m_TriangleId * 2] << " & " << faceLabels[m_TriangleId * 2 + 1] << "\n";
@@ -125,7 +125,7 @@ int32_t FindNRingNeighbors::generate(TriangleGeom::Pointer triangleGeom, int32_t
       {
         // Get all the triangles for this Node id
         uint16_t tCount = node2TrianglePtr->getNumberOfElements(triangles[triangleIdx * 3 + i]);
-        int64_t* data = node2TrianglePtr->getElementListPointer(triangles[triangleIdx * 3 + i]);
+        MeshIndexType* data = node2TrianglePtr->getElementListPointer(triangles[triangleIdx * 3 + i]);
 
         // Copy all the triangles into our "2Ring" set which will be the unique set of triangle ids
         for(uint16_t t = 0; t < tCount; ++t)
@@ -133,7 +133,7 @@ int32_t FindNRingNeighbors::generate(TriangleGeom::Pointer triangleGeom, int32_t
           int64_t tid = data[t];
           check0 = faceLabels[tid * 2] == m_RegionId0 && faceLabels[tid * 2 + 1] == m_RegionId1;
           check1 = faceLabels[tid * 2 + 1] == m_RegionId0 && faceLabels[tid * 2] == m_RegionId1;
-          if(check0 == true || check1 == true)
+          if(check0 || check1)
           {
             m_NRingTriangles.insert(tid);
           }

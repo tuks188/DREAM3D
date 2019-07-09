@@ -56,13 +56,12 @@ using namespace H5Support_NAMESPACE;
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-H5AngImporter::H5AngImporter() :
-  EbsdImporter(),
-  xDim(0),
-  yDim(0),
-  xRes(0),
-  yRes(0),
-  m_FileVersion(Ebsd::H5::FileVersion)
+H5AngImporter::H5AngImporter()
+: xDim(0)
+, yDim(0)
+, xRes(0)
+, yRes(0)
+, m_FileVersion(Ebsd::H5OIM::FileVersion)
 {
 }
 
@@ -124,7 +123,7 @@ void H5AngImporter::getDims(int64_t& x, int64_t& y)
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void H5AngImporter::getResolution(float& x, float& y)
+void H5AngImporter::getSpacing(float& x, float& y)
 {
   x = xRes;
   y = yRes;
@@ -146,7 +145,7 @@ int H5AngImporter::importFile(hid_t fileId, int64_t z, const QString& angFile)
 {
   herr_t err = -1;
   setCancel(false);
-  setErrorCondition(false);
+  setErrorCode(0);
   setPipelineMessage("");
   QString streamBuf;
   QTextStream ss(&streamBuf);
@@ -191,7 +190,7 @@ int H5AngImporter::importFile(hid_t fileId, int64_t z, const QString& angFile)
     }
     setPipelineMessage( *(ss.string()));
 
-    setErrorCondition(err);
+    setErrorCode(err);
     progressMessage(*(ss.string()), 100);
     return -1;
   }
@@ -202,22 +201,22 @@ int H5AngImporter::importFile(hid_t fileId, int64_t z, const QString& angFile)
     H5T_class_t type_class;
     size_t type_size = 0;
     hid_t attr_type = -1;
-    err = QH5Lite::getAttributeInfo(fileId, "/", Ebsd::H5::FileVersionStr, dims, type_class, type_size, attr_type);
+    err = QH5Lite::getAttributeInfo(fileId, "/", Ebsd::H5OIM::FileVersionStr, dims, type_class, type_size, attr_type);
     if (attr_type < 0) // The attr_type variable was never set which means the attribute was NOT there
     {
       // The file version does not exist so write it to the file
-      err = QH5Lite::writeScalarAttribute(fileId, QString("/"), Ebsd::H5::FileVersionStr, m_FileVersion);
+      err = QH5Lite::writeScalarAttribute(fileId, QString("/"), Ebsd::H5OIM::FileVersionStr, m_FileVersion);
     }
     else
     {
       H5Aclose(attr_type);
     }
 
-    err = QH5Lite::getAttributeInfo(fileId, "/", Ebsd::H5::EbsdLibVersionStr, dims, type_class, type_size, attr_type);
+    err = QH5Lite::getAttributeInfo(fileId, "/", Ebsd::H5OIM::EbsdLibVersionStr, dims, type_class, type_size, attr_type);
     if (attr_type < 0) // The attr_type variable was never set which means the attribute was NOT there
     {
       // The file version does not exist so write it to the file
-      err = QH5Lite::writeStringAttribute(fileId, QString("/"), Ebsd::H5::EbsdLibVersionStr, EbsdLib::Version::Complete());
+      err = QH5Lite::writeStringAttribute(fileId, QString("/"), Ebsd::H5OIM::EbsdLibVersionStr, EbsdLib::Version::Complete());
     }
     else
     {
@@ -235,11 +234,11 @@ int H5AngImporter::importFile(hid_t fileId, int64_t z, const QString& angFile)
     ss << "H5AngImporter Error: A Group for Z index " << z << " could not be created."
        << " Please check other error messages from the HDF5 library for possible reasons.";
     setPipelineMessage( *(ss.string() ));
-    setErrorCondition(-500);
+    setErrorCode(-500);
     return -1;
   }
 
-  hid_t gid = QH5Utilities::createGroup(angGroup, Ebsd::H5::Header);
+  hid_t gid = QH5Utilities::createGroup(angGroup, Ebsd::H5OIM::Header);
   if (gid < 0)
   {
     ss.string()->clear();
@@ -248,7 +247,7 @@ int H5AngImporter::importFile(hid_t fileId, int64_t z, const QString& angFile)
     progressMessage(ss.string(), 100);
     err = H5Gclose(angGroup);
     setPipelineMessage( *(ss.string()) );
-    setErrorCondition(-600);
+    setErrorCode(-600);
     return -1;
   }
   WRITE_ANG_HEADER_DATA(reader, float, TEMpixPerum, Ebsd::Ang::TEMPIXPerUM)
@@ -257,7 +256,7 @@ int H5AngImporter::importFile(hid_t fileId, int64_t z, const QString& angFile)
   WRITE_ANG_HEADER_DATA(reader, float, ZStar, Ebsd::Ang::ZStar)
   WRITE_ANG_HEADER_DATA(reader, float, WorkingDistance, Ebsd::Ang::WorkingDistance)
 
-  hid_t phasesGid = QH5Utilities::createGroup(gid, Ebsd::H5::Phases);
+  hid_t phasesGid = QH5Utilities::createGroup(gid, Ebsd::H5OIM::Phases);
   err = writePhaseData(reader, phasesGid);
   // Close this group
   err = H5Gclose(phasesGid);
@@ -277,14 +276,14 @@ int H5AngImporter::importFile(hid_t fileId, int64_t z, const QString& angFile)
   WRITE_ANG_HEADER_STRING_DATA(reader, QString, SCANID, Ebsd::Ang::SCANID)
 
   QString angCompleteHeader = reader.getOriginalHeader();
-  err = QH5Lite::writeStringDataset(gid, Ebsd::H5::OriginalHeader, angCompleteHeader);
-  err = QH5Lite::writeStringDataset(gid, Ebsd::H5::OriginalFile, angFile);
+  err = QH5Lite::writeStringDataset(gid, Ebsd::H5OIM::OriginalHeader, angCompleteHeader);
+  err = QH5Lite::writeStringDataset(gid, Ebsd::H5OIM::OriginalFile, angFile);
 
   // Close the "Header" group
   err = H5Gclose(gid);
 
   // Create the "Data" group
-  gid = QH5Utilities::createGroup(angGroup, Ebsd::H5::Data);
+  gid = QH5Utilities::createGroup(angGroup, Ebsd::H5OIM::Data);
   if (gid < 0)
   {
     ss.string()->clear();
@@ -293,7 +292,7 @@ int H5AngImporter::importFile(hid_t fileId, int64_t z, const QString& angFile)
     progressMessage(ss.string(), 100);
     err = H5Gclose(angGroup);
     setPipelineMessage(*(ss.string()));
-    setErrorCondition(-700);
+    setErrorCode(-700);
     return -1;
   }
 
@@ -377,23 +376,22 @@ int H5AngImporter::writePhaseData(AngReader& reader, hid_t phasesGid)
   int32_t rank = 1;
   hsize_t dims[1] = { 0 };
   QVector<AngPhase::Pointer> phases = reader.getPhaseVector();
-  for (QVector<AngPhase::Pointer>::iterator phase = phases.begin(); phase != phases.end(); ++phase )
+  for(AngPhase::Pointer& phase : phases)
   {
-    AngPhase* p = (*phase).get();
-    hid_t pid = QH5Utilities::createGroup(phasesGid, QString::number(p->getPhaseIndex()));
-    WRITE_PHASE_HEADER_DATA((*phase), int, PhaseIndex, Ebsd::Ang::Phase)
-    WRITE_PHASE_HEADER_STRING_DATA((*phase), QString, MaterialName, Ebsd::Ang::MaterialName)
-    WRITE_PHASE_HEADER_STRING_DATA((*phase), QString, Formula, Ebsd::Ang::Formula)
-    WRITE_PHASE_HEADER_STRING_DATA((*phase), QString, Info, Ebsd::Ang::Info)
-    WRITE_PHASE_HEADER_DATA((*phase), int, Symmetry, Ebsd::Ang::Symmetry)
-    WRITE_PHASE_DATA_ARRAY( (*phase), float, pid, LatticeConstants, Ebsd::Ang::LatticeConstants)
-    WRITE_PHASE_HEADER_DATA((*phase), int, NumberFamilies, Ebsd::Ang::NumberFamilies)
+    hid_t pid = QH5Utilities::createGroup(phasesGid, QString::number(phase->getPhaseIndex()));
+    WRITE_PHASE_HEADER_DATA(phase, int, PhaseIndex, Ebsd::Ang::Phase)
+    WRITE_PHASE_HEADER_STRING_DATA(phase, QString, MaterialName, Ebsd::Ang::MaterialName)
+    WRITE_PHASE_HEADER_STRING_DATA(phase, QString, Formula, Ebsd::Ang::Formula)
+    WRITE_PHASE_HEADER_STRING_DATA(phase, QString, Info, Ebsd::Ang::Info)
+    WRITE_PHASE_HEADER_DATA(phase, int, Symmetry, Ebsd::Ang::Symmetry)
+    WRITE_PHASE_DATA_ARRAY(phase, float, pid, LatticeConstants, Ebsd::Ang::LatticeConstants)
+    WRITE_PHASE_HEADER_DATA(phase, int, NumberFamilies, Ebsd::Ang::NumberFamilies)
 
     // Create a Group for the HKLFamilies
-    if (p->getNumberFamilies() > 0)
+    if(phase->getNumberFamilies() > 0)
     {
       hid_t hklGid = QH5Utilities::createGroup(pid, Ebsd::Ang::HKLFamilies);
-      err = writeHKLFamilies(p, hklGid);
+      err = writeHKLFamilies(phase.get(), hklGid);
       if (err < 0)
       {
         ss.string()->clear();
@@ -405,7 +403,7 @@ int H5AngImporter::writePhaseData(AngReader& reader, hid_t phasesGid)
       }
       err = H5Gclose(hklGid);
     }
-    WRITE_PHASE_DATA_ARRAY( (*phase), int, pid, Categories, Ebsd::Ang::Categories)
+    WRITE_PHASE_DATA_ARRAY(phase, int, pid, Categories, Ebsd::Ang::Categories)
     err = H5Gclose(pid);
   }
   return err;
@@ -421,11 +419,11 @@ int H5AngImporter::writeHKLFamilies(AngPhase* p, hid_t hklGid)
   hsize_t     dims[1] = {1};
   herr_t      status = -1;
   int index = 0;
-  QVector<HKLFamily::Pointer> families = p->getHKLFamilies();
+  const QVector<HKLFamily::Pointer> families = p->getHKLFamilies();
   HKLFamily_t hkl;
-  for (QVector<HKLFamily::Pointer>::iterator f = families.begin(); f != families.end(); ++f )
+  for(const HKLFamily::Pointer& family : families)
   {
-    (*f)->copyToStruct(&hkl);
+    family->copyToStruct(&hkl);
 
     memtype = H5Tcreate (H5T_COMPOUND, sizeof (HKLFamily_t));
     status = H5Tinsert(memtype, "H", HOFFSET (HKLFamily_t, h), H5T_NATIVE_INT);

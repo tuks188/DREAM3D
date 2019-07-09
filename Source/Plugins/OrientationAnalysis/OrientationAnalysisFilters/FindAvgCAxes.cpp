@@ -47,6 +47,13 @@
 #include "OrientationAnalysis/OrientationAnalysisConstants.h"
 #include "OrientationAnalysis/OrientationAnalysisVersion.h"
 
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
+
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
@@ -54,9 +61,6 @@ FindAvgCAxes::FindAvgCAxes()
 : m_QuatsArrayPath("", "", "")
 , m_FeatureIdsArrayPath("", "", "")
 , m_AvgCAxesArrayPath("", "", "")
-, m_FeatureIds(nullptr)
-, m_Quats(nullptr)
-, m_AvgCAxes(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 
@@ -72,7 +76,7 @@ FindAvgCAxes::~FindAvgCAxes() = default;
 // -----------------------------------------------------------------------------
 void FindAvgCAxes::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Element Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req = DataArraySelectionFilterParameter::CreateCategoryRequirement(SIMPL::TypeNames::Float, 4, AttributeMatrix::Category::Element);
@@ -115,19 +119,19 @@ void FindAvgCAxes::initialize()
 // -----------------------------------------------------------------------------
 void FindAvgCAxes::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   QVector<DataArrayPath> dataArrayPaths;
 
-  QVector<size_t> cDims(1, 4);
+  std::vector<size_t> cDims(1, 4);
   m_QuatsPtr =
       getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getQuatsArrayPath(), cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_QuatsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Quats = m_QuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getQuatsArrayPath());
   }
@@ -139,14 +143,13 @@ void FindAvgCAxes::dataCheck()
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeatureIdsArrayPath());
   }
 
   cDims[0] = 3;
-  m_AvgCAxesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, getAvgCAxesArrayPath(), 0,
-                                                                                                                 cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_AvgCAxesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, getAvgCAxesArrayPath(), 0, cDims, "", DataArrayID31);
   if(nullptr != m_AvgCAxesPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AvgCAxes = m_AvgCAxesPtr.lock()->getPointer(0);
@@ -173,10 +176,10 @@ void FindAvgCAxes::preflight()
 // -----------------------------------------------------------------------------
 void FindAvgCAxes::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -244,7 +247,6 @@ void FindAvgCAxes::execute()
     }
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -253,7 +255,7 @@ void FindAvgCAxes::execute()
 AbstractFilter::Pointer FindAvgCAxes::newFilterInstance(bool copyFilterParameters) const
 {
   FindAvgCAxes::Pointer filter = FindAvgCAxes::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

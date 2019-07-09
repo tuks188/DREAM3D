@@ -39,11 +39,8 @@
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include <QtCore/QJsonDocument>
-#include <QtCore/QSettings>
 #include <QtCore/QString>
 #include <QtCore/QVector>
-#include <QtGui/QCloseEvent>
-#include <QtGui/QDesktopServices>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QProgressDialog>
@@ -125,13 +122,13 @@ void StatsGeneratorWidget::setupGui()
     m_NeedDataLoad = true;
     size_t ensembles = sda->getNumberOfTuples();
 
-    QVector<size_t> tDims(1, ensembles);
+    std::vector<size_t> tDims(1, ensembles);
     m_CellEnsembleAttrMat = AttributeMatrix::New(tDims, SIMPL::Defaults::CellEnsembleAttributeMatrixName, AttributeMatrix::Type::CellEnsemble);
-    m_CellEnsembleAttrMat->addAttributeArray(sda->getName(), sda);
+    m_CellEnsembleAttrMat->insertOrAssign(sda);
     UInt32ArrayType::Pointer phaseTypes = m_Filter->getPhaseTypes();
-    m_CellEnsembleAttrMat->addAttributeArray(phaseTypes->getName(), phaseTypes);
+    m_CellEnsembleAttrMat->insertOrAssign(phaseTypes);
     UInt32ArrayType::Pointer crystalStructures = m_Filter->getCrystalStructures();
-    m_CellEnsembleAttrMat->addAttributeArray(crystalStructures->getName(), crystalStructures);
+    m_CellEnsembleAttrMat->insertOrAssign(crystalStructures);
 
     for(size_t phase = 1; phase < ensembles; ++phase)
     {
@@ -192,16 +189,6 @@ void StatsGeneratorWidget::setupGui()
   // Catch when the filter wants its values updated
   connect(getFilter(), SIGNAL(updateFilterParameters(AbstractFilter*)), this, SLOT(filterNeedsInputParameters(AbstractFilter*)));
   
-  editPhase->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(editPhase->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::CogImagePath));
-  addPhase->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(addPhase->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::AddImagePath));
-  deletePhase->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(deletePhase->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::DeleteImagePath));
-
-  updatePipelineBtn->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(updatePipelineBtn->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::ReloadImagePath));
-  openStatsFile->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(openStatsFile->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::LoadImagePath));
-  saveJsonBtn->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(saveJsonBtn->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::ReloadImagePath));
-  saveH5Btn->setStyleSheet(SVStyle::Instance()->StyleSheetForButton(saveH5Btn->objectName(), SVWidgets::Styles::PushButtonStyleSheet, SVWidgets::Styles::HDFImagePath));
-
-
   // Hide the debugging buttons
   updatePipelineBtn->hide();
   saveJsonBtn->hide();
@@ -307,25 +294,23 @@ void StatsGeneratorWidget::beforePreflight()
   for(int i = 0; i < phaseTabs->count(); i++)
   {
     StatsGenWidget* sgwidget = qobject_cast<StatsGenWidget*>(phaseTabs->widget(i));
-    if(!qobject_cast<MatrixPhaseWidget*>(sgwidget) && !qobject_cast<BoundaryPhaseWidget*>(sgwidget) && !qobject_cast<TransformationPhaseWidget*>(sgwidget))
+    if((qobject_cast<MatrixPhaseWidget*>(sgwidget) == nullptr) && (qobject_cast<BoundaryPhaseWidget*>(sgwidget) == nullptr) && (qobject_cast<TransformationPhaseWidget*>(sgwidget) == nullptr))
     {
       if(!sgwidget->getDataHasBeenGenerated())
       {
-        m_Filter->setErrorCondition(-1);
         QString ss = QObject::tr("Statistics data needs to be generated for phase %1 (%2)\n"
                                  "Click the Create Data button to generate the statistics data")
                          .arg(sgwidget->getPhaseIndex())
                          .arg(sgwidget->getTabTitle());
-        m_Filter->notifyErrorMessage(m_Filter->getHumanLabel(), ss, m_Filter->getErrorCondition());
+        m_Filter->setErrorCondition(-1, ss);
       }
       if(sgwidget->getBulkLoadFailure())
       {
-        m_Filter->setErrorCondition(-1);
         QString ss = QObject::tr("A valid angles file is needed to bulk load orientaiton weights and spreads for phase %1 (%2)\n"
                                  "Select an angles file and click the Load Data button to load the orientations")
                          .arg(sgwidget->getPhaseIndex())
                          .arg(sgwidget->getTabTitle());
-        m_Filter->notifyErrorMessage(m_Filter->getHumanLabel(), ss, m_Filter->getErrorCondition());
+        m_Filter->setErrorCondition(-1, ss);
       }
     }
   }
@@ -505,7 +490,7 @@ void StatsGeneratorWidget::on_editPhase_clicked()
   else if(dialog.getPhaseType() == PhaseType::Type::Precipitate)
   {
     PrecipitatePhaseWidget* ppw = qobject_cast<PrecipitatePhaseWidget*>(sgwidget);
-    if(ppw)
+    if(ppw != nullptr)
     {
       dialog.setPptFraction(ppw->getPptFraction());
     }
@@ -513,7 +498,7 @@ void StatsGeneratorWidget::on_editPhase_clicked()
   else if(dialog.getPhaseType() == PhaseType::Type::Transformation)
   {
     TransformationPhaseWidget* tpw = qobject_cast<TransformationPhaseWidget*>(sgwidget);
-    if(tpw)
+    if(tpw != nullptr)
     {
       // dialog.setParentPhase(tpw->getParentPhase());
     }
@@ -642,23 +627,6 @@ bool StatsGeneratorWidget::verifyOutputPathParentExists(QString outFilePath, QLi
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-bool StatsGeneratorWidget::verifyPathExists(const QString& outFilePath, QLineEdit* lineEdit)
-{
-  QFileInfo fileinfo(outFilePath);
-  if(false == fileinfo.exists())
-  {
-    lineEdit->setStyleSheet("border: 1px solid red;");
-  }
-  else
-  {
-    lineEdit->setStyleSheet("");
-  }
-  return fileinfo.exists();
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
 void StatsGeneratorWidget::on_actionSaveAs_triggered()
 {
 }
@@ -672,28 +640,28 @@ DataContainerArray::Pointer StatsGeneratorWidget::generateDataContainerArray()
   int nPhases = phaseTabs->count() + 1;
   DataContainerArray::Pointer dca = DataContainerArray::New();
   DataContainer::Pointer m = DataContainer::New(SIMPL::Defaults::StatsGenerator);
-  dca->addDataContainer(m);
+  dca->addOrReplaceDataContainer(m);
 
-  QVector<size_t> tDims(1, nPhases);
+  std::vector<size_t> tDims(1, nPhases);
   AttributeMatrix::Pointer cellEnsembleAttrMat = AttributeMatrix::New(tDims, SIMPL::Defaults::CellEnsembleAttributeMatrixName, AttributeMatrix::Type::CellEnsemble);
-  m->addAttributeMatrix(SIMPL::Defaults::CellEnsembleAttributeMatrixName, cellEnsembleAttrMat);
+  m->addOrReplaceAttributeMatrix(cellEnsembleAttrMat);
 
   StatsDataArray::Pointer statsDataArray = StatsDataArray::New();
-  statsDataArray->resize(nPhases);
-  cellEnsembleAttrMat->addAttributeArray(SIMPL::EnsembleData::Statistics, statsDataArray);
+  statsDataArray->resizeTuples(nPhases);
+  cellEnsembleAttrMat->insertOrAssign(statsDataArray);
 
-  QVector<size_t> cDims(1, 1);
-  UInt32ArrayType::Pointer crystalStructures = UInt32ArrayType::CreateArray(tDims, cDims, SIMPL::EnsembleData::CrystalStructures);
+  std::vector<size_t> cDims(1, 1);
+  UInt32ArrayType::Pointer crystalStructures = UInt32ArrayType::CreateArray(tDims, cDims, SIMPL::EnsembleData::CrystalStructures, true);
   crystalStructures->setValue(0, Ebsd::CrystalStructure::UnknownCrystalStructure);
-  cellEnsembleAttrMat->addAttributeArray(SIMPL::EnsembleData::CrystalStructures, crystalStructures);
+  cellEnsembleAttrMat->insertOrAssign(crystalStructures);
 
-  UInt32ArrayType::Pointer phaseTypes = UInt32ArrayType::CreateArray(tDims, cDims, SIMPL::EnsembleData::PhaseTypes);
+  UInt32ArrayType::Pointer phaseTypes = UInt32ArrayType::CreateArray(tDims, cDims, SIMPL::EnsembleData::PhaseTypes, true);
   phaseTypes->setValue(0, static_cast<PhaseType::EnumType>(PhaseType::Type::Unknown));
-  cellEnsembleAttrMat->addAttributeArray(SIMPL::EnsembleData::PhaseTypes, phaseTypes);
+  cellEnsembleAttrMat->insertOrAssign(phaseTypes);
 
-  StringDataArray::Pointer phaseNames = StringDataArray::CreateArray(tDims[0], SIMPL::EnsembleData::PhaseName);
+  StringDataArray::Pointer phaseNames = StringDataArray::CreateArray(tDims[0], SIMPL::EnsembleData::PhaseName, true);
   phaseNames->setValue(0, PhaseType::UnknownStr());
-  cellEnsembleAttrMat->addAttributeArray(SIMPL::EnsembleData::PhaseName, phaseNames);
+  cellEnsembleAttrMat->insertOrAssign(phaseNames);
 
   double phaseFractionTotal = 0.0;
   for(int p = 0; p < phaseTabs->count(); ++p)
@@ -758,7 +726,7 @@ void StatsGeneratorWidget::on_saveJsonBtn_clicked()
   QString proposedFile = m_OpenDialogLastFilePath + QDir::separator() + "Untitled.json";
   QString outFile = QFileDialog::getSaveFileName(this, tr("Save JSON File"), proposedFile, tr("JSON Files (*.json)"));
 
-  if(true == outFile.isEmpty())
+  if(outFile.isEmpty())
   {
     return;
   }
@@ -788,7 +756,9 @@ void StatsGeneratorWidget::on_saveJsonBtn_clicked()
 
   QFile file(outFile);
   if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+  {
     return;
+  }
 
   QByteArray binary = doc.toJson();
   file.write(binary.data(), binary.length());
@@ -803,7 +773,7 @@ void StatsGeneratorWidget::on_saveH5Btn_clicked()
 
   QString h5file = QFileDialog::getSaveFileName(this, tr("Save DREAM.3D File"), proposedFile, tr("DREAM.3D Files (*.dream3d)"));
 
-  if(true == h5file.isEmpty())
+  if(h5file.isEmpty())
   {
     return;
   }
@@ -864,10 +834,10 @@ void StatsGeneratorWidget::on_openStatsFile_clicked()
 
   DataContainerArray::Pointer dca = DataContainerArray::New();
   DataContainer::Pointer m = DataContainer::New(SIMPL::Defaults::StatsGenerator);
-  dca->addDataContainer(m);
-  QVector<size_t> tDims(1, 0);
+  dca->addOrReplaceDataContainer(m);
+  std::vector<size_t> tDims(1, 0);
   AttributeMatrix::Pointer cellEnsembleAttrMat = AttributeMatrix::New(tDims, SIMPL::Defaults::CellEnsembleAttributeMatrixName, AttributeMatrix::Type::CellEnsemble);
-  m->addAttributeMatrix(SIMPL::Defaults::CellEnsembleAttributeMatrixName, cellEnsembleAttrMat);
+  m->addOrReplaceAttributeMatrix(cellEnsembleAttrMat);
 
   hid_t fileId = QH5Utilities::openFile(h5file, true); // Open the file Read Only
   if(fileId < 0)
@@ -894,7 +864,7 @@ void StatsGeneratorWidget::on_openStatsFile_clicked()
   scopedFileSentinel.addGroupId(&amGid);
 
   // We need to read one of the arrays to get the number of phases so that we can resize our attributeMatrix
-  UInt32ArrayType::Pointer phases = UInt32ArrayType::CreateArray(1, SIMPL::EnsembleData::PhaseTypes);
+  UInt32ArrayType::Pointer phases = UInt32ArrayType::CreateArray(1, SIMPL::EnsembleData::PhaseTypes, true);
   int err = phases->readH5Data(amGid);
   if(err < 0)
   {

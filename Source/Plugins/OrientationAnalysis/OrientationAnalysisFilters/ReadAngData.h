@@ -54,13 +54,15 @@ class ReadAngDataPrivate;
 class OrientationAnalysis_EXPORT ReadAngData : public AbstractFilter
 {
   Q_OBJECT
-    PYB11_CREATE_BINDINGS(ReadAngData SUPERCLASS AbstractFilter)
-    PYB11_PROPERTY(QString DataContainerName READ getDataContainerName WRITE setDataContainerName)
-    PYB11_PROPERTY(QString CellEnsembleAttributeMatrixName READ getCellEnsembleAttributeMatrixName WRITE setCellEnsembleAttributeMatrixName)
-    PYB11_PROPERTY(QString CellAttributeMatrixName READ getCellAttributeMatrixName WRITE setCellAttributeMatrixName)
-    PYB11_PROPERTY(bool FileWasRead READ getFileWasRead WRITE setFileWasRead)
-    PYB11_PROPERTY(QString InputFile READ getInputFile WRITE setInputFile)
+
+  PYB11_CREATE_BINDINGS(ReadAngData SUPERCLASS AbstractFilter)
+  PYB11_PROPERTY(DataArrayPath DataContainerName READ getDataContainerName WRITE setDataContainerName)
+  PYB11_PROPERTY(QString CellEnsembleAttributeMatrixName READ getCellEnsembleAttributeMatrixName WRITE setCellEnsembleAttributeMatrixName)
+  PYB11_PROPERTY(QString CellAttributeMatrixName READ getCellAttributeMatrixName WRITE setCellAttributeMatrixName)
+  PYB11_PROPERTY(QString InputFile READ getInputFile WRITE setInputFile)
+
   Q_DECLARE_PRIVATE(ReadAngData)
+
 public:
   SIMPL_SHARED_POINTERS(ReadAngData)
   SIMPL_FILTER_NEW_MACRO(ReadAngData)
@@ -68,9 +70,8 @@ public:
 
   ~ReadAngData() override;
 
-  SIMPL_FILTER_PARAMETER(QString, DataContainerName)
-
-  Q_PROPERTY(QString DataContainerName READ getDataContainerName WRITE setDataContainerName)
+  SIMPL_FILTER_PARAMETER(DataArrayPath, DataContainerName)
+  Q_PROPERTY(DataArrayPath DataContainerName READ getDataContainerName WRITE setDataContainerName)
 
   SIMPL_FILTER_PARAMETER(QString, CellEnsembleAttributeMatrixName)
   Q_PROPERTY(QString CellEnsembleAttributeMatrixName READ getCellEnsembleAttributeMatrixName WRITE setCellEnsembleAttributeMatrixName)
@@ -154,7 +155,7 @@ public:
   /* These are non-exposed to the user through the GUI. Manual Pipelines are OK to set them */
   SIMPL_INSTANCE_PROPERTY(uint32_t, RefFrameZDir)
 
-  SIMPL_INSTANCE_PROPERTY(int, Manufacturer)
+  SIMPL_INSTANCE_PROPERTY(Ebsd::OEM, Manufacturer)
 
   SIMPL_PIMPL_PROPERTY_DECL(QString, InputFile_Cache)
 
@@ -210,7 +211,7 @@ protected:
    * @param tDims Tuple dimensions
    * @param cDims Component dimensions
    */
-  void copyRawEbsdData(AngReader* reader, QVector<size_t>& tDims, QVector<size_t>& cDims);
+  void copyRawEbsdData(AngReader* reader, std::vector<size_t>& tDims, std::vector<size_t>& cDims);
 
   /**
   * @brief loadMaterialInfo Reads the values for the phase type, crystal structure
@@ -226,7 +227,7 @@ protected:
    * @param m DataContainer instance pointer
    * @param tDims Tuple dimensions
    */
-  void readDataFile(AngReader* reader, DataContainer::Pointer m, QVector<size_t>& tDims, ANG_READ_FLAG = ANG_FULL_FILE);
+  void readDataFile(AngReader* reader, const DataContainer::Pointer& m, std::vector<size_t>& tDims, ANG_READ_FLAG = ANG_FULL_FILE);
 
 private:
   QScopedPointer<ReadAngDataPrivate> const d_ptr;
@@ -236,8 +237,10 @@ private:
   DEFINE_DATAARRAY_VARIABLE(uint32_t, CrystalStructures)
   DEFINE_DATAARRAY_VARIABLE(float, LatticeConstants)
 
-  ReadAngData(const ReadAngData&);    // Copy Constructor Not Implemented
+public:
+  ReadAngData(const ReadAngData&) = delete;            // Copy Constructor Not Implemented
+  ReadAngData(ReadAngData&&) = delete;                 // Move Constructor Not Implemented
   ReadAngData& operator=(const ReadAngData&) = delete; // Copy Assignment Not Implemented
-  ReadAngData& operator=(ReadAngData&&) = delete;      // Move Assignment
+  ReadAngData& operator=(ReadAngData&&) = delete;      // Move Assignment Not Implemented
 };
 

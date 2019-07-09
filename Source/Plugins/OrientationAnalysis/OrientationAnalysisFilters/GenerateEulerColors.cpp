@@ -60,10 +60,6 @@ GenerateEulerColors::GenerateEulerColors()
 , m_GoodVoxelsArrayPath("", "", "")
 , m_CellEulerColorsArrayName(SIMPL::CellData::EulerColor)
 , m_UseGoodVoxels(false)
-, m_CellPhases(nullptr)
-, m_CellEulerAngles(nullptr)
-, m_CellEulerColors(nullptr)
-, m_CrystalStructures(nullptr)
 {
 }
 
@@ -77,7 +73,7 @@ GenerateEulerColors::~GenerateEulerColors() = default;
 // -----------------------------------------------------------------------------
 void GenerateEulerColors::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   QStringList linkedProps("GoodVoxelsArrayPath");
   parameters.push_back(SIMPL_NEW_LINKED_BOOL_FP("Apply to Good Voxels Only (Bad Voxels Will Be Black)", UseGoodVoxels, FilterParameter::Parameter, GenerateEulerColors, linkedProps));
@@ -132,10 +128,10 @@ void GenerateEulerColors::initialize()
 void GenerateEulerColors::dataCheck()
 {
   DataArrayPath tempPath;
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> dims(1, 1);
+  std::vector<size_t> dims(1, 1);
   m_CellPhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getCellPhasesArrayPath(),
                                                                                                         dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_CellPhasesPtr.lock())                                                                        /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -166,7 +162,7 @@ void GenerateEulerColors::dataCheck()
   } /* Now assign the raw pointer to data from the DataArray<T> object */
   // The good voxels array is optional, If it is available we are going to use it, otherwise we are going to create it
   dims[0] = 1;
-  if(getUseGoodVoxels() == true)
+  if(getUseGoodVoxels())
   {
     // The good voxels array is optional, If it is available we are going to use it, otherwise we are going to create it
     dims[0] = 1;
@@ -201,11 +197,10 @@ void GenerateEulerColors::preflight()
 // -----------------------------------------------------------------------------
 void GenerateEulerColors::execute()
 {
-  int err = 0;
-  QString ss;
-  setErrorCondition(err);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -245,8 +240,7 @@ void GenerateEulerColors::execute()
       m_CellEulerColors[index + 2] = static_cast<unsigned char>(m_CellEulerAngles[index + 2] / twoThirdPi * 255.0f);
     }
   }
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -255,7 +249,7 @@ void GenerateEulerColors::execute()
 AbstractFilter::Pointer GenerateEulerColors::newFilterInstance(bool copyFilterParameters) const
 {
   GenerateEulerColors::Pointer filter = GenerateEulerColors::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

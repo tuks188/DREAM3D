@@ -53,7 +53,6 @@
 AddOrientationNoise::AddOrientationNoise()
 : m_Magnitude(1.0f)
 , m_CellEulerAnglesArrayPath("", "", "")
-, m_CellEulerAngles(nullptr)
 {
 }
 
@@ -66,7 +65,7 @@ AddOrientationNoise::~AddOrientationNoise() = default;
 // -----------------------------------------------------------------------------
 void AddOrientationNoise::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_FLOAT_FP("Magnitude of Orientation Noise (Degrees)", Magnitude, FilterParameter::Parameter, AddOrientationNoise));
   parameters.push_back(SeparatorFilterParameter::New("Element Data", FilterParameter::RequiredArray));
   {
@@ -98,17 +97,17 @@ void AddOrientationNoise::initialize()
 // -----------------------------------------------------------------------------
 void AddOrientationNoise::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> cDims(1, 3);
+  std::vector<size_t> cDims(1, 3);
   m_CellEulerAnglesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getCellEulerAnglesArrayPath(),
                                                                                                            cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_CellEulerAnglesPtr.lock())                                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_CellEulerAngles = m_CellEulerAnglesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -132,10 +131,10 @@ void AddOrientationNoise::preflight()
 // -----------------------------------------------------------------------------
 void AddOrientationNoise::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -144,8 +143,7 @@ void AddOrientationNoise::execute()
 
   add_orientation_noise();
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -153,7 +151,7 @@ void AddOrientationNoise::execute()
 // -----------------------------------------------------------------------------
 void AddOrientationNoise::add_orientation_noise()
 {
-  notifyStatusMessage(getHumanLabel(), "Adding Orientation Noise");
+  notifyStatusMessage("Adding Orientation Noise");
   SIMPL_RANDOMNG_NEW()
 
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getCellEulerAnglesArrayPath().getDataContainerName());
@@ -193,7 +191,7 @@ void AddOrientationNoise::add_orientation_noise()
 AbstractFilter::Pointer AddOrientationNoise::newFilterInstance(bool copyFilterParameters) const
 {
   AddOrientationNoise::Pointer filter = AddOrientationNoise::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

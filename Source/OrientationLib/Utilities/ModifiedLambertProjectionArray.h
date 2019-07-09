@@ -55,24 +55,24 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
   public:
     SIMPL_SHARED_POINTERS(ModifiedLambertProjectionArray)
     SIMPL_STATIC_NEW_MACRO(ModifiedLambertProjectionArray)
-     SIMPL_TYPE_MACRO_SUPER_OVERRIDE(ModifiedLambertProjectionArray, IDataArray)
+    SIMPL_TYPE_MACRO_SUPER_OVERRIDE(ModifiedLambertProjectionArray, IDataArray)
     SIMPL_CLASS_VERSION(2)
 
-    virtual ~ModifiedLambertProjectionArray();
+    ~ModifiedLambertProjectionArray() override;
 
     /**
      * @brief getXdmfTypeAndSize
      * @param xdmfTypeName
      * @param precision
      */
-    void getXdmfTypeAndSize(QString& xdmfTypeName, int& precision);
+    void getXdmfTypeAndSize(QString& xdmfTypeName, int& precision) override;
 
     /**
      * @brief GetTypeName Returns a string representation of the type of data that is stored by this class. This
      * can be a primitive like char, float, int or the name of a class.
      * @return
      */
-    virtual QString getTypeAsString();
+    QString getTypeAsString() override;
 
     SIMPL_INSTANCE_PROPERTY(int, Phase)
 
@@ -87,7 +87,7 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
      * @param allocate
      * @return
      */
-    virtual IDataArray::Pointer createNewArray(size_t numElements, int rank, size_t* dims, const QString& name, bool allocate = true);
+    IDataArray::Pointer createNewArray(size_t numElements, int rank, const size_t* dims, const QString& name, bool allocate = true) override;
 
     /**
      * @brief createNewArray
@@ -97,22 +97,12 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
      * @param allocate
      * @return
      */
-    virtual IDataArray::Pointer createNewArray(size_t numElements, std::vector<size_t> dims, const QString& name, bool allocate = true);
+    IDataArray::Pointer createNewArray(size_t numElements, const std::vector<size_t>& dims, const QString& name, bool allocate = true) override;
 
     /**
-     * @brief createNewArray
-     * @param numElements
-     * @param dims
-     * @param name
-     * @param allocate
-     * @return
+     * @brief
      */
-    virtual IDataArray::Pointer createNewArray(size_t numElements, QVector<size_t> dims, const QString& name, bool allocate = true);
-
-    /**
-    * @brief
-    */
-    virtual bool isAllocated();
+    bool isAllocated() override;
 
     /**
      * @brief clearAll
@@ -164,14 +154,14 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
     /**
      * @brief Makes this class responsible for freeing the memory.
      */
-    virtual void takeOwnership();
+    void takeOwnership() override;
 
     /**
      * @brief This class will NOT free the memory associated with the internal pointer.
      * This can be useful if the user wishes to keep the data around after this
      * class goes out of scope.
      */
-    virtual void releaseOwnership();
+    void releaseOwnership() override;
 
     /**
      * @brief Returns a void pointer pointing to the index of the array. nullptr
@@ -180,18 +170,18 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
      * @param i The index to have the returned pointer pointing to.
      * @return Void Pointer. Possibly nullptr.
      */
-    virtual void* getVoidPointer(size_t i);
+    void* getVoidPointer(size_t i) override;
 
     /**
      * @brief Returns the number of Tuples in the array.
      */
-    virtual size_t getNumberOfTuples();
+    size_t getNumberOfTuples() override;
 
     /**
      * @brief Return the number of elements in the array
      * @return
      */
-    virtual size_t getSize();
+    size_t getSize() override;
 
     /**
      * @brief SetNumberOfComponents
@@ -203,13 +193,13 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
      * @brief getNumberOfComponents
      * @return
      */
-    virtual int getNumberOfComponents();
+    int getNumberOfComponents() override;
 
     /**
      * @brief getComponentDimensions
      * @return
      */
-    virtual QVector<size_t> getComponentDimensions();
+    std::vector<size_t> getComponentDimensions() override;
 
     /**
      * @brief SetRank
@@ -230,8 +220,7 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
      * 4 = 32 bit integer/Float
      * 8 = 64 bit integer/Double
      */
-    virtual size_t getTypeSize();
-
+    size_t getTypeSize() override;
 
     /**
      * @brief Removes Tuples from the Array. If the size of the vector is Zero nothing is done. If the size of the
@@ -241,7 +230,7 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
      * @param idxs The indices to remove
      * @return error code.
      */
-    virtual int eraseTuples(QVector<size_t>& idxs);
+    int eraseTuples(std::vector<size_t>& idxs) override;
 
     /**
      * @brief Copies a Tuple from one position to another.
@@ -249,7 +238,7 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
      * @param newPos The destination index to place the copied data
      * @return
      */
-    virtual int copyTuple(size_t currentPos, size_t newPos);
+    int copyTuple(size_t currentPos, size_t newPos) override;
 
     // This line must be here, because we are overloading the copyData pure virtual function in IDataArray.
     // This is required so that other classes can call this version of copyData from the subclasses.
@@ -274,39 +263,38 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
      * @param sourceArray
      * @return
      */
-    virtual bool copyFromArray(size_t destTupleOffset, IDataArray::Pointer sourceArray, size_t srcTupleOffset, size_t totalSrcTuples);
+    bool copyFromArray(size_t destTupleOffset, IDataArray::Pointer sourceArray, size_t srcTupleOffset, size_t totalSrcTuples) override;
 
     /**
      * @brief Splats the same value c across all values in the Tuple
      * @param i The index of the Tuple
      * @param c The value to splat across all components in the tuple
      */
-    virtual void initializeTuple(size_t i, void* p);
+    void initializeTuple(size_t i, void* p) override;
 
     /**
      * @brief Sets all the values to zero.
      */
-    virtual void initializeWithZeros();
+    void initializeWithZeros() override;
 
     /**
      * @brief deepCopy
      * @return
      */
-    virtual IDataArray::Pointer deepCopy(bool forceNoAllocate = false);
-
-    /**
-       * @brief Reseizes the internal array
-       * @param size The new size of the internal array
-       * @return 1 on success, 0 on failure
-       */
-    virtual int32_t resizeTotalElements(size_t size);
+    IDataArray::Pointer deepCopy(bool forceNoAllocate = false) override;
 
     /**
      * @brief Reseizes the internal array
      * @param size The new size of the internal array
      * @return 1 on success, 0 on failure
      */
-    virtual int32_t resize(size_t numTuples);
+    int32_t resizeTotalElements(size_t size) override;
+
+    /**
+     * @brief Resizes the internal array to accomondate numTuples
+     * @param numTuples
+     */
+    void resizeTuples(size_t numTuples) override;
 
     /**
      * @brief printTuple
@@ -314,7 +302,7 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
      * @param i
      * @param delimiter
      */
-    virtual void printTuple(QTextStream& out, size_t i, char delimiter = ',');
+    void printTuple(QTextStream& out, size_t i, char delimiter = ',') override;
 
     /**
      * @brief printComponent
@@ -322,21 +310,21 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
      * @param i
      * @param j
      */
-    virtual void printComponent(QTextStream& out, size_t i, int j);
+    void printComponent(QTextStream& out, size_t i, int j) override;
 
     /**
      *
      * @param parentId
      * @return
      */
-    virtual int writeH5Data(hid_t parentId, QVector<size_t> tDims);
+    int writeH5Data(hid_t parentId, std::vector<size_t> tDims) override;
 
     /**
      * @brief readH5Data
      * @param parentId
      * @return
      */
-    virtual int readH5Data(hid_t parentId);
+    int readH5Data(hid_t parentId) override;
 
     /**
      * @brief writeXdmfAttribute
@@ -346,15 +334,14 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
      * @param groupPath
      * @return
      */
-    virtual int writeXdmfAttribute(QTextStream& out, int64_t* volDims, const QString& hdfFileName,
-                                   const QString& groupPath, const QString& labelb);
+    int writeXdmfAttribute(QTextStream& out, int64_t* volDims, const QString& hdfFileName, const QString& groupPath, const QString& labelb) override;
 
     /**
      * @brief getInfoString
      * @return Returns a formatted string that contains general infomation about
      * the instance of the object.
      */
-    virtual QString getInfoString(SIMPL::InfoStringFormat format);
+    QString getInfoString(SIMPL::InfoStringFormat format) override;
 
   protected:
     ModifiedLambertProjectionArray();
@@ -363,8 +350,11 @@ class OrientationLib_EXPORT ModifiedLambertProjectionArray : public IDataArray
     QString m_Name;
     bool m_IsAllocated;
 
+  public:
     ModifiedLambertProjectionArray(const ModifiedLambertProjectionArray&) = delete; // Copy Constructor Not Implemented
-    void operator=(const ModifiedLambertProjectionArray&) = delete;                 // Move assignment Not Implemented
+    ModifiedLambertProjectionArray(ModifiedLambertProjectionArray&&) = delete;      // Move Constructor Not Implemented
+    ModifiedLambertProjectionArray& operator=(const ModifiedLambertProjectionArray&) = delete; // Copy Assignment Not Implemented
+    ModifiedLambertProjectionArray& operator=(ModifiedLambertProjectionArray&&) = delete;      // Move Assignment Not Implemented
 };
 
 

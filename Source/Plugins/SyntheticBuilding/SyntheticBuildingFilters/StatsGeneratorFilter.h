@@ -33,7 +33,6 @@
 
 #pragma once
 
-#include <QtCore/QObject>
 
 #include "SIMPLib/Common/SIMPLibSetGetMacros.h"
 #include "SIMPLib/DataArrays/StatsDataArray.h"
@@ -50,7 +49,7 @@ class SyntheticBuilding_EXPORT StatsGeneratorFilter : public AbstractFilter
 {
   Q_OBJECT
   PYB11_CREATE_BINDINGS(StatsGeneratorFilter SUPERCLASS AbstractFilter)
-  PYB11_PROPERTY(QString StatsGeneratorDataContainerName READ getStatsGeneratorDataContainerName WRITE setStatsGeneratorDataContainerName)
+  PYB11_PROPERTY(DataArrayPath StatsGeneratorDataContainerName READ getStatsGeneratorDataContainerName WRITE setStatsGeneratorDataContainerName)
   PYB11_PROPERTY(QString CellEnsembleAttributeMatrixName READ getCellEnsembleAttributeMatrixName WRITE setCellEnsembleAttributeMatrixName)
   PYB11_PROPERTY(QString StatsDataArrayName READ getStatsDataArrayName WRITE setStatsDataArrayName)
   PYB11_PROPERTY(QString CrystalStructuresArrayName READ getCrystalStructuresArrayName WRITE setCrystalStructuresArrayName)
@@ -69,8 +68,8 @@ public:
 
   ~StatsGeneratorFilter() override;
 
-  SIMPL_FILTER_PARAMETER(QString, StatsGeneratorDataContainerName)
-  Q_PROPERTY(QString StatsGeneratorDataContainerName READ getStatsGeneratorDataContainerName WRITE setStatsGeneratorDataContainerName)
+  SIMPL_FILTER_PARAMETER(DataArrayPath, StatsGeneratorDataContainerName)
+  Q_PROPERTY(DataArrayPath StatsGeneratorDataContainerName READ getStatsGeneratorDataContainerName WRITE setStatsGeneratorDataContainerName)
 
   SIMPL_FILTER_PARAMETER(QString, CellEnsembleAttributeMatrixName)
   Q_PROPERTY(QString CellEnsembleAttributeMatrixName READ getCellEnsembleAttributeMatrixName WRITE setCellEnsembleAttributeMatrixName)
@@ -223,7 +222,6 @@ protected:
    */
   void readArray(const QJsonObject& jsonRoot, size_t numTuples);
 
-private:
 public:
   StatsGeneratorFilter(const StatsGeneratorFilter&) = delete;            // Copy Constructor Not Implemented
   StatsGeneratorFilter(StatsGeneratorFilter&&) = delete;                 // Move Constructor Not Implemented

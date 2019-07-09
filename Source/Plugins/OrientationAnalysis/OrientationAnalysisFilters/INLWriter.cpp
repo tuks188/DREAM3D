@@ -44,6 +44,7 @@
 #include "SIMPLib/FilterParameters/OutputFileFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
+#include "SIMPLib/Utilities/FileSystemPathHelper.h"
 
 #include "EbsdLib/EbsdConstants.h"
 #include "EbsdLib/TSL/AngConstants.h"
@@ -55,17 +56,12 @@
 //
 // -----------------------------------------------------------------------------
 INLWriter::INLWriter()
-: FileWriter()
-, m_MaterialNameArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::MaterialName)
+: m_MaterialNameArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::MaterialName)
 , m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
 , m_CellPhasesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Phases)
 , m_CrystalStructuresArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::CrystalStructures)
 , m_NumFeaturesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::NumFeatures)
 , m_CellEulerAnglesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::EulerAngles)
-, m_FeatureIds(nullptr)
-, m_CellPhases(nullptr)
-, m_CellEulerAngles(nullptr)
-, m_CrystalStructures(nullptr)
 {
 }
 
@@ -80,7 +76,7 @@ INLWriter::~INLWriter() = default;
 void INLWriter::setupFilterParameters()
 {
   FileWriter::setupFilterParameters();
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_OUTPUT_FILE_FP("Output File", OutputFile, FilterParameter::Parameter, INLWriter, "*.txt", "INL Format"));
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
   {
@@ -146,38 +142,24 @@ void INLWriter::initialize()
 // -----------------------------------------------------------------------------
 void INLWriter::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
 
-  if(getOutputFile().isEmpty() == true)
-  {
-    QString ss = QObject::tr("The output file must be set");
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
-  }
-
-  QFileInfo fi(getOutputFile());
-  QDir parentPath = fi.path();
-  if(parentPath.exists() == false)
-  {
-    setWarningCondition(-1);
-    QString ss = QObject::tr("The directory path for the output file does not exist. DREAM.3D will attempt to create this path during execution of the filter");
-    notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
-  }
+  FileSystemPathHelper::CheckOutputFile(this, "Output File Path", getOutputFile(), true);
 
   QVector<DataArrayPath> cellDataArrayPaths;
   QVector<DataArrayPath> ensembleDataArrayPaths;
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     cellDataArrayPaths.push_back(getFeatureIdsArrayPath());
   }
@@ -188,7 +170,7 @@ void INLWriter::dataCheck()
   {
     m_CellPhases = m_CellPhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     cellDataArrayPaths.push_back(getCellPhasesArrayPath());
   }
@@ -199,7 +181,7 @@ void INLWriter::dataCheck()
   {
     m_CrystalStructures = m_CrystalStructuresPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     ensembleDataArrayPaths.push_back(getCrystalStructuresArrayPath());
   }
@@ -210,14 +192,14 @@ void INLWriter::dataCheck()
   {
     m_NumFeatures = m_NumFeaturesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     ensembleDataArrayPaths.push_back(getNumFeaturesArrayPath());
   }
 
   m_MaterialNamePtr = getDataContainerArray()->getPrereqArrayFromPath<StringDataArray, AbstractFilter>(this, getMaterialNameArrayPath(),
                                                                                                        cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     ensembleDataArrayPaths.push_back(getMaterialNameArrayPath());
   }
@@ -229,7 +211,7 @@ void INLWriter::dataCheck()
   {
     m_CellEulerAngles = m_CellEulerAnglesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     cellDataArrayPaths.push_back(getCellEulerAnglesArrayPath());
   }
@@ -300,12 +282,12 @@ uint32_t mapCrystalSymmetryToTslSymmetry(uint32_t symmetry)
 // -----------------------------------------------------------------------------
 int32_t INLWriter::writeFile()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
-    return getErrorCondition();
+    return getErrorCode();
   }
 
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getFeatureIdsArrayPath().getDataContainerName());
@@ -313,12 +295,9 @@ int32_t INLWriter::writeFile()
   size_t totalPoints = m_FeatureIdsPtr.lock()->getNumberOfTuples();
 
   int32_t err = 0;
-  size_t dims[3] = {0, 0, 0};
-  std::tie(dims[0], dims[1], dims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
-  float res[3] = {0.0f, 0.0f, 0.0f};
-  m->getGeometryAs<ImageGeom>()->getResolution(res);
-  float origin[3] = {0.0f, 0.0f, 0.0f};
-  m->getGeometryAs<ImageGeom>()->getOrigin(origin);
+  SizeVec3Type dims = m->getGeometryAs<ImageGeom>()->getDimensions();
+  FloatVec3Type res = m->getGeometryAs<ImageGeom>()->getSpacing();
+  FloatVec3Type origin = m->getGeometryAs<ImageGeom>()->getOrigin();
 
   // Make sure any directory path is also available as the user may have just typed
   // in a path without actually creating the full path
@@ -327,8 +306,7 @@ int32_t INLWriter::writeFile()
   if(!dir.mkpath("."))
   {
     QString ss = QObject::tr("Error creating parent path '%1'").arg(fi.path());
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-1, ss);
     return -1;
   }
 
@@ -336,8 +314,7 @@ int32_t INLWriter::writeFile()
   if(nullptr == f)
   {
     QString ss = QObject::tr("Error opening output file '%1'").arg(getOutputFile());
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-1, ss);
     return -1;
   }
 
@@ -459,7 +436,6 @@ int32_t INLWriter::writeFile()
 
   fclose(f);
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
   return err;
 }
 
@@ -469,7 +445,7 @@ int32_t INLWriter::writeFile()
 AbstractFilter::Pointer INLWriter::newFilterInstance(bool copyFilterParameters) const
 {
   INLWriter::Pointer filter = INLWriter::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

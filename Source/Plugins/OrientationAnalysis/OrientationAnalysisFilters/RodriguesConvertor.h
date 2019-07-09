@@ -36,11 +36,12 @@
 #include "SIMPLib/Common/SIMPLibSetGetMacros.h"
 #include "SIMPLib/Filtering/AbstractFilter.h"
 
+#include "OrientationAnalysis/OrientationAnalysisDLLExport.h"
 
 /**
  * @brief The RodriguesConvertor class. See [Filter documentation](@ref rodriguesconvertor) for details.
  */
-class RodriguesConvertor : public AbstractFilter
+class OrientationAnalysis_EXPORT RodriguesConvertor : public AbstractFilter
 {
   Q_OBJECT
 
@@ -165,6 +166,7 @@ class RodriguesConvertor : public AbstractFilter
     /* Rule of 5: All special member functions should be defined if any are defined.
     * https://github.com/isocpp/CppCoreGuidelines/blob/master/CppCoreGuidelines.md#c21-if-you-define-or-delete-any-default-operation-define-or-delete-them-all
     */
+  public:
     RodriguesConvertor(const RodriguesConvertor&) = delete;             // Copy Constructor Not Implemented
     RodriguesConvertor& operator=(const RodriguesConvertor&) = delete;  // Copy Assignment Not Implemented
     RodriguesConvertor(RodriguesConvertor&&) = delete;                  // Move Constructor Not Implemented

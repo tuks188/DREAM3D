@@ -66,7 +66,7 @@ class EbsdLib_EXPORT H5AngImporter : public EbsdImporter
     EBSD_TYPE_MACRO(H5AngImporter)
     EBSD_STATIC_NEW_SUPERCLASS(EbsdImporter, H5AngImporter)
 
-    virtual ~H5AngImporter();
+    ~H5AngImporter() override;
 
     /**
      * @brief Imports a specific file into the HDF5 file
@@ -74,7 +74,7 @@ class EbsdLib_EXPORT H5AngImporter : public EbsdImporter
      * @param index The slice index for the file
      * @param angFile The absolute path to the input .ang file
      */
-    int importFile(hid_t fileId, int64_t index, const QString& angFile);
+    int importFile(hid_t fileId, int64_t index, const QString& angFile) override;
 
     /**
      * @brief Writes the phase data into the HDF5 file
@@ -97,27 +97,27 @@ class EbsdLib_EXPORT H5AngImporter : public EbsdImporter
      * @param x Number of X Voxels (out)
      * @param y Number of Y Voxels (out)
      */
-    virtual void getDims(int64_t& x, int64_t& y);
+    void getDims(int64_t& x, int64_t& y) override;
 
     /**
      * @brief Returns the x and y resolution of the voxels
      * @param x The x resolution (out)
      * @param y The y resolution (out)
      */
-    virtual void getResolution(float& x, float& y);
+    void getSpacing(float& x, float& y) override;
 
     /**
      * @brief Return the number of slices imported
      * @return
      */
-    virtual int numberOfSlicesImported();
+    int numberOfSlicesImported() override;
 
     /**
      * @brief This function sets the version of the H5Ebsd file that will be written.
      * @param version
      * @return
      */
-    virtual void setFileVersion(uint32_t version);
+    void setFileVersion(uint32_t version) override;
 
   protected:
     H5AngImporter();
@@ -130,8 +130,11 @@ class EbsdLib_EXPORT H5AngImporter : public EbsdImporter
     float yRes;
     int   m_FileVersion;
 
+  public:
     H5AngImporter(const H5AngImporter&) = delete;  // Copy Constructor Not Implemented
-    void operator=(const H5AngImporter&) = delete; // Move assignment Not Implemented
+    H5AngImporter(H5AngImporter&&) = delete;       // Move Constructor Not Implemented
+    H5AngImporter& operator=(const H5AngImporter&) = delete; // Copy Assignment Not Implemented
+    H5AngImporter& operator=(H5AngImporter&&) = delete;      // Move Assignment Not Implemented
 };
 
 

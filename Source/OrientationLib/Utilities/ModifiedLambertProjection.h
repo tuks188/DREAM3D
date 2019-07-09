@@ -71,7 +71,7 @@ class OrientationLib_EXPORT ModifiedLambertProjection
      * spherical coordinates.
      * @param coords The XYZ cartesian coords that are all on the Unit Sphere (Radius = 1)
      * @param dimension The Dimension of the modified lambert projections images
-     * @param resolution The Resolution of the modified lambert projections
+     * @param resolution The Spacing of the modified lambert projections
      * @param sphereRadius The radius of the sphere from where the coordinates are coming from.
      * @return
      */
@@ -186,8 +186,11 @@ class OrientationLib_EXPORT ModifiedLambertProjection
     DoubleArrayType::Pointer m_NorthSquare;
     DoubleArrayType::Pointer m_SouthSquare;
 
+  public:
     ModifiedLambertProjection(const ModifiedLambertProjection&) = delete; // Copy Constructor Not Implemented
-    void operator=(const ModifiedLambertProjection&) = delete;            // Move assignment Not Implemented
+    ModifiedLambertProjection(ModifiedLambertProjection&&) = delete;      // Move Constructor Not Implemented
+    ModifiedLambertProjection& operator=(const ModifiedLambertProjection&) = delete; // Copy Assignment Not Implemented
+    ModifiedLambertProjection& operator=(ModifiedLambertProjection&&) = delete;      // Move Assignment Not Implemented
 };
 
 

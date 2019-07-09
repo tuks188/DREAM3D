@@ -38,7 +38,6 @@
 #include <QtCore/QAbstractTableModel>
 #include <QtCore/QVariant>
 #include <QtCore/QVector>
-#include <QtGui/QColor>
 
 #include "SIMPLib/Common/Constants.h"
 
@@ -217,8 +216,10 @@ public:
 
   virtual void setColumnData(int col, QVector<float>& data) = 0;
 
-private:
+public:
   SGAbstractTableModel(const SGAbstractTableModel&) = delete; // Copy Constructor Not Implemented
-  void operator=(const SGAbstractTableModel&) = delete;       // Move assignment Not Implemented
+  SGAbstractTableModel(SGAbstractTableModel&&) = delete;      // Move Constructor Not Implemented
+  SGAbstractTableModel& operator=(const SGAbstractTableModel&) = delete; // Copy Assignment Not Implemented
+  SGAbstractTableModel& operator=(SGAbstractTableModel&&) = delete;      // Move Assignment Not Implemented
 };
 

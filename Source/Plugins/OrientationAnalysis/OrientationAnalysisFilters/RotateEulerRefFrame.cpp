@@ -72,9 +72,7 @@ public:
     axis[1] = rotAxis[1];
     axis[2] = rotAxis[2];
   }
-  virtual ~RotateEulerRefFrameImpl()
-  {
-  }
+  virtual ~RotateEulerRefFrameImpl() = default;
 
   void convert(size_t start, size_t end) const
   {
@@ -119,12 +117,10 @@ public:
 RotateEulerRefFrame::RotateEulerRefFrame()
 : m_RotationAngle(0.0f)
 , m_CellEulerAnglesArrayPath("", "", "")
-, m_CellEulerAngles(nullptr)
 {
-  m_RotationAxis.x = 0.0f;
-  m_RotationAxis.y = 0.0f;
-  m_RotationAxis.z = 1.0f;
-
+  m_RotationAxis[0] = 0.0f;
+  m_RotationAxis[1] = 0.0f;
+  m_RotationAxis[2] = 1.0f;
 }
 
 // -----------------------------------------------------------------------------
@@ -137,7 +133,7 @@ RotateEulerRefFrame::~RotateEulerRefFrame() = default;
 // -----------------------------------------------------------------------------
 void RotateEulerRefFrame::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_FLOAT_FP("Rotation Angle (Degrees)", RotationAngle, FilterParameter::Parameter, RotateEulerRefFrame));
   parameters.push_back(SIMPL_NEW_FLOAT_VEC3_FP("Rotation Axis (ijk)", RotationAxis, FilterParameter::Parameter, RotateEulerRefFrame));
   {
@@ -171,10 +167,10 @@ void RotateEulerRefFrame::initialize()
 // -----------------------------------------------------------------------------
 void RotateEulerRefFrame::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> cDims(1, 3);
+  std::vector<size_t> cDims(1, 3);
   m_CellEulerAnglesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getCellEulerAnglesArrayPath(),
                                                                                                            cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_CellEulerAnglesPtr.lock())                                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -201,10 +197,10 @@ void RotateEulerRefFrame::preflight()
 // -----------------------------------------------------------------------------
 void RotateEulerRefFrame::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -212,7 +208,7 @@ void RotateEulerRefFrame::execute()
   size_t totalPoints = m_CellEulerAnglesPtr.lock()->getNumberOfTuples();
 
   float rotAngle = m_RotationAngle * SIMPLib::Constants::k_Pi / 180.0f;
-  float rotAxis[3] = {m_RotationAxis.x, m_RotationAxis.y, m_RotationAxis.z};
+  float rotAxis[3] = {m_RotationAxis[0], m_RotationAxis[1], m_RotationAxis[2]};
   MatrixMath::Normalize3x1(rotAxis);
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
@@ -221,7 +217,7 @@ void RotateEulerRefFrame::execute()
 #endif
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), RotateEulerRefFrameImpl(m_CellEulerAngles, rotAngle, rotAxis), tbb::auto_partitioner());
   }
@@ -232,7 +228,6 @@ void RotateEulerRefFrame::execute()
     serial.convert(0, totalPoints);
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -241,7 +236,7 @@ void RotateEulerRefFrame::execute()
 AbstractFilter::Pointer RotateEulerRefFrame::newFilterInstance(bool copyFilterParameters) const
 {
   RotateEulerRefFrame::Pointer filter = RotateEulerRefFrame::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

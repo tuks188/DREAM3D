@@ -58,19 +58,15 @@ using namespace H5Support_NAMESPACE;
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-H5AngReader::H5AngReader() :
-  AngReader(),
-  m_ReadAllArrays(true)
+H5AngReader::H5AngReader()
+: m_ReadAllArrays(true)
 {
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-H5AngReader::~H5AngReader()
-{
-  deletePointers();
-}
+H5AngReader::~H5AngReader() = default;
 
 // -----------------------------------------------------------------------------
 //
@@ -78,7 +74,7 @@ H5AngReader::~H5AngReader()
 int H5AngReader::readFile()
 {
   int err = -1;
-  if (m_HDF5Path.isEmpty() == true)
+  if(m_HDF5Path.isEmpty())
   {
     qDebug() << "H5AngReader Error: HDF5 Path is empty.";
     return err;
@@ -142,7 +138,7 @@ int H5AngReader::readFile()
 int H5AngReader::readHeaderOnly()
 {
   int err = -1;
-  if (m_HDF5Path.isEmpty() == true)
+  if(m_HDF5Path.isEmpty())
   {
     qDebug() << "H5AngReader Error: HDF5 Path is empty.";
     return -1;
@@ -167,7 +163,6 @@ int H5AngReader::readHeaderOnly()
   sentinel.addGroupId(&gid);
 
   // Read all the header information
-  // qDebug() << "H5AngReader:: reading Header .. ";
   err = readHeader(gid);
   return err;
 }
@@ -178,7 +173,7 @@ int H5AngReader::readHeaderOnly()
 int H5AngReader::readHeader(hid_t parId)
 {
   int err = -1;
-  hid_t gid = H5Gopen(parId, Ebsd::H5::Header.toLatin1().data(), H5P_DEFAULT);
+  hid_t gid = H5Gopen(parId, Ebsd::H5OIM::Header.toLatin1().data(), H5P_DEFAULT);
   if (gid < 0)
   {
     setErrorCode(-90008);
@@ -201,7 +196,7 @@ int H5AngReader::readHeader(hid_t parId)
   READ_EBSD_HEADER_STRING_DATA("H5AngReader", AngStringHeaderEntry, QString, SampleID, Ebsd::Ang::SAMPLEID, gid)
   READ_EBSD_HEADER_STRING_DATA("H5AngReader", AngStringHeaderEntry, QString, SCANID, Ebsd::Ang::SCANID, gid)
 
-  hid_t phasesGid = H5Gopen(gid, Ebsd::H5::Phases.toLatin1().data(), H5P_DEFAULT);
+  hid_t phasesGid = H5Gopen(gid, Ebsd::H5OIM::Phases.toLatin1().data(), H5P_DEFAULT);
   if (phasesGid < 0)
   {
     setErrorCode(-90007);
@@ -212,7 +207,7 @@ int H5AngReader::readHeader(hid_t parId)
 
   QStringList names;
   err = QH5Utilities::getGroupObjects(phasesGid, H5Utilities::H5Support_GROUP, names);
-  if (err < 0 || names.size() == 0)
+  if(err < 0 || names.empty())
   {
     setErrorCode(-90009);
     setErrorMessage("H5AngReader Error: There were no Phase groups present in the HDF5 file");
@@ -222,12 +217,11 @@ int H5AngReader::readHeader(hid_t parId)
   }
   m_Phases.clear();
 
-
-  foreach(QString phaseGroupName, names)
-    //for (QStringList<QString>::iterator phaseGroupName = names.begin(); phaseGroupName != names.end(); ++phaseGroupName )
+  for(const auto& phaseGroupName : names)
   {
     hid_t pid = H5Gopen(phasesGid, phaseGroupName.toLatin1().data(), H5P_DEFAULT);
     AngPhase::Pointer m_CurrentPhase = AngPhase::New();
+
     READ_PHASE_HEADER_DATA("H5AngReader", pid, int, Ebsd::Ang::Phase, PhaseIndex, m_CurrentPhase)
     READ_PHASE_STRING_DATA("H5AngReader", pid, Ebsd::Ang::MaterialName, MaterialName, m_CurrentPhase)
     READ_PHASE_STRING_DATA("H5AngReader", pid, Ebsd::Ang::Formula, Formula, m_CurrentPhase)
@@ -247,7 +241,7 @@ int H5AngReader::readHeader(hid_t parId)
       if (getErrorCode() < 0) { err = H5Gclose(pid); H5Gclose(phasesGid); H5Gclose(gid); return -1; }
     }
     /* The 'Categories' header may actually be missing from certain types of .ang files */
-    if (QH5Lite::datasetExists(pid, Ebsd::Ang::Categories) == true)
+    if(QH5Lite::datasetExists(pid, Ebsd::Ang::Categories))
     {
       READ_PHASE_HEADER_ARRAY("H5AngReader", pid, int, Ebsd::Ang::Categories, Categories, m_CurrentPhase)
     }
@@ -256,7 +250,7 @@ int H5AngReader::readHeader(hid_t parId)
   }
 
   QString completeHeader;
-  err = QH5Lite::readStringDataset(gid, Ebsd::H5::OriginalHeader, completeHeader);
+  err = QH5Lite::readStringDataset(gid, Ebsd::H5OIM::OriginalHeader, completeHeader);
   if (err < 0)
   {
     setErrorCode(-90010);
@@ -310,26 +304,6 @@ int H5AngReader::readHKLFamilies(hid_t hklGid, AngPhase::Pointer phase)
   return status;
 }
 
-
-#define ANG_READER_ALLOCATE_AND_READ(name, type)\
-  if (m_ReadAllArrays == true || m_ArrayNames.find(Ebsd::Ang::name) != m_ArrayNames.end()) {\
-    type* _##name = allocateArray<type>(totalDataRows);\
-    if (nullptr != _##name) {\
-      ::memset(_##name, 0, numBytes);\
-      err = QH5Lite::readPointerDataset(gid, Ebsd::Ang::name, _##name);\
-      if (err < 0) {\
-        deallocateArrayData(_##name); /*deallocate the array*/\
-        setErrorCode(-90020);\
-        ss << "Error reading dataset '" << #name << "' from the HDF5 file. This data set is required to be in the file because either "\
-           "the program is set to read ALL the Data arrays or the program was instructed to read this array.";\
-        setErrorMessage(ss.string());\
-        err = H5Gclose(gid);\
-        return -90020;\
-      }\
-    }\
-    set##name##Pointer(_##name);\
-  }
-
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
@@ -337,9 +311,6 @@ int H5AngReader::readData(hid_t parId)
 {
   int err = -1;
 
-  // Delete any currently existing pointers
-  deletePointers();
-  // Initialize new pointers
   size_t totalDataRows = 0;
 
   QString grid = getGrid();
@@ -355,7 +326,7 @@ int H5AngReader::readData(hid_t parId)
     setErrorCode(err);
     return err;
   }
-  else if (grid.startsWith(Ebsd::Ang::SquareGrid) == true)
+  if(grid.startsWith(Ebsd::Ang::SquareGrid))
   {
     // if (nCols > 0) { numElements = nRows * nCols; }
     if (nOddCols > 0)
@@ -371,7 +342,7 @@ int H5AngReader::readData(hid_t parId)
       totalDataRows = 0;
     }
   }
-  else if (grid.startsWith(Ebsd::Ang::HexGrid) == true)
+  else if(grid.startsWith(Ebsd::Ang::HexGrid))
   {
     setErrorCode(-90400);
     setErrorMessage("Ang Files with Hex Grids Are NOT currently supported. Please convert them to Square Grid files first");
@@ -384,20 +355,19 @@ int H5AngReader::readData(hid_t parId)
     return -300;
   }
 
-
-  hid_t gid = H5Gopen(parId, Ebsd::H5::Data.toLatin1().data(), H5P_DEFAULT);
+  hid_t gid = H5Gopen(parId, Ebsd::H5OIM::Data.toLatin1().data(), H5P_DEFAULT);
   if (gid < 0)
   {
     setErrorMessage("H5AngReader Error: Could not open 'Data' Group");
     setErrorCode(-90012);
-    return -90012;
+    return getErrorCode();
   }
   setNumberOfElements(totalDataRows);
   size_t numBytes = totalDataRows * sizeof(float);
   QString sBuf;
   QTextStream ss(&sBuf);
 
-  if(m_ArrayNames.size() == 0 && m_ReadAllArrays == false)
+  if(m_ArrayNames.empty() && !m_ReadAllArrays)
   {
     err = H5Gclose(gid);
     err = -90013;
@@ -406,24 +376,22 @@ int H5AngReader::readData(hid_t parId)
     return err;
   }
 
-  ANG_READER_ALLOCATE_AND_READ(Phi1, float);
-  ANG_READER_ALLOCATE_AND_READ(Phi, float);
-  ANG_READER_ALLOCATE_AND_READ(Phi2, float);
-  ANG_READER_ALLOCATE_AND_READ(ImageQuality, float);
-  ANG_READER_ALLOCATE_AND_READ(ConfidenceIndex, float);
-
-  ANG_READER_ALLOCATE_AND_READ(PhaseData, int);
-
-  ANG_READER_ALLOCATE_AND_READ(XPosition, float);
-  ANG_READER_ALLOCATE_AND_READ(YPosition, float);
-
-  ANG_READER_ALLOCATE_AND_READ(Fit, float);
+  // Initialize new pointers
+  ANG_READER_ALLOCATE_AND_READ(Phi1, Ebsd::Ang::Phi1, float);
+  ANG_READER_ALLOCATE_AND_READ(Phi, Ebsd::Ang::Phi, float);
+  ANG_READER_ALLOCATE_AND_READ(Phi2, Ebsd::Ang::Phi2, float);
+  ANG_READER_ALLOCATE_AND_READ(ImageQuality, Ebsd::Ang::ImageQuality, float);
+  ANG_READER_ALLOCATE_AND_READ(ConfidenceIndex, Ebsd::Ang::ConfidenceIndex, float);
+  ANG_READER_ALLOCATE_AND_READ(PhaseData, Ebsd::Ang::PhaseData, int);
+  ANG_READER_ALLOCATE_AND_READ(XPosition, Ebsd::Ang::XPosition, float);
+  ANG_READER_ALLOCATE_AND_READ(YPosition, Ebsd::Ang::YPosition, float);
+  ANG_READER_ALLOCATE_AND_READ(Fit, Ebsd::Ang::Fit, float);
   if (err < 0)
   {
     setNumFeatures(9);
   }
 
-  ANG_READER_ALLOCATE_AND_READ(SEMSignal, float);
+  ANG_READER_ALLOCATE_AND_READ(SEMSignal, Ebsd::Ang::SEMSignal, float);
   if (err < 0)
   {
     setNumFeatures(8);
@@ -438,7 +406,7 @@ int H5AngReader::readData(hid_t parId)
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void H5AngReader::setArraysToRead(QSet<QString> names)
+void H5AngReader::setArraysToRead(const QSet<QString>& names)
 {
   m_ArrayNames = names;
 }

@@ -22,6 +22,7 @@ set(_PublicFilters
   ChangeAngleRepresentation
   ConvertHexGridToSquareGrid
   ConvertOrientations
+  ConvertQuaternion
   CreateEnsembleInfo
   CreateLambertSphere
   EbsdToH5Ebsd
@@ -31,38 +32,40 @@ set(_PublicFilters
   FindAvgOrientations
   FindBoundaryStrengths
   FindCAxisLocations
+  FindDistsToCharactGBs
   FindFeatureNeighborCAxisMisalignments
   FindFeatureReferenceCAxisMisorientations
   FindFeatureReferenceMisorientations
+  FindGBCD
+  FindGBCDMetricBased
+  FindGBPDMetricBased
   FindKernelAvgMisorientations
   FindMisorientations
   FindSchmids
   FindSlipTransmissionMetrics
   FindTwinBoundaries
   FindTwinBoundarySchmidFactors
-  INLWriter
-  GenerateIPFColors
-  NeighborOrientationCorrelation
-  ReadAngData
-  ReadCtfData
-  ReadEdaxH5Data
-  ReadH5Ebsd
-  ReplaceElementAttributesWithNeighborValues
-  RotateEulerRefFrame
-  WritePoleFigure
-  WriteStatsGenOdfAngleFile
-  OrientationUtility
-  Stereographic3D
-  GenerateFZQuaternions
-  FindGBCD
-  FindGBCDMetricBased
-  FindGBPDMetricBased
-  FindDistsToCharactGBs
   GenerateFaceIPFColoring
   GenerateFaceMisorientationColoring
-  RodriguesConvertor
-  GenerateQuaternionConjugate
+  GenerateFZQuaternions
+  GenerateIPFColors
   GenerateOrientationMatrixTranspose
+  GenerateQuaternionConjugate
+  ImportEbsdMontage
+  ImportH5EspritData
+  ImportH5OimData
+  INLWriter
+  NeighborOrientationCorrelation
+  OrientationUtility
+  ReadAngData
+  ReadCtfData
+  ReadH5Ebsd
+  ReplaceElementAttributesWithNeighborValues
+  RodriguesConvertor
+  RotateEulerRefFrame
+  Stereographic3D
+  WritePoleFigure
+  WriteStatsGenOdfAngleFile
 )
 
 

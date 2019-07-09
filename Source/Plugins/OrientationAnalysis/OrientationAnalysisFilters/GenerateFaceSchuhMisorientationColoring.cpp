@@ -88,9 +88,7 @@ public:
   {
     m_OrientationOps = LaueOps::getOrientationOpsQVector();
   }
-  virtual ~CalculateFaceSchuhMisorientationColorsImpl()
-  {
-  }
+  virtual ~CalculateFaceSchuhMisorientationColorsImpl() = default;
 
   /**
    * @brief generate Generates the colors for the triangles
@@ -171,11 +169,6 @@ GenerateFaceSchuhMisorientationColoring::GenerateFaceSchuhMisorientationColoring
 , m_FeaturePhasesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, SIMPL::FeatureData::Phases)
 , m_CrystalStructuresArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::CrystalStructures)
 , m_SurfaceMeshFaceSchuhMisorientationColorsArrayName(SIMPL::FaceData::SurfaceMeshFaceSchuhMisorientationColors)
-, m_SurfaceMeshFaceLabels(nullptr)
-, m_SurfaceMeshFaceSchuhMisorientationColors(nullptr)
-, m_AvgQuats(nullptr)
-, m_FeaturePhases(nullptr)
-, m_CrystalStructures(nullptr)
 {
 }
 
@@ -189,7 +182,7 @@ GenerateFaceSchuhMisorientationColoring::~GenerateFaceSchuhMisorientationColorin
 // -----------------------------------------------------------------------------
 void GenerateFaceSchuhMisorientationColoring::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   {
     DataArraySelectionFilterParameter::RequirementType req;
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("SurfaceMeshFaceLabels", SurfaceMeshFaceLabelsArrayPath, FilterParameter::RequiredArray, GenerateFaceSchuhMisorientationColoring, req));
@@ -233,16 +226,16 @@ void GenerateFaceSchuhMisorientationColoring::readFilterParameters(AbstractFilte
 void GenerateFaceSchuhMisorientationColoring::dataCheckSurfaceMesh()
 {
   DataArrayPath tempPath;
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   DataContainer::Pointer sm = getDataContainerArray()->getPrereqDataContainer(this, m_SurfaceMeshFaceLabelsArrayPath.getDataContainerName(), false);
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
-  QVector<size_t> dims(1, 2);
+  std::vector<size_t> dims(1, 2);
   m_SurfaceMeshFaceLabelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath(),
                                                                                                                    dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_SurfaceMeshFaceLabelsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -265,10 +258,10 @@ void GenerateFaceSchuhMisorientationColoring::dataCheckSurfaceMesh()
 void GenerateFaceSchuhMisorientationColoring::dataCheckVoxel()
 {
   DataArrayPath tempPath;
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> dims(1, 4);
+  std::vector<size_t> dims(1, 4);
   m_AvgQuatsPtr =
       getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getAvgQuatsArrayPath(), dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_AvgQuatsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -310,21 +303,21 @@ void GenerateFaceSchuhMisorientationColoring::preflight()
 // -----------------------------------------------------------------------------
 void GenerateFaceSchuhMisorientationColoring::execute()
 {
-  int err = 0;
-  setErrorCondition(err);
+  clearErrorCode();
+  clearWarningCode();
   dataCheckSurfaceMesh();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   dataCheckVoxel();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
-  notifyStatusMessage(getMessagePrefix(), getHumanLabel(), "Starting");
+  notifyStatusMessage("Starting");
 
   // Run the data check to allocate the memory for the centroid array
   int64_t numTriangles = m_SurfaceMeshFaceLabelsPtr.lock()->getNumberOfTuples();
@@ -334,7 +327,7 @@ void GenerateFaceSchuhMisorientationColoring::execute()
 #endif
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, numTriangles),
                       CalculateFaceSchuhMisorientationColorsImpl(m_SurfaceMeshFaceLabels, m_FeaturePhases, m_AvgQuats, m_SurfaceMeshFaceSchuhMisorientationColors, m_CrystalStructures),
@@ -347,8 +340,7 @@ void GenerateFaceSchuhMisorientationColoring::execute()
     serial.generate(0, numTriangles);
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 // -----------------------------------------------------------------------------
 //
@@ -356,7 +348,7 @@ void GenerateFaceSchuhMisorientationColoring::execute()
 AbstractFilter::Pointer GenerateFaceSchuhMisorientationColoring::newFilterInstance(bool copyFilterParameters) const
 {
   GenerateFaceSchuhMisorientationColoring::Pointer filter = GenerateFaceSchuhMisorientationColoring::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

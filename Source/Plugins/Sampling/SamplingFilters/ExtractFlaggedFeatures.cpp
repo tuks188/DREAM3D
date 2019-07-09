@@ -52,8 +52,6 @@ ExtractFlaggedFeatures::ExtractFlaggedFeatures()
 : m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
 , m_FlaggedFeaturesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, SIMPL::FeatureData::Active)
 , m_FeatureBounds(nullptr)
-, m_FeatureIds(nullptr)
-, m_FlaggedFeatures(nullptr)
 {
 }
 
@@ -67,7 +65,7 @@ ExtractFlaggedFeatures::~ExtractFlaggedFeatures() = default;
 // -----------------------------------------------------------------------------
 void ExtractFlaggedFeatures::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req =
@@ -109,12 +107,12 @@ void ExtractFlaggedFeatures::initialize()
 // -----------------------------------------------------------------------------
 void ExtractFlaggedFeatures::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -151,15 +149,14 @@ void ExtractFlaggedFeatures::find_feature_bounds()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName());
 
   size_t totalFeatures = m_FlaggedFeaturesPtr.lock()->getNumberOfTuples();
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
   };
 
-  QVector<size_t> cDims(1, 6);
-  m_BoundsPtr = Int32ArrayType::CreateArray(totalFeatures, cDims, "_INTERNAL_USE_ONLY_Bounds");
+  std::vector<size_t> cDims(1, 6);
+  m_BoundsPtr = Int32ArrayType::CreateArray(totalFeatures, cDims, "_INTERNAL_USE_ONLY_Bounds", true);
   m_FeatureBounds = m_BoundsPtr->getPointer(0);
   m_BoundsPtr->initializeWithValue(-1);
 
@@ -212,10 +209,10 @@ void ExtractFlaggedFeatures::find_feature_bounds()
 // -----------------------------------------------------------------------------
 void ExtractFlaggedFeatures::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -228,12 +225,12 @@ void ExtractFlaggedFeatures::execute()
   CropImageGeometry::Pointer cropVol = CropImageGeometry::New();
   for(size_t i = 1; i < totalFeatures; i++)
   {
-    if(m_FlaggedFeatures[i] == true)
+    if(m_FlaggedFeatures[i])
     {
       newDCName.clear();
       newDCName = "Feature_" + QString::number(i);
       cropVol->setDataContainerArray(getDataContainerArray());
-      cropVol->setNewDataContainerName(newDCName);
+      cropVol->setNewDataContainerName(DataArrayPath(newDCName, "", ""));
       cropVol->setCellAttributeMatrixPath(m_FeatureIdsArrayPath);
       cropVol->setXMin(m_FeatureBounds[6 * i]);
       cropVol->setXMax(m_FeatureBounds[6 * i + 1]);
@@ -248,8 +245,7 @@ void ExtractFlaggedFeatures::execute()
     }
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -258,7 +254,7 @@ void ExtractFlaggedFeatures::execute()
 AbstractFilter::Pointer ExtractFlaggedFeatures::newFilterInstance(bool copyFilterParameters) const
 {
   ExtractFlaggedFeatures::Pointer filter = ExtractFlaggedFeatures::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

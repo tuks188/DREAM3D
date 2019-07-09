@@ -31,7 +31,6 @@
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 #pragma once
 
-#include <QtCore/QObject>
 #include <QtCore/QString>
 #include <QtWidgets/QWidget>
 
@@ -107,6 +106,6 @@ public:
   StatsProgressWidget(const StatsProgressWidget&) = delete;            // Copy Constructor Not Implemented
   StatsProgressWidget(StatsProgressWidget&&) = delete;                 // Move Constructor Not Implemented
   StatsProgressWidget& operator=(const StatsProgressWidget&) = delete; // Copy Assignment Not Implemented
-  StatsProgressWidget& operator=(StatsProgressWidget&&) = delete;      // Move Assignment
+  StatsProgressWidget& operator=(StatsProgressWidget&&) = delete;      // Move Assignment Not Implemented
 };
 

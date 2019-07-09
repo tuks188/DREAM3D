@@ -51,6 +51,7 @@
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/FloatFilterParameter.h"
 #include "SIMPLib/FilterParameters/IntFilterParameter.h"
+#include "SIMPLib/FilterParameters/MultiDataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
 
@@ -61,25 +62,23 @@ class NeighborOrientationCorrelationTransferDataImpl
 {
 public:
   NeighborOrientationCorrelationTransferDataImpl() = delete;
-  NeighborOrientationCorrelationTransferDataImpl(const NeighborOrientationCorrelationTransferDataImpl&) = default; // Copy Constructor Not Implemented
+  NeighborOrientationCorrelationTransferDataImpl(const NeighborOrientationCorrelationTransferDataImpl&) = default;
 
-  NeighborOrientationCorrelationTransferDataImpl(NeighborOrientationCorrelation* filter, size_t totalPoints, const std::vector<int64_t>& bestNeighbor, AttributeMatrix* attrMat,
-                                                 int32_t voxelArrayIndex)
+  NeighborOrientationCorrelationTransferDataImpl(NeighborOrientationCorrelation* filter, size_t totalPoints, const std::vector<int64_t>& bestNeighbor, IDataArray::Pointer dataArrayPtr)
   : m_Filter(filter)
   , m_TotalPoints(totalPoints)
   , m_BestNeighbor(bestNeighbor)
-  , m_AttrMat(attrMat)
-  , m_VoxelArrayIndex(voxelArrayIndex)
+  , m_DataArrayPtr(dataArrayPtr)
   {
   }
+  NeighborOrientationCorrelationTransferDataImpl(NeighborOrientationCorrelationTransferDataImpl&&) = default;                // Move Constructor Not Implemented
+  NeighborOrientationCorrelationTransferDataImpl& operator=(const NeighborOrientationCorrelationTransferDataImpl&) = delete; // Copy Assignment Not Implemented
+  NeighborOrientationCorrelationTransferDataImpl& operator=(NeighborOrientationCorrelationTransferDataImpl&&) = delete;      // Move Assignment Not Implemented
 
   ~NeighborOrientationCorrelationTransferDataImpl() = default;
 
   void operator()() const
   {
-
-    QVector<QString> voxelArrayNames = m_AttrMat->getAttributeArrayNames().toVector();
-
     size_t progIncrement = static_cast<size_t>(m_TotalPoints / 50);
     size_t prog = 1;
     for(size_t i = 0; i < m_TotalPoints; i++)
@@ -92,8 +91,8 @@ public:
       int64_t neighbor = m_BestNeighbor[i];
       if(neighbor != -1)
       {
-        IDataArray::Pointer p = m_AttrMat->getAttributeArray(voxelArrayNames[m_VoxelArrayIndex]);
-        p->copyTuple(neighbor, i);
+        // IDataArray::Pointer p = m_AttrMat->getAttributeArray(m_VoxelArrayNames[m_VoxelArrayIndex]);
+        m_DataArrayPtr->copyTuple(neighbor, i);
       }
     }
   }
@@ -102,10 +101,7 @@ private:
   NeighborOrientationCorrelation* m_Filter = nullptr;
   size_t m_TotalPoints = 0;
   std::vector<int64_t> m_BestNeighbor;
-  AttributeMatrix* m_AttrMat = nullptr;
-  int32_t m_VoxelArrayIndex = 0;
-
-  void operator=(const NeighborOrientationCorrelationTransferDataImpl&) = delete; // Move assignment Not Implemented
+  IDataArray::Pointer m_DataArrayPtr;
 };
 
 // -----------------------------------------------------------------------------
@@ -119,10 +115,6 @@ NeighborOrientationCorrelation::NeighborOrientationCorrelation()
 , m_CellPhasesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Phases)
 , m_CrystalStructuresArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::CrystalStructures)
 , m_QuatsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Quats)
-, m_ConfidenceIndex(nullptr)
-, m_Quats(nullptr)
-, m_CellPhases(nullptr)
-, m_CrystalStructures(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 
@@ -138,7 +130,7 @@ NeighborOrientationCorrelation::~NeighborOrientationCorrelation() = default;
 // -----------------------------------------------------------------------------
 void NeighborOrientationCorrelation::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_FLOAT_FP("Minimum Confidence Index", MinConfidence, FilterParameter::Parameter, NeighborOrientationCorrelation));
   parameters.push_back(SIMPL_NEW_FLOAT_FP("Misorientation Tolerance (Degrees)", MisorientationTolerance, FilterParameter::Parameter, NeighborOrientationCorrelation));
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Cleanup Level", Level, FilterParameter::Parameter, NeighborOrientationCorrelation));
@@ -164,6 +156,10 @@ void NeighborOrientationCorrelation::setupFilterParameters()
     DataArraySelectionFilterParameter::RequirementType req =
         DataArraySelectionFilterParameter::CreateRequirement(SIMPL::TypeNames::UInt32, 1, AttributeMatrix::Type::CellEnsemble, IGeometry::Type::Image);
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Crystal Structures", CrystalStructuresArrayPath, FilterParameter::RequiredArray, NeighborOrientationCorrelation, req));
+  }
+  {
+    MultiDataArraySelectionFilterParameter::RequirementType req;
+    parameters.push_back(SIMPL_NEW_MDA_SELECTION_FP("Attribute Arrays to Ignore", IgnoredDataArrayPaths, FilterParameter::Parameter, NeighborOrientationCorrelation, req));
   }
   setFilterParameters(parameters);
 }
@@ -196,21 +192,21 @@ void NeighborOrientationCorrelation::initialize()
 // -----------------------------------------------------------------------------
 void NeighborOrientationCorrelation::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getConfidenceIndexArrayPath().getDataContainerName());
 
   QVector<DataArrayPath> dataArrayPaths;
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_ConfidenceIndexPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getConfidenceIndexArrayPath(),
                                                                                                            cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_ConfidenceIndexPtr.lock())                                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_ConfidenceIndex = m_ConfidenceIndexPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getConfidenceIndexArrayPath());
   }
@@ -221,7 +217,7 @@ void NeighborOrientationCorrelation::dataCheck()
   {
     m_CellPhases = m_CellPhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getCellPhasesArrayPath());
   }
@@ -240,7 +236,7 @@ void NeighborOrientationCorrelation::dataCheck()
   {
     m_Quats = m_QuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getQuatsArrayPath());
   }
@@ -266,10 +262,10 @@ void NeighborOrientationCorrelation::preflight()
 // -----------------------------------------------------------------------------
 void NeighborOrientationCorrelation::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -282,8 +278,7 @@ void NeighborOrientationCorrelation::execute()
 
   float misorientationToleranceR = m_MisorientationTolerance * static_cast<float>(SIMPLib::Constants::k_PiOver180);
 
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -333,7 +328,7 @@ void NeighborOrientationCorrelation::execute()
       {
         progressInt = static_cast<int64_t>((static_cast<float>(i) / totalPoints) * 100.0f);
         QString ss = QObject::tr("Level %1 of %2 || Processing Data %3%").arg((startLevel - currentLevel) + 1).arg(startLevel - m_Level).arg(progressInt);
-        notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+        notifyStatusMessage(ss);
         prog = prog + progIncrement;
       }
 
@@ -371,7 +366,7 @@ void NeighborOrientationCorrelation::execute()
           {
             good = false;
           }
-          if(good == true)
+          if(good)
           {
             phase1 = m_CrystalStructures[m_CellPhases[i]];
             QuaternionMathF::Copy(quats[i], q1);
@@ -415,7 +410,7 @@ void NeighborOrientationCorrelation::execute()
               {
                 good2 = false;
               }
-              if(good2 == true)
+              if(good2)
               {
                 phase1 = m_CrystalStructures[m_CellPhases[neighbor2]];
                 QuaternionMathF::Copy(quats[neighbor2], q1);
@@ -464,7 +459,7 @@ void NeighborOrientationCorrelation::execute()
           {
             good = false;
           }
-          if(good == true)
+          if(good)
           {
             if(neighborSimCount[j] > best)
             {
@@ -487,31 +482,35 @@ void NeighborOrientationCorrelation::execute()
     bool doParallel = true;
 #endif
 
+    QList<QString> voxelArrayNames = m->getAttributeMatrix(attrMatName)->getAttributeArrayNames();
+    for(const auto& dataArrayPath : m_IgnoredDataArrayPaths)
+    {
+      voxelArrayNames.removeAll(dataArrayPath.getDataArrayName());
+    }
+
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
     // The idea for this parallel section is to parallelize over each Data Array that
     // will need it's data adjusted. This should go faster than before by about 2x.
     // Better speed up could be achieved if we had better data locality.
     m_Progress = 0;
     m_TotalProgress = 0;
-    if(doParallel == true)
+    if(doParallel)
     {
-      std::shared_ptr<tbb::task_group> g(new tbb::task_group);
+      std::shared_ptr<tbb::task_group> taskGroup(new tbb::task_group);
       AttributeMatrix* attrMat = m->getAttributeMatrix(attrMatName).get();
-      QVector<QString> voxelArrayNames = m->getAttributeMatrix(attrMatName)->getAttributeArrayNames().toVector();
       m_TotalProgress = voxelArrayNames.size() * totalPoints; // Total number of points to update
       // Create and run all the tasks
-      for(int32_t voxelArray = 0; voxelArray < voxelArrayNames.size(); voxelArray++)
+      for(const auto& arrayName : voxelArrayNames)
       {
-        g->run(NeighborOrientationCorrelationTransferDataImpl(this, totalPoints, bestNeighbor, attrMat, voxelArray));
+        IDataArray::Pointer dataArrayPtr = attrMat->getAttributeArray(arrayName);
+        taskGroup->run(NeighborOrientationCorrelationTransferDataImpl(this, totalPoints, bestNeighbor, dataArrayPtr));
       }
       // Wait for them to complete.
-      g->wait();
-      
+      taskGroup->wait();
     }
     else
 #endif
     {
-      QList<QString> voxelArrayNames = m->getAttributeMatrix(attrMatName)->getAttributeArrayNames();
       progIncrement = static_cast<int64_t>(totalPoints / 100);
       prog = 1;
       progressInt = 0;
@@ -521,15 +520,15 @@ void NeighborOrientationCorrelation::execute()
         {
           progressInt = static_cast<int64_t>(((float)i / totalPoints) * 100.0f);
           QString ss = QObject::tr("Level %1 of %2 || Copying Data %3%").arg((startLevel - currentLevel) + 2).arg(startLevel - m_Level).arg(progressInt);
-          notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+          notifyStatusMessage(ss);
           prog = prog + progIncrement;
         }
         neighbor = bestNeighbor[i];
         if(neighbor != -1)
         {
-          for(QList<QString>::iterator iter = voxelArrayNames.begin(); iter != voxelArrayNames.end(); ++iter)
+          for(const auto& iter : voxelArrayNames)
           {
-            IDataArray::Pointer p = m->getAttributeMatrix(attrMatName)->getAttributeArray(*iter);
+            IDataArray::Pointer p = m->getAttributeMatrix(attrMatName)->getAttributeArray(iter);
             p->copyTuple(neighbor, i);
           }
         }
@@ -545,8 +544,7 @@ void NeighborOrientationCorrelation::execute()
     return;
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -557,7 +555,7 @@ void NeighborOrientationCorrelation::updateProgress(size_t p)
   m_Progress += p;
   int32_t progressInt = static_cast<int>((static_cast<float>(m_Progress) / static_cast<float>(m_TotalProgress)) * 100.0f);
   QString ss = QObject::tr("Level %1 of %2 || Copying Data %3%").arg((6 - m_CurrentLevel) + 2).arg(6 - m_Level).arg(progressInt);
-  notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+  notifyStatusMessage(ss);
 }
 
 // -----------------------------------------------------------------------------
@@ -566,7 +564,7 @@ void NeighborOrientationCorrelation::updateProgress(size_t p)
 AbstractFilter::Pointer NeighborOrientationCorrelation::newFilterInstance(bool copyFilterParameters) const
 {
   NeighborOrientationCorrelation::Pointer filter = NeighborOrientationCorrelation::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

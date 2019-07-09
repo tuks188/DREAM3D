@@ -40,6 +40,7 @@
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/BooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/FilterParameters/BooleanFilterParameter.h"
@@ -56,8 +57,6 @@ FindBoundaryCells::FindBoundaryCells()
 , m_BoundaryCellsArrayName(SIMPL::CellData::BoundaryCells)
 , m_IgnoreFeatureZero(true)
 , m_IncludeVolumeBoundary(false)
-, m_FeatureIds(nullptr)
-, m_BoundaryCells(nullptr)
 {
 }
 
@@ -71,7 +70,7 @@ FindBoundaryCells::~FindBoundaryCells() = default;
 // -----------------------------------------------------------------------------
 void FindBoundaryCells::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   parameters.push_back(SIMPL_NEW_BOOL_FP("Ignore Feature 0", IgnoreFeatureZero, FilterParameter::Parameter, FindBoundaryCells));
   parameters.push_back(SIMPL_NEW_BOOL_FP("Include Volume Boundary", IncludeVolumeBoundary, FilterParameter::Parameter, FindBoundaryCells));
@@ -83,7 +82,7 @@ void FindBoundaryCells::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Feature Ids", FeatureIdsArrayPath, FilterParameter::RequiredArray, FindBoundaryCells, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Boundary Cells", BoundaryCellsArrayName, FilterParameter::CreatedArray, FindBoundaryCells));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Boundary Cells", BoundaryCellsArrayName, FeatureIdsArrayPath, FeatureIdsArrayPath, FilterParameter::CreatedArray, FindBoundaryCells));
 
   setFilterParameters(parameters);
 }
@@ -111,14 +110,14 @@ void FindBoundaryCells::initialize()
 // -----------------------------------------------------------------------------
 void FindBoundaryCells::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   DataArrayPath tempPath;
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -153,10 +152,10 @@ void FindBoundaryCells::preflight()
 // -----------------------------------------------------------------------------
 void FindBoundaryCells::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -181,7 +180,7 @@ void FindBoundaryCells::execute()
   int64_t neighbor = 0;
 
   int ignoreFeatureZeroVal = 0;
-  if (m_IgnoreFeatureZero == false)
+  if(!m_IgnoreFeatureZero)
   {
     ignoreFeatureZeroVal = -1;
   }
@@ -199,7 +198,7 @@ void FindBoundaryCells::execute()
         feature = m_FeatureIds[zStride + yStride + k];
         if(feature >= 0)
         {
-          if(m_IncludeVolumeBoundary == true)
+          if(m_IncludeVolumeBoundary)
           {
             if (xPoints > 2 && (k == 0 || k == xPoints - 1)) { onsurf++; }
             if (yPoints > 2 && (j == 0 || j == yPoints - 1)) { onsurf++; }
@@ -247,7 +246,6 @@ void FindBoundaryCells::execute()
     }
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -256,7 +254,7 @@ void FindBoundaryCells::execute()
 AbstractFilter::Pointer FindBoundaryCells::newFilterInstance(bool copyFilterParameters) const
 {
   FindBoundaryCells::Pointer filter = FindBoundaryCells::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

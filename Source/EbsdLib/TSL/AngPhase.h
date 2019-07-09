@@ -32,17 +32,12 @@
 *    United States Prime Contract Navy N00173-07-C-2068
 *
 * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-
-
-
-
-
 #pragma once
 
-#include <QtCore/QString>
 #include <QtCore/QVector>
 #include <QtCore/QTextStream>
+
+#include "SIMPLib/Common/SIMPLArray.hpp"
 
 #include "EbsdLib/EbsdSetGetMacros.h"
 #include "EbsdLib/EbsdLib.h"
@@ -56,7 +51,7 @@
  * @struct HKLFamily_t is used to write the HKL Family to an HDF5 file using a
  * compound data type.
  */
-typedef struct
+using HKLFamily_t = struct
 {
   int h;
   int k;
@@ -64,7 +59,7 @@ typedef struct
   float diffractionIntensity;
   char s1;
   char s2;
-} HKLFamily_t;
+};
 
 #pragma pack(pop)
 
@@ -82,7 +77,7 @@ class EbsdLib_EXPORT HKLFamily
     EBSD_STATIC_NEW_MACRO(HKLFamily)
     EBSD_TYPE_MACRO(HKLFamily)
 
-    virtual ~HKLFamily() {}
+    virtual ~HKLFamily() = default;
 
     int h;
     int k;
@@ -131,11 +126,13 @@ class EbsdLib_EXPORT HKLFamily
     }
 
   protected:
-    HKLFamily() {}
+    HKLFamily() = default;
 
-  private:
-    HKLFamily(const HKLFamily&) = delete;      // Copy Constructor Not Implemented
-    void operator=(const HKLFamily&) = delete; // Move assignment Not Implemented
+  public:
+    HKLFamily(const HKLFamily&) = delete;            // Copy Constructor Not Implemented
+    HKLFamily(HKLFamily&&) = delete;                 // Move Constructor Not Implemented
+    HKLFamily& operator=(const HKLFamily&) = delete; // Copy Assignment Not Implemented
+    HKLFamily& operator=(HKLFamily&&) = delete;      // Move Assignment Not Implemented
 };
 
 
@@ -174,13 +171,10 @@ class EbsdLib_EXPORT AngPhase
     void setLatticeConstantBeta(float a);
     void setLatticeConstantGamma(float a);
 
-    //  void parsePhase(char* value, size_t start, size_t length);
     void parseMaterialName(QList<QByteArray>& tokens);
     void parseFormula(QList<QByteArray>& tokens);
     void parseInfo(QList<QByteArray>& tokens);
-    //  void parseSymmetry(char* value, size_t start, size_t length);
     void parseLatticeConstants(QList<QByteArray>& tokens);
-    //  void parseNumberFamilies(char* value, size_t start, size_t length);
     void parseHKLFamilies(QList<QByteArray>& tokens);
     void parseCategories(QList<QByteArray>& tokens);
 
@@ -189,31 +183,26 @@ class EbsdLib_EXPORT AngPhase
     /**
      * @brief Returns the type of crystal structure for this phase.
      */
-    unsigned int determineCrystalStructure();
-
-
+    unsigned int determineLaueGroup();
 
   protected:
     AngPhase();
 
-  private:
+  public:
     AngPhase(const AngPhase&) = delete;       // Copy Constructor Not Implemented
-    void operator=(const AngPhase&) = delete; // Move assignment Not Implemented
+    AngPhase(AngPhase&&) = delete;            // Move Constructor Not Implemented
+    AngPhase& operator=(const AngPhase&) = delete; // Copy Assignment Not Implemented
+    AngPhase& operator=(AngPhase&&) = delete;      // Move Assignment Not Implemented
 };
 
 
 struct Ang_Private_Data
 {
-  QVector<size_t> dims;
-  QVector<float> resolution;
-  QVector<float> origin;
+  SizeVec3Type dims;
+  FloatVec3Type resolution;
+  FloatVec3Type origin;
   QVector<AngPhase::Pointer> phases;
-};
-
-enum ANG_READ_FLAG
-{
-  ANG_FULL_FILE,
-  ANG_HEADER_ONLY
+  int32_t units;
 };
 
 Q_DECLARE_METATYPE(Ang_Private_Data)

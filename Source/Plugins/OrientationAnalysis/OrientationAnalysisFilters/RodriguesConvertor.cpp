@@ -116,8 +116,8 @@ RodriguesConvertor::~RodriguesConvertor() = default;
 // -----------------------------------------------------------------------------
 void RodriguesConvertor::initialize()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   setCancel(false);
 }
 
@@ -126,10 +126,10 @@ void RodriguesConvertor::initialize()
 // -----------------------------------------------------------------------------
 void RodriguesConvertor::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   DataArraySelectionFilterParameter::RequirementType dasReq;
-  QVector<QVector<size_t>> comp;
-  comp.push_back(QVector<size_t>(1, 3));
+  std::vector<std::vector<size_t>> comp;
+  comp.push_back(std::vector<size_t>(1, 3));
   dasReq.componentDimensions = comp;
   dasReq.daTypes = { SIMPL::TypeNames::Float };
   parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Rodrigues Array", RodriguesDataArrayPath, FilterParameter::Parameter, RodriguesConvertor, dasReq));
@@ -144,10 +144,10 @@ void RodriguesConvertor::setupFilterParameters()
 // -----------------------------------------------------------------------------
 void RodriguesConvertor::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   cDims[0] = 3;
   m_RodriguesVectorsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getRodriguesDataArrayPath(), cDims);
   if(nullptr != m_RodriguesVectorsPtr.lock())                                                                       
@@ -194,7 +194,10 @@ void RodriguesConvertor::execute()
 {
   initialize();
   dataCheck();
-  if(getErrorCondition() < 0) { return; }
+  if(getErrorCode() < 0)
+  {
+    return;
+  }
 
   if (getCancel()) { return; }
 

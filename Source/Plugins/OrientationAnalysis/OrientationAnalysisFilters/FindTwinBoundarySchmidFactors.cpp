@@ -49,12 +49,14 @@
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/FloatVec3FilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/OutputFileFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
 #include "SIMPLib/Geometry/TriangleGeom.h"
 #include "SIMPLib/Math/GeometryMath.h"
+#include "SIMPLib/Utilities/FileSystemPathHelper.h"
 
 #include "OrientationLib/OrientationMath/OrientationTransforms.hpp"
 
@@ -86,9 +88,7 @@ public:
   {
     m_OrientationOps = LaueOps::getOrientationOpsQVector();
   }
-  virtual ~CalculateTwinBoundarySchmidFactorsImpl()
-  {
-  }
+  virtual ~CalculateTwinBoundarySchmidFactorsImpl() = default;
 
   void generate(size_t start, size_t end) const
   {
@@ -106,7 +106,7 @@ public:
 
     for(size_t i = start; i < end; i++)
     {
-      if(m_TwinBoundary[i] == true)
+      if(m_TwinBoundary[i])
       {
         feature1 = m_Labels[2 * i];
         feature2 = m_Labels[2 * i + 1];
@@ -235,17 +235,10 @@ FindTwinBoundarySchmidFactors::FindTwinBoundarySchmidFactors()
 , m_SurfaceMeshFaceNormalsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceNormals)
 , m_SurfaceMeshTwinBoundaryArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshTwinBoundary)
 , m_SurfaceMeshTwinBoundarySchmidFactorsArrayName(SIMPL::FaceData::SurfaceMeshTwinBoundarySchmidFactors)
-, m_AvgQuats(nullptr)
-, m_FeaturePhases(nullptr)
-, m_CrystalStructures(nullptr)
-, m_SurfaceMeshFaceLabels(nullptr)
-, m_SurfaceMeshFaceNormals(nullptr)
-, m_SurfaceMeshTwinBoundary(nullptr)
-, m_SurfaceMeshTwinBoundarySchmidFactors(nullptr)
 {
-  m_LoadingDir.x = 1.0f;
-  m_LoadingDir.y = 1.0f;
-  m_LoadingDir.z = 1.0f;
+  m_LoadingDir[0] = 1.0f;
+  m_LoadingDir[1] = 1.0f;
+  m_LoadingDir[2] = 1.0f;
 
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 
@@ -261,7 +254,7 @@ FindTwinBoundarySchmidFactors::~FindTwinBoundarySchmidFactors() = default;
 // -----------------------------------------------------------------------------
 void FindTwinBoundarySchmidFactors::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_FLOAT_VEC3_FP("Loading Direction", LoadingDir, FilterParameter::Parameter, FindTwinBoundarySchmidFactors));
 
   QStringList linkedProps("TwinBoundarySchmidFactorsFile");
@@ -301,7 +294,7 @@ void FindTwinBoundarySchmidFactors::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Twin Boundary", SurfaceMeshTwinBoundaryArrayPath, FilterParameter::RequiredArray, FindTwinBoundarySchmidFactors, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Twin Boundary Schmid Factors", SurfaceMeshTwinBoundarySchmidFactorsArrayName, FilterParameter::CreatedArray, FindTwinBoundarySchmidFactors));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Twin Boundary Schmid Factors", SurfaceMeshTwinBoundarySchmidFactorsArrayName, SurfaceMeshFaceLabelsArrayPath, SurfaceMeshFaceLabelsArrayPath, FilterParameter::CreatedArray, FindTwinBoundarySchmidFactors));
   setFilterParameters(parameters);
 }
 
@@ -329,21 +322,21 @@ void FindTwinBoundarySchmidFactors::readFilterParameters(AbstractFilterParameter
 // -----------------------------------------------------------------------------
 void FindTwinBoundarySchmidFactors::dataCheckVoxel()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   QVector<DataArrayPath> dataArrayPaths;
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getAvgQuatsArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 4);
+  std::vector<size_t> cDims(1, 4);
   m_AvgQuatsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getAvgQuatsArrayPath(),
                                                                                                     cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_AvgQuatsPtr.lock())                                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AvgQuats = m_AvgQuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getAvgQuatsArrayPath());
   }
@@ -355,7 +348,7 @@ void FindTwinBoundarySchmidFactors::dataCheckVoxel()
   {
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeaturePhasesArrayPath());
   }
@@ -375,22 +368,26 @@ void FindTwinBoundarySchmidFactors::dataCheckVoxel()
 // -----------------------------------------------------------------------------
 void FindTwinBoundarySchmidFactors::dataCheckSurfaceMesh()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
+  if(m_WriteFile)
+  {
+    FileSystemPathHelper::CheckOutputFile(this, "Output File Path", getTwinBoundarySchmidFactorsFile(), true);
+  }
   QVector<DataArrayPath> dataArrayPaths;
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<TriangleGeom, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 2);
+  std::vector<size_t> cDims(1, 2);
   m_SurfaceMeshFaceLabelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath(),
                                                                                                                    cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_SurfaceMeshFaceLabelsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshFaceLabels = m_SurfaceMeshFaceLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getSurfaceMeshFaceLabelsArrayPath());
   }
@@ -402,7 +399,7 @@ void FindTwinBoundarySchmidFactors::dataCheckSurfaceMesh()
   {
     m_SurfaceMeshFaceNormals = m_SurfaceMeshFaceNormalsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getSurfaceMeshFaceNormalsArrayPath());
   }
@@ -422,7 +419,7 @@ void FindTwinBoundarySchmidFactors::dataCheckSurfaceMesh()
   {
     m_SurfaceMeshTwinBoundary = m_SurfaceMeshTwinBoundaryPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getSurfaceMeshTwinBoundaryArrayPath());
   }
@@ -449,15 +446,15 @@ void FindTwinBoundarySchmidFactors::preflight()
 // -----------------------------------------------------------------------------
 void FindTwinBoundarySchmidFactors::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheckVoxel();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
   dataCheckSurfaceMesh();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -470,12 +467,12 @@ void FindTwinBoundarySchmidFactors::execute()
   size_t numTriangles = m_SurfaceMeshFaceLabelsPtr.lock()->getNumberOfTuples();
 
   float LoadingDir[3] = {0.0f, 0.0f, 0.0f};
-  LoadingDir[0] = m_LoadingDir.x;
-  LoadingDir[1] = m_LoadingDir.y;
-  LoadingDir[2] = m_LoadingDir.z;
+  LoadingDir[0] = m_LoadingDir[0];
+  LoadingDir[1] = m_LoadingDir[1];
+  LoadingDir[2] = m_LoadingDir[2];
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, numTriangles), CalculateTwinBoundarySchmidFactorsImpl(LoadingDir, m_SurfaceMeshFaceLabels, m_SurfaceMeshFaceNormals, m_AvgQuats,
                                                                                                           m_SurfaceMeshTwinBoundary, m_SurfaceMeshTwinBoundarySchmidFactors),
@@ -488,7 +485,7 @@ void FindTwinBoundarySchmidFactors::execute()
     serial.generate(0, numTriangles);
   }
 
-  if(m_WriteFile == true)
+  if(m_WriteFile)
   {
     std::ofstream outFile;
     outFile.open(m_TwinBoundarySchmidFactorsFile.toLatin1().data(), std::ios_base::binary);
@@ -503,7 +500,6 @@ void FindTwinBoundarySchmidFactors::execute()
     outFile.close();
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -512,7 +508,7 @@ void FindTwinBoundarySchmidFactors::execute()
 AbstractFilter::Pointer FindTwinBoundarySchmidFactors::newFilterInstance(bool copyFilterParameters) const
 {
   FindTwinBoundarySchmidFactors::Pointer filter = FindTwinBoundarySchmidFactors::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

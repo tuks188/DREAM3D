@@ -82,12 +82,12 @@ void AxisAngleWidget::updateData(OrientationUtilityCalculator* calculator)
 {
   setStyleSheet("");
 
-  if(calculator->getInputType() == OrientationConverter<double>::AxisAngle)
+  if(calculator->getInputType() == OrientationRepresentation::Type::AxisAngle)
   {
     // The input type is the same as this widget, so don't update
     return;
   }
-  else if(calculator->getHasErrors() == true)
+  if(calculator->getHasErrors())
   {
     aa1->setText("nan");
     aa2->setText("nan");
@@ -97,7 +97,7 @@ void AxisAngleWidget::updateData(OrientationUtilityCalculator* calculator)
     return;
   }
 
-  QVector<double> aaValues = calculator->getValues(OrientationConverter<double>::AxisAngle);
+  QVector<double> aaValues = calculator->getValues(OrientationRepresentation::Type::AxisAngle);
 
   if(m_AngleMeasurement == Degrees)
   {
@@ -152,11 +152,11 @@ void AxisAngleWidget::valuesUpdated(const QString& text)
 
   if(errorCode >= 0)
   {
-    emit valuesChanged(values, OrientationConverter<double>::AxisAngle, false);
+    emit valuesChanged(values, OrientationRepresentation::Type::AxisAngle, false);
   }
   else
   {
-    emit valuesChanged(QVector<double>(), OrientationConverter<double>::AxisAngle, true);
+    emit valuesChanged(QVector<double>(), OrientationRepresentation::Type::AxisAngle, true);
     emit invalidValues(errorCode, errorMsg);
   }
 }
@@ -169,7 +169,7 @@ void AxisAngleWidget::convertData(bool isDegrees)
   QVector<double> values = getValues();
   double value = values[3];
 
-  if(isDegrees == true)
+  if(isDegrees)
   {
     value = value * SIMPLib::Constants::k_RadToDeg;
   }

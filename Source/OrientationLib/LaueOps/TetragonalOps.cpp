@@ -143,17 +143,12 @@ using namespace Detail;
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-TetragonalOps::TetragonalOps()
-{
-}
+TetragonalOps::TetragonalOps() = default;
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-TetragonalOps::~TetragonalOps()
-{
-
-}
+TetragonalOps::~TetragonalOps() = default;
 
 // -----------------------------------------------------------------------------
 //
@@ -560,7 +555,7 @@ namespace Detail
           m_xyz011(xyz011Coords),
           m_xyz111(xyz111Coords)
         {}
-        virtual ~GenerateSphereCoordsImpl() {}
+        virtual ~GenerateSphereCoordsImpl() = default;
 
         void generate(size_t start, size_t end) const
         {
@@ -639,15 +634,15 @@ void TetragonalOps::generateSphereCoordsFromEulers(FloatArrayType* eulers, Float
   // Sanity Check the size of the arrays
   if (xyz001->getNumberOfTuples() < nOrientations * Detail::TetragonalHigh::symSize0)
   {
-    xyz001->resize(nOrientations * Detail::TetragonalHigh::symSize0 * 3);
+    xyz001->resizeTuples(nOrientations * Detail::TetragonalHigh::symSize0 * 3);
   }
   if (xyz011->getNumberOfTuples() < nOrientations * Detail::TetragonalHigh::symSize1)
   {
-    xyz011->resize(nOrientations * Detail::TetragonalHigh::symSize1 * 3);
+    xyz011->resizeTuples(nOrientations * Detail::TetragonalHigh::symSize1 * 3);
   }
   if (xyz111->getNumberOfTuples() < nOrientations * Detail::TetragonalHigh::symSize2)
   {
-    xyz111->resize(nOrientations * Detail::TetragonalHigh::symSize2 * 3);
+    xyz111->resizeTuples(nOrientations * Detail::TetragonalHigh::symSize2 * 3);
   }
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
@@ -656,7 +651,7 @@ void TetragonalOps::generateSphereCoordsFromEulers(FloatArrayType* eulers, Float
 #endif
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if (doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, nOrientations),
                       Detail::TetragonalHigh::GenerateSphereCoordsImpl(eulers, xyz001, xyz011, xyz111), tbb::auto_partitioner());
@@ -675,11 +670,7 @@ void TetragonalOps::generateSphereCoordsFromEulers(FloatArrayType* eulers, Float
 // -----------------------------------------------------------------------------
 bool TetragonalOps::inUnitTriangle(float eta, float chi)
 {
-  if( eta < 0 || eta > (45.0 * SIMPLib::Constants::k_PiOver180) || chi < 0 || chi > (90.0 * SIMPLib::Constants::k_PiOver180) )
-  {
-    return false;
-  }
-  return true;
+  return !(eta < 0 || eta > (45.0 * SIMPLib::Constants::k_PiOver180) || chi < 0 || chi > (90.0 * SIMPLib::Constants::k_PiOver180));
 }
 
 // -----------------------------------------------------------------------------
@@ -695,7 +686,7 @@ SIMPL::Rgb TetragonalOps::generateIPFColor(double* eulers, double* refDir, bool 
 // -----------------------------------------------------------------------------
 SIMPL::Rgb TetragonalOps::generateIPFColor(double phi1, double phi, double phi2, double refDir0, double refDir1, double refDir2, bool degToRad)
 {
-  if (degToRad == true)
+  if(degToRad)
   {
     phi1 = phi1 * SIMPLib::Constants::k_DegToRad;
     phi = phi * SIMPLib::Constants::k_DegToRad;
@@ -731,24 +722,22 @@ SIMPL::Rgb TetragonalOps::generateIPFColor(double phi1, double phi, double phi2,
     MatrixMath::Multiply3x3with3x1(g, refDirection, p);
     MatrixMath::Normalize3x1(p);
 
-    if(getHasInversion() == false && p[2] < 0)
+    if(!getHasInversion() && p[2] < 0)
     {
       continue;
     }
-    else if(getHasInversion() == true && p[2] < 0)
+    if(getHasInversion() && p[2] < 0)
     {
       p[0] = -p[0], p[1] = -p[1], p[2] = -p[2];
     }
     chi = acos(p[2]);
     eta = atan2(p[1], p[0]);
-    if(inUnitTriangle(eta, chi) == false)
+    if(!inUnitTriangle(eta, chi))
     {
       continue;
     }
-    else
-    {
+
       break;
-    }
   }
 
   float etaMin = 0.0;
@@ -816,7 +805,10 @@ QVector<UInt8ArrayType::Pointer> TetragonalOps::generatePoleFigure(PoleFigureCon
   QString label0 = QString("<001>");
   QString label1 = QString("<100>");
   QString label2 = QString("<110>");
-  if(config.labels.size() > 0) { label0 = config.labels.at(0); }
+  if(!config.labels.empty())
+  {
+    label0 = config.labels.at(0);
+  }
   if(config.labels.size() > 1) { label1 = config.labels.at(1); }
   if(config.labels.size() > 2) { label2 = config.labels.at(2); }
 
@@ -824,12 +816,12 @@ QVector<UInt8ArrayType::Pointer> TetragonalOps::generatePoleFigure(PoleFigureCon
 
   // Create an Array to hold the XYZ Coordinates which are the coords on the sphere.
   // this is size for CUBIC ONLY, <001> Family
-  QVector<size_t> dims(1, 3);
-  FloatArrayType::Pointer xyz001 = FloatArrayType::CreateArray(numOrientations * Detail::TetragonalHigh::symSize0, dims, label0 + QString("xyzCoords"));
+  std::vector<size_t> dims(1, 3);
+  FloatArrayType::Pointer xyz001 = FloatArrayType::CreateArray(numOrientations * Detail::TetragonalHigh::symSize0, dims, label0 + QString("xyzCoords"), true);
   // this is size for CUBIC ONLY, <011> Family
-  FloatArrayType::Pointer xyz011 = FloatArrayType::CreateArray(numOrientations * Detail::TetragonalHigh::symSize1, dims, label1 + QString("xyzCoords"));
+  FloatArrayType::Pointer xyz011 = FloatArrayType::CreateArray(numOrientations * Detail::TetragonalHigh::symSize1, dims, label1 + QString("xyzCoords"), true);
   // this is size for CUBIC ONLY, <111> Family
-  FloatArrayType::Pointer xyz111 = FloatArrayType::CreateArray(numOrientations * Detail::TetragonalHigh::symSize2, dims, label2 + QString("xyzCoords"));
+  FloatArrayType::Pointer xyz111 = FloatArrayType::CreateArray(numOrientations * Detail::TetragonalHigh::symSize2, dims, label2 + QString("xyzCoords"), true);
 
   config.sphereRadius = 1.0f;
 
@@ -839,14 +831,14 @@ QVector<UInt8ArrayType::Pointer> TetragonalOps::generatePoleFigure(PoleFigureCon
 
   // These arrays hold the "intensity" images which eventually get converted to an actual Color RGB image
   // Generate the modified Lambert projection images (Squares, 2 of them, 1 for northern hemisphere, 1 for southern hemisphere
-  DoubleArrayType::Pointer intensity001 = DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label0 + "_Intensity_Image");
-  DoubleArrayType::Pointer intensity011 = DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label1 + "_Intensity_Image");
-  DoubleArrayType::Pointer intensity111 = DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label2 + "_Intensity_Image");
+  DoubleArrayType::Pointer intensity001 = DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label0 + "_Intensity_Image", true);
+  DoubleArrayType::Pointer intensity011 = DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label1 + "_Intensity_Image", true);
+  DoubleArrayType::Pointer intensity111 = DoubleArrayType::CreateArray(config.imageDim * config.imageDim, label2 + "_Intensity_Image", true);
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
   tbb::task_scheduler_init init;
   bool doParallel = true;
 
-  if(doParallel == true)
+  if(doParallel)
   {
     std::shared_ptr<tbb::task_group> g(new tbb::task_group);
     g->run(ComputeStereographicProjection(xyz001.get(), &config, intensity001.get()));
@@ -917,9 +909,9 @@ QVector<UInt8ArrayType::Pointer> TetragonalOps::generatePoleFigure(PoleFigureCon
   config.maxScale = max;
 
   dims[0] = 4;
-  UInt8ArrayType::Pointer image001 = UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label0);
-  UInt8ArrayType::Pointer image011 = UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label1);
-  UInt8ArrayType::Pointer image111 = UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label2);
+  UInt8ArrayType::Pointer image001 = UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label0, true);
+  UInt8ArrayType::Pointer image011 = UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label1, true);
+  UInt8ArrayType::Pointer image111 = UInt8ArrayType::CreateArray(config.imageDim * config.imageDim, dims, label2, true);
 
   QVector<UInt8ArrayType::Pointer> poleFigures(3);
   if(config.order.size() == 3)
@@ -937,7 +929,7 @@ QVector<UInt8ArrayType::Pointer> TetragonalOps::generatePoleFigure(PoleFigureCon
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
 
-  if(doParallel == true)
+  if(doParallel)
   {
     std::shared_ptr<tbb::task_group> g(new tbb::task_group);
     g->run(GeneratePoleFigureRgbaImageImpl(intensity001.get(), &config, image001.get()));
@@ -966,8 +958,8 @@ QVector<UInt8ArrayType::Pointer> TetragonalOps::generatePoleFigure(PoleFigureCon
 UInt8ArrayType::Pointer TetragonalOps::generateIPFTriangleLegend(int imageDim)
 {
 
-  QVector<size_t> dims(1, 4);
-  UInt8ArrayType::Pointer image = UInt8ArrayType::CreateArray(imageDim * imageDim, dims, getSymmetryName() + " Triangle Legend");
+  std::vector<size_t> dims(1, 4);
+  UInt8ArrayType::Pointer image = UInt8ArrayType::CreateArray(imageDim * imageDim, dims, getSymmetryName() + " Triangle Legend", true);
   uint32_t* pixelPtr = reinterpret_cast<uint32_t*>(image->getPointer(0));
 
   float xInc = 1.0f / static_cast<float>(imageDim);

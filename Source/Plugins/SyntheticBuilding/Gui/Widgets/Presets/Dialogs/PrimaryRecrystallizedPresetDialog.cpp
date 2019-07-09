@@ -85,7 +85,7 @@ void PrimaryRecrystallizedPresetDialog::setupGui()
   buttonBox->setStandardButtons(QDialogButtonBox::Cancel | QDialogButtonBox::Ok);
   verticalLayout_2->addWidget(buttonBox);
 
-  percentRecystallizedLabel->setText(QApplication::translate("Percent Recrystallized Preset Dialog", "Percent Recrystallized:", 0));
+  percentRecystallizedLabel->setText(QApplication::translate("Percent Recrystallized Preset Dialog", "Percent Recrystallized:", nullptr));
 
   QObject::connect(buttonBox, SIGNAL(accepted()), this, SLOT(accept()));
   QObject::connect(buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
@@ -109,6 +109,8 @@ float PrimaryRecrystallizedPresetDialog::getPercentRecrystallized()
   bool ok = false;
   float d = percentRecystallized->text().toFloat(&ok);
   if(!ok)
+  {
     d = 0.0f;
+  }
   return d;
 }

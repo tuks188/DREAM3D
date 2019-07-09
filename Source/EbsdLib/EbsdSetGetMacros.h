@@ -32,16 +32,10 @@
 *    United States Prime Contract Navy N00173-07-C-2068
 *
 * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-
-
-
-
 #pragma once
 
-#include <string.h>
-
-#include <QtCore/QString>
+#include <array>
+#include <cstring>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -108,8 +102,7 @@
 #define EBSD_STATIC_NEW_SUPERCLASS(superclass, theclass)\
   static superclass::Pointer New()\
   {\
-    theclass* ptr = new theclass();\
-    superclass::Pointer shared_ptr (dynamic_cast<superclass*>(ptr) );\
+    superclass::Pointer shared_ptr (dynamic_cast<superclass*>(new theclass()) );\
     return shared_ptr;\
   }
 
@@ -124,80 +117,86 @@
 /**
  * @brief Creates a static "New" method that creates an instance of thisClass
  */
-#define EBSD_NEW_SUPERCLASS(thisClass, SuperClass)\
-  typedef SuperClass::Pointer SuperClass##Type;\
-  static SuperClass##Type New##SuperClass(void) \
-  { \
-    SuperClass##Type sharedPtr (new thisClass); \
-    return sharedPtr; \
+#define EBSD_NEW_SUPERCLASS(thisClass, SuperClass)                                                                                                                                                     \
+  typedef SuperClass::Pointer SuperClass##Type;                                                                                                                                                        \
+  static SuperClass##Type New##SuperClass(void)                                                                                                                                                        \
+  {                                                                                                                                                                                                    \
+    SuperClass##Type sharedPtr(new(thisClass));                                                                                                                                                        \
+    return sharedPtr;                                                                                                                                                                                  \
   }
 
 /**
  * @brief Implements a Static 'New' Method for a class
  */
-#define EBSD_STATIC_NEW_MACRO(thisClass) \
-  static Pointer New(void) \
-  { \
-    Pointer sharedPtr (new thisClass); \
-    return sharedPtr; \
+#define EBSD_STATIC_NEW_MACRO(thisClass)                                                                                                                                                               \
+  static Pointer New(void)                                                                                                                                                                             \
+  {                                                                                                                                                                                                    \
+    Pointer sharedPtr(new(thisClass));                                                                                                                                                                 \
+    return sharedPtr;                                                                                                                                                                                  \
   }
 
-#define EBSD_STATIC_NEW_MACRO_WITH_ARGS(thisClass, args) \
-  static Pointer New args \
-  { \
-    Pointer sharedPtr (new thisClass); \
-    return sharedPtr; \
+#define EBSD_STATIC_NEW_MACRO_WITH_ARGS(thisClass, args)                                                                                                                                               \
+  static Pointer New args                                                                                                                                                                              \
+  {                                                                                                                                                                                                    \
+    Pointer sharedPtr(new(thisClass));                                                                                                                                                                 \
+    return sharedPtr;                                                                                                                                                                                  \
   }
 
 /** Macro used to add standard methods to all classes, mainly type
  * information. */
-#define EBSD_TYPE_MACRO(thisClass) \
-  public: \
-  virtual const char* getNameOfClass() const  {return #thisClass;}\
-  static int IsTypeOf(const char *m_msgType) \
-  { \
-    if ( !strcmp(#thisClass,m_msgType) ) \
-    { \
-      return 1; \
-    } \
-    return 0; \
-  } \
-  virtual int IsA(const char *m_msgType) \
-  { \
-    return this->thisClass::IsTypeOf(m_msgType); \
-  } \
-  template <class Target, class Source>\
-  inline Target polymorphic_downcast(Source* x) { \
-    if( dynamic_cast<Target>(x) != x ) { \
-      return nullptr;\
-    }\
-    return static_cast<Target>(x);\
+#define EBSD_TYPE_MACRO(thisClass)                                                                                                                                                                     \
+public:                                                                                                                                                                                                \
+  const char* getNameOfClass() const                                                                                                                                                                   \
+  {                                                                                                                                                                                                    \
+    return #thisClass;                                                                                                                                                                                 \
+  }                                                                                                                                                                                                    \
+  static int IsTypeOf(const char* m_msgType)                                                                                                                                                           \
+  {                                                                                                                                                                                                    \
+    if(!strcmp(#thisClass, m_msgType))                                                                                                                                                                 \
+    {                                                                                                                                                                                                  \
+      return 1;                                                                                                                                                                                        \
+    }                                                                                                                                                                                                  \
+    return 0;                                                                                                                                                                                          \
+  }                                                                                                                                                                                                    \
+  virtual int IsA(const char* m_msgType)                                                                                                                                                               \
+  {                                                                                                                                                                                                    \
+    return this->thisClass::IsTypeOf(m_msgType);                                                                                                                                                       \
+  }                                                                                                                                                                                                    \
+  template <class Target, class Source> inline Target polymorphic_downcast(Source* x)                                                                                                                  \
+  {                                                                                                                                                                                                    \
+    if(dynamic_cast<Target>(x) != x)                                                                                                                                                                   \
+    {                                                                                                                                                                                                  \
+      return nullptr;                                                                                                                                                                                  \
+    }                                                                                                                                                                                                  \
+    return static_cast<Target>(x);                                                                                                                                                                     \
   }
 
-
-#define EBSD_TYPE_MACRO_SUPER(thisClass,superclass) \
-  public: \
-  virtual const char* getNameOfClass() const  {return #thisClass;}\
-  static int IsTypeOf(const char *m_msgType) \
-  { \
-    if ( !strcmp(#thisClass,m_msgType) ) \
-    { \
-      return 1; \
-    } \
-    return superclass::IsTypeOf(m_msgType); \
-  } \
-  virtual int IsA(const char *m_msgType) \
-  { \
-    return this->thisClass::IsTypeOf(m_msgType); \
-  } \
-  template <class Target, class Source>\
-  static Target polymorphic_downcast(Source* x) { \
-    if( dynamic_cast<Target>(x) != x ) { \
-      return nullptr;\
-    }\
-    return static_cast<Target>(x);\
+#define EBSD_TYPE_MACRO_SUPER(thisClass, superclass)                                                                                                                                                   \
+public:                                                                                                                                                                                                \
+  virtual const char* getNameOfClass() const                                                                                                                                                           \
+  {                                                                                                                                                                                                    \
+    return #thisClass;                                                                                                                                                                                 \
+  }                                                                                                                                                                                                    \
+  static int IsTypeOf(const char* m_msgType)                                                                                                                                                           \
+  {                                                                                                                                                                                                    \
+    if(!strcmp(#thisClass, m_msgType))                                                                                                                                                                 \
+    {                                                                                                                                                                                                  \
+      return 1;                                                                                                                                                                                        \
+    }                                                                                                                                                                                                  \
+    return superclass::IsTypeOf(m_msgType);                                                                                                                                                            \
+  }                                                                                                                                                                                                    \
+  virtual int IsA(const char* m_msgType) override                                                                                                                                                      \
+  {                                                                                                                                                                                                    \
+    return this->thisClass::IsTypeOf(m_msgType);                                                                                                                                                       \
+  }                                                                                                                                                                                                    \
+  template <class Target, class Source> static Target polymorphic_downcast(Source* x)                                                                                                                  \
+  {                                                                                                                                                                                                    \
+    if(dynamic_cast<Target>(x) != x)                                                                                                                                                                   \
+    {                                                                                                                                                                                                  \
+      return nullptr;                                                                                                                                                                                  \
+    }                                                                                                                                                                                                  \
+    return static_cast<Target>(x);                                                                                                                                                                     \
   }
-
 
 //------------------------------------------------------------------------------
 // Macros for Properties
@@ -211,8 +210,11 @@
 /**
 * @brief Creates a "setter" method to set the property.
 */
-#define EBSD_SET_PROPERTY(m_msgType, prpty) \
-  void set##prpty(m_msgType value) { this->m_##prpty = value; }
+#define EBSD_SET_PROPERTY(m_msgType, prpty)                                                                                                                                                            \
+  void set##prpty(const m_msgType& value)                                                                                                                                                              \
+  {                                                                                                                                                                                                    \
+    this->m_##prpty = value;                                                                                                                                                                           \
+  }
 
 /**
 * @brief Creates a "getter" method to retrieve the value of the property.
@@ -237,27 +239,72 @@
   EBSD_SET_PROPERTY(m_msgType, prpty)\
   EBSD_GET_PROPERTY(m_msgType, prpty)
 
+/**
+ * @brief Creates a "setter" method to set the property.
+ */
+#define EBSD_SET_PTR_PROPERTY(m_msgType, prpty)                                                                                                                                                        \
+  void set##prpty(m_msgType value)                                                                                                                                                                     \
+  {                                                                                                                                                                                                    \
+    this->m_##prpty = value;                                                                                                                                                                           \
+  }
 
+/**
+ * @brief Creates a "getter" method to retrieve the value of the property.
+ */
+#define EBSD_GET_PTR_PROPERTY(m_msgType, prpty)                                                                                                                                                        \
+  m_msgType get##prpty()                                                                                                                                                                               \
+  {                                                                                                                                                                                                    \
+    return m_##prpty;                                                                                                                                                                                  \
+  }
 
-#define EBSD_SET_2DVECTOR_PROPERTY(m_msgType, prpty, varname)\
-  void set##prpty(m_msgType value[2]) {\
-    varname[0] = value[0]; varname[1] = value[1]; }\
-  void set##prpty(m_msgType value_0, m_msgType value_1) {\
-    varname[0] = value_0; varname[1] = value_1; }
+#define EBSD_PTR_INSTANCE_PROPERTY(type, prpty)                                                                                                                                                        \
+private:                                                                                                                                                                                               \
+  type m_##prpty = nullptr;                                                                                                                                                                            \
+  bool m_##prpty##Cleanup = true;                                                                                                                                                                      \
+                                                                                                                                                                                                       \
+public:                                                                                                                                                                                                \
+  void set##prpty##PointerOwnership(bool owns)                                                                                                                                                         \
+  {                                                                                                                                                                                                    \
+    m_##prpty##Cleanup = owns;                                                                                                                                                                         \
+  }                                                                                                                                                                                                    \
+  bool get##prpty##PointerOwnership()                                                                                                                                                                  \
+  {                                                                                                                                                                                                    \
+    return m_##prpty##Cleanup;                                                                                                                                                                         \
+  }                                                                                                                                                                                                    \
+  EBSD_SET_PTR_PROPERTY(type, prpty)                                                                                                                                                                   \
+  EBSD_GET_PTR_PROPERTY(type, prpty)
 
-#define EBSD_GET_2DVECTOR_PROPERTY(m_msgType, prpty, varname)\
-  void get##prpty(m_msgType value[2]) {\
-    value[0] = varname[0]; value[1] = varname[1]; }\
-  void get##prpty(m_msgType &value_0, m_msgType &value_1) {\
-    value_0 = varname[0]; value_1 = varname[1]; }
+#define EBSD_SET_2DVECTOR_PROPERTY(type, prpty, varname)                                                                                                                                               \
+  void set##prpty(const std::array<type, 2>& value)                                                                                                                                                    \
+  {                                                                                                                                                                                                    \
+    varname[0] = value[0];                                                                                                                                                                             \
+    varname[1] = value[1];                                                                                                                                                                             \
+  }                                                                                                                                                                                                    \
+  void set##prpty(type value_0, type value_1)                                                                                                                                                          \
+  {                                                                                                                                                                                                    \
+    varname[0] = value_0;                                                                                                                                                                              \
+    varname[1] = value_1;                                                                                                                                                                              \
+  }
 
+#define EBSD_GET_2DVECTOR_PROPERTY(type, prpty, varname)                                                                                                                                               \
+  void get##prpty(std::array<type, 2>& value)                                                                                                                                                          \
+  {                                                                                                                                                                                                    \
+    value[0] = varname[0];                                                                                                                                                                             \
+    value[1] = varname[1];                                                                                                                                                                             \
+  }                                                                                                                                                                                                    \
+  void get##prpty(type& value_0, type& value_1)                                                                                                                                                        \
+  {                                                                                                                                                                                                    \
+    value_0 = varname[0];                                                                                                                                                                              \
+    value_1 = varname[1];                                                                                                                                                                              \
+  }
 
-#define EBSD_INSTANCE_2DVECTOR_PROPERTY(m_msgType, prpty)\
-  private:\
-  m_msgType   m_##prpty[2];\
-  public:\
-  EBSD_SET_2DVECTOR_PROPERTY(m_msgType, prpty, m_##prpty)\
-  EBSD_GET_2DVECTOR_PROPERTY(m_msgType, prpty, m_##prpty)
+#define EBSD_INSTANCE_2DVECTOR_PROPERTY(type, prpty)                                                                                                                                                   \
+private:                                                                                                                                                                                               \
+  std::array<type, 2> m_##prpty;                                                                                                                                                                       \
+                                                                                                                                                                                                       \
+public:                                                                                                                                                                                                \
+  EBSD_SET_2DVECTOR_PROPERTY(type, prpty, m_##prpty)                                                                                                                                                   \
+  EBSD_GET_2DVECTOR_PROPERTY(type, prpty, m_##prpty)
 
 /**
 * @brief Creates a "setter" method to set the property.
@@ -296,57 +343,89 @@
 /**
  * @brief Creates a "setter" method to set the property.
  */
-#define EbsdHeader_SET_PROPERTY( HeaderType, m_msgType, prpty, key) \
-  void set##prpty(m_msgType value) { \
-    HeaderType* p = dynamic_cast<HeaderType*>(m_HeaderMap[key].get()); \
-    if (nullptr != p) { p->setValue(value); } else {\
-      std::cout << "Value for Key: " << key.toStdString() << " was null." << std::endl;} }
+#define EbsdHeader_SET_PROPERTY(HeaderType, m_msgType, prpty, key)                                                                                                                                     \
+  void set##prpty(const m_msgType& value)                                                                                                                                                              \
+  {                                                                                                                                                                                                    \
+    auto p = dynamic_cast<HeaderType*>(m_HeaderMap[key].get());                                                                                                                                        \
+    if(nullptr != p)                                                                                                                                                                                   \
+    {                                                                                                                                                                                                  \
+      p->setValue(value);                                                                                                                                                                              \
+    }                                                                                                                                                                                                  \
+    else                                                                                                                                                                                               \
+    {                                                                                                                                                                                                  \
+      std::cout << "Setting Property '" << #prpty << "': Value for Key: " << key.toStdString() << " was null." << std::endl;                                                                           \
+    }                                                                                                                                                                                                  \
+  }
 
 /**
  * @brief Creates a "getter" method to retrieve the value of the property.
  */
-#define EbsdHeader_GET_PROPERTY(HeaderType, m_msgType, prpty, key) \
-  m_msgType get##prpty() { \
-    HeaderType* p = dynamic_cast<HeaderType*>(m_HeaderMap[key].get());\
-    if (nullptr != p) { return p->getValue(); } else {\
-      std::cout << "Value for Key: " << key.toStdString() << " was null." << std::endl; return 0;} }
+#define EbsdHeader_GET_PROPERTY(HeaderType, m_msgType, prpty, key)                                                                                                                                     \
+  m_msgType get##prpty()                                                                                                                                                                               \
+  {                                                                                                                                                                                                    \
+    auto p = dynamic_cast<HeaderType*>(m_HeaderMap[key].get());                                                                                                                                        \
+    if(nullptr != p)                                                                                                                                                                                   \
+    {                                                                                                                                                                                                  \
+      return p->getValue();                                                                                                                                                                            \
+    }                                                                                                                                                                                                  \
+    std::cout << "Getting Property '" << #prpty << "': Value for Key: " << key.toStdString() << " was null." << std::endl;                                                                             \
+    return 0;                                                                                                                                                                                          \
+  }
 
-
-#define EbsdHeader_INSTANCE_PROPERTY(HeaderType, m_msgType, prpty, key)\
+#define EBSDHEADER_INSTANCE_PROPERTY(HeaderType, m_msgType, prpty, key)\
   public:\
   EbsdHeader_SET_PROPERTY(HeaderType, m_msgType, prpty, key)\
   EbsdHeader_GET_PROPERTY(HeaderType, m_msgType, prpty, key)
 
-
-#define EBSD_POINTER_PROPERTY(name, var, m_msgType)\
-  private:\
-  m_msgType* m_##var;\
-  public:\
-  m_msgType* get##name##Pointer() { return m_##var; }\
-  void set##name##Pointer(m_msgType* f)\
-  {\
-    if (m_##var != nullptr && m_##var != f)\
-    {\
-      deallocateArrayData(m_##var);\
-      m_##var = nullptr;\
-    }\
-    m_##var = f;\
+#define EBSD_POINTER_PROPERTY(name, var, type)                                                                                                                                                         \
+private:                                                                                                                                                                                               \
+  type* m_##var = nullptr;                                                                                                                                                                             \
+  bool m_##var##Cleanup = true;                                                                                                                                                                        \
+                                                                                                                                                                                                       \
+protected:                                                                                                                                                                                             \
+  void set##name##Pointer(type* f)                                                                                                                                                                     \
+  {                                                                                                                                                                                                    \
+    if(m_##var != nullptr && m_##var != f && m_##var##Cleanup)                                                                                                                                         \
+    {                                                                                                                                                                                                  \
+      deallocateArrayData(m_##var);                                                                                                                                                                    \
+      m_##var = nullptr;                                                                                                                                                                               \
+    }                                                                                                                                                                                                  \
+    m_##var = f;                                                                                                                                                                                       \
+  }                                                                                                                                                                                                    \
+                                                                                                                                                                                                       \
+public:                                                                                                                                                                                                \
+  type* get##name##Pointer(bool releaseOwnership = false)                                                                                                                                              \
+  {                                                                                                                                                                                                    \
+    type* ptr = m_##var;                                                                                                                                                                               \
+    if(releaseOwnership)                                                                                                                                                                               \
+    {                                                                                                                                                                                                  \
+      m_##var##Cleanup = false;                                                                                                                                                                        \
+      m_##var = nullptr;                                                                                                                                                                               \
+    }                                                                                                                                                                                                  \
+    return ptr;                                                                                                                                                                                        \
+  }                                                                                                                                                                                                    \
+  bool get##name##Ownership()                                                                                                                                                                          \
+  {                                                                                                                                                                                                    \
+    return m_##var##Cleanup;                                                                                                                                                                           \
+  }                                                                                                                                                                                                    \
+  void release##name##Ownership()                                                                                                                                                                      \
+  {                                                                                                                                                                                                    \
+    m_##var##Cleanup = false;                                                                                                                                                                          \
+    m_##var = nullptr;                                                                                                                                                                                 \
+  }                                                                                                                                                                                                    \
+  void free##name##Pointer()                                                                                                                                                                           \
+  {                                                                                                                                                                                                    \
+    if(nullptr != m_##var)                                                                                                                                                                             \
+    {                                                                                                                                                                                                  \
+      free(m_##var);                                                                                                                                                                                   \
+      m_##var = nullptr;                                                                                                                                                                               \
+      m_##var##Cleanup = true;                                                                                                                                                                         \
+    }                                                                                                                                                                                                  \
   }
-
-#define EBSD_POINTER_PROP(name, var, m_msgType)\
-  public:\
-  m_msgType* get##name##Pointer() { return static_cast<m_msgType*>(getPointerByName(#var)); }\
-  void set##name##Pointer(m_msgType* p) { \
-    setPointerByName(#name,p);\
-  }
-
-
-
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-
 // These are simple over-rides from the boost distribution because we don't want the entire boost distribution just
 // for a few boost headers
 namespace Ebsd

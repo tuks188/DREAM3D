@@ -89,8 +89,8 @@ public:
    * @param groupIndex Integer that specifies the group that this filter parameter will be placed in.
    * @return
    */
-  static Pointer New(const QString& humanLabel, const QString& propertyName, EnsembleInfo defaultValue, Category category, SetterCallbackType setterCallback, GetterCallbackType getterCallback,
-                     QVector<QString> choices, bool showOperators, int groupIndex = -1);
+  static Pointer New(const QString& humanLabel, const QString& propertyName, EnsembleInfo defaultValue, Category category, const SetterCallbackType& setterCallback,
+                     const GetterCallbackType& getterCallback, QVector<QString> choices, bool showOperators, int groupIndex = -1);
 
   virtual ~EnsembleInfoFilterParameter();
 
@@ -140,8 +140,10 @@ protected:
    */
   EnsembleInfoFilterParameter();
 
-private:
+public:
   EnsembleInfoFilterParameter(const EnsembleInfoFilterParameter&) = delete; // Copy Constructor Not Implemented
-  void operator=(const EnsembleInfoFilterParameter&);                       // Move assignment Not Implemented
+  EnsembleInfoFilterParameter(EnsembleInfoFilterParameter&&) = delete;      // Move Constructor Not Implemented
+  EnsembleInfoFilterParameter& operator=(const EnsembleInfoFilterParameter&) = delete; // Copy Assignment Not Implemented
+  EnsembleInfoFilterParameter& operator=(EnsembleInfoFilterParameter&&) = delete;      // Move Assignment Not Implemented
 };
 

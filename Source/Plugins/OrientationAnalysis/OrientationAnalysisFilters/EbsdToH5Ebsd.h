@@ -51,14 +51,18 @@
 class OrientationAnalysis_EXPORT EbsdToH5Ebsd : public AbstractFilter
 {
   Q_OBJECT
-    PYB11_CREATE_BINDINGS(EbsdToH5Ebsd SUPERCLASS AbstractFilter)
-    PYB11_PROPERTY(QString InputPath READ getInputPath WRITE setInputPath)
-    PYB11_PROPERTY(QString FilePrefix READ getFilePrefix WRITE setFilePrefix)
-    PYB11_PROPERTY(QString FileSuffix READ getFileSuffix WRITE setFileSuffix)
-    PYB11_PROPERTY(QString FileExtension READ getFileExtension WRITE setFileExtension)
-    PYB11_PROPERTY(int PaddingDigits READ getPaddingDigits WRITE setPaddingDigits)
-    PYB11_PROPERTY(AxisAngleInput_t SampleTransformation READ getSampleTransformation WRITE setSampleTransformation)
-    PYB11_PROPERTY(AxisAngleInput_t EulerTransformation READ getEulerTransformation WRITE setEulerTransformation)
+  PYB11_CREATE_BINDINGS(EbsdToH5Ebsd SUPERCLASS AbstractFilter)
+  PYB11_PROPERTY(QString InputPath READ getInputPath WRITE setInputPath)
+  PYB11_PROPERTY(QString OutputFile READ getOutputFile WRITE setOutputFile)
+  PYB11_PROPERTY(QString FilePrefix READ getFilePrefix WRITE setFilePrefix)
+  PYB11_PROPERTY(QString FileSuffix READ getFileSuffix WRITE setFileSuffix)
+  PYB11_PROPERTY(QString FileExtension READ getFileExtension WRITE setFileExtension)
+  PYB11_PROPERTY(int PaddingDigits READ getPaddingDigits WRITE setPaddingDigits)
+  PYB11_PROPERTY(int64_t ZStartIndex READ getZStartIndex WRITE setZStartIndex)
+  PYB11_PROPERTY(int64_t ZEndIndex READ getZEndIndex WRITE setZEndIndex)
+  PYB11_PROPERTY(float ZResolution READ getZResolution WRITE setZResolution)
+  PYB11_PROPERTY(AxisAngleInput_t SampleTransformation READ getSampleTransformation WRITE setSampleTransformation)
+  PYB11_PROPERTY(AxisAngleInput_t EulerTransformation READ getEulerTransformation WRITE setEulerTransformation)
 public:
   SIMPL_SHARED_POINTERS(EbsdToH5Ebsd)
   SIMPL_FILTER_NEW_MACRO(EbsdToH5Ebsd)
@@ -190,9 +194,10 @@ protected:
    */
   void initialize();
 
-private:
-  EbsdToH5Ebsd(const EbsdToH5Ebsd&);   // Copy Constructor Not Implemented
+public:
+  EbsdToH5Ebsd(const EbsdToH5Ebsd&) = delete;            // Copy Constructor Not Implemented
+  EbsdToH5Ebsd(EbsdToH5Ebsd&&) = delete;                 // Move Constructor Not Implemented
   EbsdToH5Ebsd& operator=(const EbsdToH5Ebsd&) = delete; // Copy Assignment Not Implemented
-  EbsdToH5Ebsd& operator=(EbsdToH5Ebsd&&) = delete;      // Move Assignment
+  EbsdToH5Ebsd& operator=(EbsdToH5Ebsd&&) = delete;      // Move Assignment Not Implemented
 };
 

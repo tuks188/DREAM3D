@@ -48,6 +48,15 @@
 #include "SIMPLib/Math/SIMPLibMath.h"
 #include "SIMPLib/Math/SIMPLibRandom.h"
 
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  AttributeMatrixID21 = 21,
+
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
+
 #define ERROR_TXT_OUT 1
 #define ERROR_TXT_OUT1 1
 
@@ -62,10 +71,6 @@ SineParamsSegmentFeatures::SineParamsSegmentFeatures()
 , m_GoodVoxelsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::GoodVoxels)
 , m_FeatureIdsArrayName(SIMPL::CellData::FeatureIds)
 , m_ActiveArrayName(SIMPL::FeatureData::Active)
-, m_SineParams(nullptr)
-, m_FeatureIds(nullptr)
-, m_GoodVoxels(nullptr)
-, m_Active(nullptr)
 , m_MissingGoodVoxels(false)
 {
 }
@@ -81,7 +86,7 @@ SineParamsSegmentFeatures::~SineParamsSegmentFeatures() = default;
 void SineParamsSegmentFeatures::setupFilterParameters()
 {
   SegmentFeatures::setupFilterParameters();
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   QStringList linkedProps("GoodVoxelsArrayPath");
   parameters.push_back(SIMPL_NEW_LINKED_BOOL_FP("Use Good Voxels Array", UseGoodVoxels, FilterParameter::Parameter, SineParamsSegmentFeatures, linkedProps));
@@ -123,8 +128,8 @@ void SineParamsSegmentFeatures::readFilterParameters(AbstractFilterParametersRea
 // -----------------------------------------------------------------------------
 void SineParamsSegmentFeatures::updateFeatureInstancePointers()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   if(nullptr != m_ActivePtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
@@ -147,37 +152,37 @@ void SineParamsSegmentFeatures::dataCheck()
 {
   DataArrayPath tempPath;
   initialize();
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   // Set the DataContainerName for the Parent Class (SegmentFeatures) to Use
   setDataContainerName(m_SineParamsArrayPath.getDataContainerName());
 
   SegmentFeatures::dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   DataContainer::Pointer m = getDataContainerArray()->getPrereqDataContainer(this, getDataContainerName(), false);
-  if(getErrorCondition() < 0 || nullptr == m)
+  if(getErrorCode() < 0 || nullptr == m)
   {
     return;
   }
-  QVector<size_t> tDims(1, 0);
-  AttributeMatrix::Pointer cellFeatureAttrMat = m->createNonPrereqAttributeMatrix(this, getCellFeatureAttributeMatrixName(), tDims, AttributeMatrix::Type::CellFeature);
-  if(getErrorCondition() < 0 || nullptr == cellFeatureAttrMat.get())
+  std::vector<size_t> tDims(1, 0);
+  AttributeMatrix::Pointer cellFeatureAttrMat = m->createNonPrereqAttributeMatrix(this, getCellFeatureAttributeMatrixName(), tDims, AttributeMatrix::Type::CellFeature, AttributeMatrixID21);
+  if(getErrorCode() < 0 || nullptr == cellFeatureAttrMat.get())
   {
     return;
   }
 
   ImageGeom::Pointer image = m->getPrereqGeometry<ImageGeom, AbstractFilter>(this);
-  if(getErrorCondition() < 0 || nullptr == image.get())
+  if(getErrorCode() < 0 || nullptr == image.get())
   {
     return;
   }
 
-  QVector<size_t> dims(1, 3);
+  std::vector<size_t> dims(1, 3);
   m_SineParamsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getSineParamsArrayPath(), dims);
   if(nullptr != m_SineParamsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
@@ -192,7 +197,7 @@ void SineParamsSegmentFeatures::dataCheck()
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(m_UseGoodVoxels == true)
+  if(m_UseGoodVoxels)
   {
     m_GoodVoxelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getGoodVoxelsArrayPath(),
                                                                                                        dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
@@ -202,8 +207,7 @@ void SineParamsSegmentFeatures::dataCheck()
     } /* Now assign the raw pointer to data from the DataArray<T> object */
   }
   tempPath.update(getDataContainerName(), getCellFeatureAttributeMatrixName(), getActiveArrayName());
-  m_ActivePtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<bool>, AbstractFilter, bool>(this, tempPath, true,
-                                                                                                             dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_ActivePtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<bool>, AbstractFilter, bool>(this, tempPath, true, dims, "", DataArrayID31);
   if(nullptr != m_ActivePtr.lock())                                                                                 /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Active = m_ActivePtr.lock()->getPointer(0);
@@ -228,25 +232,25 @@ void SineParamsSegmentFeatures::preflight()
 // -----------------------------------------------------------------------------
 void SineParamsSegmentFeatures::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getDataContainerName());
 
-  QVector<size_t> tDims(1, 1);
+  std::vector<size_t> tDims(1, 1);
   m->getAttributeMatrix(getCellFeatureAttributeMatrixName())->resizeAttributeArrays(tDims);
 
   // This runs a subfilter
   int64_t totalPoints = m_FeatureIdsPtr.lock()->getNumberOfTuples();
 
   // Tell the user we are starting the filter
-  notifyStatusMessage(getMessagePrefix(), getHumanLabel(), "Starting");
+  notifyStatusMessage("Starting");
 
   // Convert user defined tolerance to radians.
   // angleTolerance = m_AngleTolerance * SIMPLib::Constants::k_Pi / 180.0f;
@@ -265,19 +269,18 @@ void SineParamsSegmentFeatures::execute()
   size_t totalFeatures = m->getAttributeMatrix(getCellFeatureAttributeMatrixName())->getNumberOfTuples();
   if(totalFeatures < 2)
   {
-    setErrorCondition(-87000);
-    notifyErrorMessage(getHumanLabel(), "The number of Features was 0 or 1 which means no features were detected. Is a threshold value set to high?", getErrorCondition());
+    setErrorCondition(-87000, "The number of Features was 0 or 1 which means no features were detected. Is a threshold value set to high?");
     return;
   }
 
   // By default we randomize grains
-  if(true == m_RandomizeFeatureIds)
+  if(m_RandomizeFeatureIds)
   {
     randomizeFeatureIds(totalPoints, totalFeatures);
   }
 
   // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Completed");
+  notifyStatusMessage("Completed");
 }
 
 // -----------------------------------------------------------------------------
@@ -285,13 +288,13 @@ void SineParamsSegmentFeatures::execute()
 // -----------------------------------------------------------------------------
 void SineParamsSegmentFeatures::randomizeFeatureIds(int64_t totalPoints, size_t totalFeatures)
 {
-  notifyStatusMessage(getHumanLabel(), "Randomizing Feature Ids");
+  notifyStatusMessage("Randomizing Feature Ids");
   // Generate an even distribution of numbers between the min and max range
   const size_t rangeMin = 1;
   const size_t rangeMax = totalFeatures - 1;
   initializeVoxelSeedGenerator(rangeMin, rangeMax);
 
-  DataArray<int32_t>::Pointer rndNumbers = DataArray<int32_t>::CreateArray(totalFeatures, "New GrainIds");
+  DataArray<int32_t>::Pointer rndNumbers = DataArray<int32_t>::CreateArray(totalFeatures, "New GrainIds", true);
 
   int32_t* gid = rndNumbers->getPointer(0);
   gid[0] = 0;
@@ -327,8 +330,8 @@ void SineParamsSegmentFeatures::randomizeFeatureIds(int64_t totalPoints, size_t 
 // -----------------------------------------------------------------------------
 int64_t SineParamsSegmentFeatures::getSeed(int32_t gnum, int64_t nextSeed)
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getDataContainerName());
 
   size_t totalPoints = m_FeatureIdsPtr.lock()->getNumberOfTuples();
@@ -339,7 +342,7 @@ int64_t SineParamsSegmentFeatures::getSeed(int32_t gnum, int64_t nextSeed)
   {
     if(m_FeatureIds[randpoint] == 0) // If the GrainId of the voxel is ZERO then we can use this as a seed point
     {
-      if(m_UseGoodVoxels == false || m_GoodVoxels[randpoint] == true)
+      if(!m_UseGoodVoxels || m_GoodVoxels[randpoint])
       {
         seed = randpoint;
       }
@@ -356,7 +359,7 @@ int64_t SineParamsSegmentFeatures::getSeed(int32_t gnum, int64_t nextSeed)
   if(seed >= 0)
   {
     m_FeatureIds[seed] = gnum;
-    QVector<size_t> tDims(1, gnum + 1);
+    std::vector<size_t> tDims(1, gnum + 1);
     m->getAttributeMatrix(getCellFeatureAttributeMatrixName())->resizeAttributeArrays(tDims);
     updateFeatureInstancePointers();
   }
@@ -374,7 +377,7 @@ bool SineParamsSegmentFeatures::determineGrouping(int64_t referencepoint, int64_
   float shift;
   float step = 45.0f * SIMPLib::Constants::k_PiOver180;
   float avgDiff = 0;
-  if(m_FeatureIds[neighborpoint] == 0 && (m_UseGoodVoxels == false || m_GoodVoxels[neighborpoint] == true))
+  if(m_FeatureIds[neighborpoint] == 0 && (!m_UseGoodVoxels || m_GoodVoxels[neighborpoint]))
   {
     for(int i = 0; i < 8; i++)
     {
@@ -412,7 +415,7 @@ void SineParamsSegmentFeatures::initializeVoxelSeedGenerator(const size_t rangeM
 AbstractFilter::Pointer SineParamsSegmentFeatures::newFilterInstance(bool copyFilterParameters) const
 {
   SineParamsSegmentFeatures::Pointer filter = SineParamsSegmentFeatures::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

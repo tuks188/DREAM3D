@@ -38,14 +38,11 @@
 #include "SIMPLib/Common/Constants.h"
 #include "SIMPLib/Math/SIMPLibMath.h"
 #include "SIMPLib/Math/SIMPLibRandom.h"
-#include "SIMPLib/Utilities/ColorUtilities.h"
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-PrecipitateEquiaxedPreset::PrecipitateEquiaxedPreset()
-{
-}
+PrecipitateEquiaxedPreset::PrecipitateEquiaxedPreset() = default;
 
 // -----------------------------------------------------------------------------
 //
@@ -63,7 +60,7 @@ QString PrecipitateEquiaxedPreset::getName()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PrecipitateEquiaxedPreset::initializeOmega3TableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors)
+void PrecipitateEquiaxedPreset::initializeOmega3TableModel(QMap<QString, QVector<float>>& data)
 {
 
   QVector<float>& binNumbers = data[kBinNumbers];
@@ -74,8 +71,6 @@ void PrecipitateEquiaxedPreset::initializeOmega3TableModel(QMap<QString, QVector
 
   QVector<float> alphas;
   QVector<float> betas;
-  colors.clear();
-  colors.append(ColorUtilities::GenerateColors(count, 160, 255));
 
   for(qint32 i = 0; i < count; ++i)
   {
@@ -91,7 +86,7 @@ void PrecipitateEquiaxedPreset::initializeOmega3TableModel(QMap<QString, QVector
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PrecipitateEquiaxedPreset::initializeBOverATableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors)
+void PrecipitateEquiaxedPreset::initializeBOverATableModel(QMap<QString, QVector<float>>& data)
 {
   QVector<float>& binNumbers = data[kBinNumbers];
   qint32 count = binNumbers.count();
@@ -103,9 +98,6 @@ void PrecipitateEquiaxedPreset::initializeBOverATableModel(QMap<QString, QVector
   QVector<float> betas;
   data[kAlpha] = alphas;
   data[kBeta] = betas;
-
-  colors.clear();
-  colors.append(ColorUtilities::GenerateColors(count, 160, 255));
 
   for(qint32 i = 0; i < count; ++i)
   {
@@ -122,7 +114,7 @@ void PrecipitateEquiaxedPreset::initializeBOverATableModel(QMap<QString, QVector
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PrecipitateEquiaxedPreset::initializeCOverATableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors)
+void PrecipitateEquiaxedPreset::initializeCOverATableModel(QMap<QString, QVector<float>>& data)
 {
   QVector<float>& binNumbers = data[kBinNumbers];
   qint32 count = binNumbers.count();
@@ -132,8 +124,6 @@ void PrecipitateEquiaxedPreset::initializeCOverATableModel(QMap<QString, QVector
 
   QVector<float> alphas;
   QVector<float> betas;
-  colors.clear();
-  colors.append(ColorUtilities::GenerateColors(count, 160, 255));
 
   for(qint32 i = 0; i < count; ++i)
   {
@@ -150,7 +140,7 @@ void PrecipitateEquiaxedPreset::initializeCOverATableModel(QMap<QString, QVector
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PrecipitateEquiaxedPreset::initializeClusteringTableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors)
+void PrecipitateEquiaxedPreset::initializeClusteringTableModel(QMap<QString, QVector<float>>& data)
 {
   QVector<float>& binNumbers = data[kBinNumbers];
   qint32 count = binNumbers.count();
@@ -160,8 +150,6 @@ void PrecipitateEquiaxedPreset::initializeClusteringTableModel(QMap<QString, QVe
 
   QVector<float> mus;
   QVector<float> sigmas;
-  colors.clear();
-  colors.append(ColorUtilities::GenerateColors(count, 160, 255));
 
   int middlebin = count / 2;
   for(qint32 i = 0; i < count; ++i)
@@ -179,7 +167,7 @@ void PrecipitateEquiaxedPreset::initializeClusteringTableModel(QMap<QString, QVe
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void PrecipitateEquiaxedPreset::initializeNeighborTableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors)
+void PrecipitateEquiaxedPreset::initializeNeighborTableModel(QMap<QString, QVector<float>>& data)
 {
   Q_ASSERT(false);
 }
@@ -193,15 +181,15 @@ unsigned int PrecipitateEquiaxedPreset::getDistributionType(const QString& distT
   {
     return SIMPL::DistributionType::Beta;
   }
-  else if(distType == AbstractMicrostructurePreset::kBOverADistribution)
+  if(distType == AbstractMicrostructurePreset::kBOverADistribution)
   {
     return SIMPL::DistributionType::Beta;
   }
-  else if(distType == AbstractMicrostructurePreset::kCOverADistribution)
+  if(distType == AbstractMicrostructurePreset::kCOverADistribution)
   {
     return SIMPL::DistributionType::Beta;
   }
-  else if(distType == AbstractMicrostructurePreset::kClusterDistribution)
+  if(distType == AbstractMicrostructurePreset::kClusterDistribution)
   {
     return SIMPL::DistributionType::LogNormal;
   }

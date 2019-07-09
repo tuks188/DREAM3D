@@ -36,10 +36,7 @@
 
 #pragma once
 
-#include <QtCore/QObject>
-#include <QtCore/QUrl>
 
-#include <QtWidgets/QFileDialog>
 
 // Needed for AxisAngle_t
 #include "EbsdLib/EbsdConstants.h"
@@ -169,14 +166,16 @@ class ReadH5EbsdWidget : public FilterParameterWidget, private Ui::ReadH5EbsdWid
     AxisAngleInput_t m_EulerTransformation;
 
     QAction* m_ShowFileAction = nullptr;
-    QString  m_CurrentlyValidPath = "";
-    QString  m_CurrentText = "";
+    QString m_CurrentText = "";
     bool     m_DidCausePreflight = false;
     bool m_NewFileLoaded;
     bool m_Version4Warning;
 
+  public:
     ReadH5EbsdWidget(const ReadH5EbsdWidget&) = delete; // Copy Constructor Not Implemented
-    void operator=(const ReadH5EbsdWidget&) = delete;   // Move assignment Not Implemented
+    ReadH5EbsdWidget(ReadH5EbsdWidget&&) = delete;      // Move Constructor Not Implemented
+    ReadH5EbsdWidget& operator=(const ReadH5EbsdWidget&) = delete; // Copy Assignment Not Implemented
+    ReadH5EbsdWidget& operator=(ReadH5EbsdWidget&&) = delete;      // Move Assignment Not Implemented
 };
 
 

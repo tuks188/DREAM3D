@@ -40,6 +40,7 @@
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/IntFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/MultiDataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
 
@@ -69,7 +70,7 @@ MinNeighbors::~MinNeighbors() = default;
 // -----------------------------------------------------------------------------
 void MinNeighbors::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Minimum Number Neighbors", MinNumNeighbors, FilterParameter::Parameter, MinNeighbors));
   QStringList linkedProps;
   linkedProps << "PhaseNumber"
@@ -91,6 +92,10 @@ void MinNeighbors::setupFilterParameters()
     DataArraySelectionFilterParameter::RequirementType req =
         DataArraySelectionFilterParameter::CreateRequirement(SIMPL::TypeNames::Int32, 1, AttributeMatrix::Type::CellFeature, IGeometry::Type::Image);
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Number of Neighbors", NumNeighborsArrayPath, FilterParameter::RequiredArray, MinNeighbors, req));
+  }
+  {
+    MultiDataArraySelectionFilterParameter::RequirementType req;
+    parameters.push_back(SIMPL_NEW_MDA_SELECTION_FP("Attribute Arrays to Ignore", IgnoredDataArrayPaths, FilterParameter::Parameter, MinNeighbors, req));
   }
   setFilterParameters(parameters);
 }
@@ -123,8 +128,8 @@ void MinNeighbors::initialize()
 // -----------------------------------------------------------------------------
 void MinNeighbors::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
 
   QVector<DataArrayPath> dataArrayPaths;
@@ -132,13 +137,12 @@ void MinNeighbors::dataCheck()
   if(getMinNumNeighbors() < 0)
   {
     QString ss = QObject::tr("The minimum number of neighbors (%1) must be 0 or positive").arg(getMinNumNeighbors());
-    setErrorCondition(-5555);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-5555, ss);
   }
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -152,12 +156,12 @@ void MinNeighbors::dataCheck()
   {
     m_NumNeighbors = m_NumNeighborsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getNumNeighborsArrayPath());
   }
 
-  if(getApplyToSinglePhase() == true)
+  if(getApplyToSinglePhase())
   {
     m_FeaturePhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeaturePhasesArrayPath(),
                                                                                                              cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
@@ -165,7 +169,7 @@ void MinNeighbors::dataCheck()
     {
       m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getFeaturePhasesArrayPath());
     }
@@ -194,8 +198,7 @@ void MinNeighbors::dataCheck()
     }
   }
 
-  setWarningCondition(-5556);
-  notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
+  setWarningCondition(-5556, ss);
 }
 
 // -----------------------------------------------------------------------------
@@ -216,10 +219,10 @@ void MinNeighbors::preflight()
 // -----------------------------------------------------------------------------
 void MinNeighbors::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -228,7 +231,7 @@ void MinNeighbors::execute()
   // that is not in the system ; the filter would not crash otherwise, but the user should
   // be notified of unanticipated behavior ; this cannot be done in the dataCheck since
   // we don't have acces to the data yet
-  if(m_ApplyToSinglePhase == true)
+  if(m_ApplyToSinglePhase)
   {
     AttributeMatrix::Pointer featAttrMat =
         getDataContainerArray()->getDataContainer(getFeaturePhasesArrayPath().getDataContainerName())->getAttributeMatrix(getFeaturePhasesArrayPath().getAttributeMatrixName());
@@ -243,17 +246,16 @@ void MinNeighbors::execute()
       }
     }
 
-    if(unavailablePhase == true)
+    if(unavailablePhase)
     {
       QString ss = QObject::tr("The phase number (%1) is not available in the supplied Feature phases array with path (%2)").arg(m_PhaseNumber).arg(m_FeaturePhasesArrayPath.serialize());
-      setErrorCondition(-5555);
-      notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+      setErrorCondition(-5555, ss);
       return;
     }
   }
 
   QVector<bool> activeObjects = merge_containedfeatures();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -263,8 +265,7 @@ void MinNeighbors::execute()
   AttributeMatrix::Pointer cellFeatureAttrMat = m->getAttributeMatrix(m_NumNeighborsArrayPath.getAttributeMatrixName());
   cellFeatureAttrMat->removeInactiveObjects(activeObjects, m_FeatureIdsPtr.lock().get());
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -275,14 +276,13 @@ void MinNeighbors::assign_badpoints()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_NumNeighborsArrayPath.getDataContainerName());
 
   size_t totalPoints = m_FeatureIdsPtr.lock()->getNumberOfTuples();
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
   };
 
-  Int32ArrayType::Pointer neighborsPtr = Int32ArrayType::CreateArray(totalPoints, "_INTERNAL_USE_ONLY_Neighbors");
+  Int32ArrayType::Pointer neighborsPtr = Int32ArrayType::CreateArray(totalPoints, "_INTERNAL_USE_ONLY_Neighbors", true);
   m_Neighbors = neighborsPtr->getPointer(0);
   neighborsPtr->initializeWithValue(-1);
 
@@ -410,15 +410,19 @@ void MinNeighbors::assign_badpoints()
     }
     QString attrMatName = m_FeatureIdsArrayPath.getAttributeMatrixName();
     QList<QString> voxelArrayNames = m->getAttributeMatrix(attrMatName)->getAttributeArrayNames();
+    for(const auto& dataArrayPath : m_IgnoredDataArrayPaths)
+    {
+      voxelArrayNames.removeAll(dataArrayPath.getDataArrayName());
+    }
     for(size_t j = 0; j < totalPoints; j++)
     {
       featurename = m_FeatureIds[j];
       neighbor = m_Neighbors[j];
       if(featurename < 0 && neighbor >= 0 && m_FeatureIds[neighbor] >= 0)
       {
-        for(QList<QString>::iterator iter = voxelArrayNames.begin(); iter != voxelArrayNames.end(); ++iter)
+        for(const auto& arrayName : voxelArrayNames)
         {
-          IDataArray::Pointer p = m->getAttributeMatrix(attrMatName)->getAttributeArray(*iter);
+          IDataArray::Pointer p = m->getAttributeMatrix(attrMatName)->getAttributeArray(arrayName);
           p->copyTuple(neighbor, j);
         }
       }
@@ -469,8 +473,7 @@ QVector<bool> MinNeighbors::merge_containedfeatures()
   }
   if(!good)
   {
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), "The minimum number of neighbors is larger than the Feature with the most neighbors.  All Features would be removed", getErrorCondition());
+    setErrorCondition(-1, "The minimum number of neighbors is larger than the Feature with the most neighbors.  All Features would be removed");
     return activeObjects;
   }
   for(size_t i = 0; i < totalPoints; i++)

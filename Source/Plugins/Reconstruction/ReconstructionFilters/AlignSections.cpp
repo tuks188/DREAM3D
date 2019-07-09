@@ -53,6 +53,7 @@
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
 #include "SIMPLib/FilterParameters/OutputFileFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
+#include "SIMPLib/Utilities/FileSystemPathHelper.h"
 
 // -----------------------------------------------------------------------------
 //
@@ -72,23 +73,25 @@ class AlignSectionsTransferDataImpl
 {
 public:
   AlignSectionsTransferDataImpl() = delete;
-  AlignSectionsTransferDataImpl(const AlignSectionsTransferDataImpl&) = default; // Copy Constructor Not Implemented
+  AlignSectionsTransferDataImpl(const AlignSectionsTransferDataImpl&) = default; // Copy Constructor Default Implemented
+  AlignSectionsTransferDataImpl(AlignSectionsTransferDataImpl&&) = default;      // Move Constructor Default Implemented
 
-  AlignSectionsTransferDataImpl(AlignSections* filter, size_t* dims, const std::vector<int64_t>& xshifts, const std::vector<int64_t>& yshifts, int32_t voxelArrayIndex)
+  AlignSectionsTransferDataImpl(AlignSections* filter, size_t* dims, const std::vector<int64_t>& xshifts, const std::vector<int64_t>& yshifts, IDataArray::Pointer dataArrayPtr)
   : m_Filter(filter)
   , m_Dims(dims)
   , m_xshifts(xshifts)
   , m_yshifts(yshifts)
-  , m_VoxelArrayIndex(voxelArrayIndex)
+  , m_DataArrayPtr(dataArrayPtr)
   {
   }
 
   ~AlignSectionsTransferDataImpl() = default;
 
+  AlignSectionsTransferDataImpl& operator=(const AlignSectionsTransferDataImpl&) = delete; // Copy Assignment Not Implemented
+  AlignSectionsTransferDataImpl& operator=(AlignSectionsTransferDataImpl&&) = delete;      // Move Assignment Not Implemented
+
   void operator()() const
   {
-    DataContainer::Pointer m = m_Filter->getDataContainerArray()->getDataContainer(m_Filter->getDataContainerName());
-    QVector<QString> voxelArrayNames = m->getAttributeMatrix(m_Filter->getCellAttributeMatrixName())->getAttributeArrayNames().toVector();
     size_t progIncrement = m_Dims[2] / 50;
     size_t prog = 1;
     size_t slice = 0;
@@ -100,7 +103,7 @@ public:
         prog = prog + progIncrement;
         m_Filter->updateProgress(progIncrement);
       }
-      if(m_Filter->getCancel() == true)
+      if(m_Filter->getCancel())
       {
         return;
       }
@@ -133,13 +136,11 @@ public:
           if((yspot + m_yshifts[i]) >= 0 && (yspot + m_yshifts[i]) <= static_cast<int64_t>(m_Dims[1]) - 1 && (xspot + m_xshifts[i]) >= 0 &&
              (xspot + m_xshifts[i]) <= static_cast<int64_t>(m_Dims[0]) - 1)
           {
-            IDataArray::Pointer p = m->getAttributeMatrix(m_Filter->getCellAttributeMatrixName())->getAttributeArray(voxelArrayNames[m_VoxelArrayIndex]);
-            p->copyTuple(static_cast<size_t>(currentPosition), static_cast<size_t>(newPosition));
+            m_DataArrayPtr->copyTuple(static_cast<size_t>(currentPosition), static_cast<size_t>(newPosition));
           }
           if((yspot + m_yshifts[i]) < 0 || (yspot + m_yshifts[i]) > static_cast<int64_t>(m_Dims[1] - 1) || (xspot + m_xshifts[i]) < 0 || (xspot + m_xshifts[i]) > static_cast<int64_t>(m_Dims[0]) - 1)
           {
-            IDataArray::Pointer p = m->getAttributeMatrix(m_Filter->getCellAttributeMatrixName())->getAttributeArray(voxelArrayNames[m_VoxelArrayIndex]);
-            EXECUTE_FUNCTION_TEMPLATE(m_Filter, initializeArrayValues, p, p, newPosition)
+            EXECUTE_FUNCTION_TEMPLATE(m_Filter, initializeArrayValues, m_DataArrayPtr, m_DataArrayPtr, newPosition)
           }
         }
       }
@@ -151,9 +152,7 @@ private:
   size_t* m_Dims = nullptr;
   std::vector<int64_t> m_xshifts;
   std::vector<int64_t> m_yshifts;
-  int32_t m_VoxelArrayIndex = 0;
-
-  void operator=(const AlignSectionsTransferDataImpl&) = delete; // Move assignment Not Implemented
+  IDataArray::Pointer m_DataArrayPtr;
 };
 
 // -----------------------------------------------------------------------------
@@ -177,7 +176,7 @@ AlignSections::~AlignSections() = default;
 // -----------------------------------------------------------------------------
 void AlignSections::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   QStringList linkedProps("AlignmentShiftFileName");
   parameters.push_back(SIMPL_NEW_LINKED_BOOL_FP("Write Alignment Shift File", WriteAlignmentShifts, FilterParameter::Parameter, AlignSections, linkedProps));
   parameters.push_back(SIMPL_NEW_OUTPUT_FILE_FP("Alignment File", AlignmentShiftFileName, FilterParameter::Parameter, AlignSections, "", "*.txt"));
@@ -207,12 +206,12 @@ void AlignSections::initialize()
 // -----------------------------------------------------------------------------
 void AlignSections::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
   ImageGeom::Pointer image = getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getDataContainerName());
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -221,18 +220,15 @@ void AlignSections::dataCheck()
   {
     QString ss =
         QObject::tr("The Image Geometry is not 3D and cannot be run through this filter. The dimensions are (%1,%2,%3)").arg(image->getXPoints()).arg(image->getYPoints()).arg(image->getZPoints());
-    setErrorCondition(-3010);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-3010, ss);
   }
 
-  tempPath.update(getDataContainerName(), getCellAttributeMatrixName(), "");
+  tempPath.update(getDataContainerName().getDataContainerName(), getCellAttributeMatrixName(), "");
   getDataContainerArray()->getPrereqAttributeMatrixFromPath<AbstractFilter>(this, tempPath, -301);
 
-  if(true == m_WriteAlignmentShifts && m_AlignmentShiftFileName.isEmpty() == true)
+  if(m_WriteAlignmentShifts)
   {
-    QString ss = QObject::tr("The alignment shift file name is empty");
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    FileSystemPathHelper::CheckOutputFile(this, "Output Alignment Shifts File", getAlignmentShiftFileName(), true);
   }
 }
 
@@ -254,7 +250,6 @@ void AlignSections::preflight()
 // -----------------------------------------------------------------------------
 void AlignSections::find_shifts(std::vector<int64_t>& xshifts, std::vector<int64_t>& yshifts)
 {
-  return;
 }
 
 // -----------------------------------------------------------------------------
@@ -265,7 +260,7 @@ void AlignSections::updateProgress(size_t p)
   m_Progress += p;
   int32_t progressInt = static_cast<int>((static_cast<float>(m_Progress) / static_cast<float>(m_TotalProgress)) * 100.0f);
   QString ss = QObject::tr("Transferring Cell Data %1%").arg(progressInt);
-  notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+  notifyStatusMessage(ss);
 }
 
 // -----------------------------------------------------------------------------
@@ -273,10 +268,10 @@ void AlignSections::updateProgress(size_t p)
 // -----------------------------------------------------------------------------
 void AlignSections::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -286,8 +281,7 @@ void AlignSections::execute()
 
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getDataContainerName());
 
-  size_t dims[3] = {0, 0, 0};
-  std::tie(dims[0], dims[1], dims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type dims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   std::vector<int64_t> xshifts(dims[2], 0);
   std::vector<int64_t> yshifts(dims[2], 0);
@@ -303,31 +297,27 @@ void AlignSections::execute()
   // The idea for this parallel section is to parallelize over each Data Array that
   // will need it's data adjusted. This should go faster than before by about 2x.
   // Better speed up could be achieved if we had better data locality.
-  if(doParallel == true)
+  if(doParallel)
   {
-    std::shared_ptr<tbb::task_group> g(new tbb::task_group);
-    QVector<QString> voxelArrayNames = m->getAttributeMatrix(getCellAttributeMatrixName())->getAttributeArrayNames().toVector();
+    std::shared_ptr<tbb::task_group> taskGroup(new tbb::task_group);
+    QList<QString> voxelArrayNames = m->getAttributeMatrix(getCellAttributeMatrixName())->getAttributeArrayNames();
+    for(const auto& dataArrayPath : m_IgnoredDataArrayPaths)
+    {
+      voxelArrayNames.removeAll(dataArrayPath.getDataArrayName());
+    }
     m_TotalProgress = voxelArrayNames.size() * dims[2]; // Total number of slices to update
     // Create all the tasks
-    for(int32_t voxelArray = 0; voxelArray < voxelArrayNames.size(); voxelArray++)
+    for(const auto& arrayName : voxelArrayNames)
     {
-      g->run(AlignSectionsTransferDataImpl(this, dims, xshifts, yshifts, voxelArray));
+      IDataArray::Pointer dataArrayPtr = m->getAttributeMatrix(getCellAttributeMatrixName())->getAttributeArray(arrayName);
+      taskGroup->run(AlignSectionsTransferDataImpl(this, dims.data(), xshifts, yshifts, dataArrayPtr));
     }
     // Wait for them to complete.
-    g->wait();
-    
+    taskGroup->wait();
   }
   else
 #endif
   {
-#if 0
-  // This code is actually a bit slower than the code below.... 
-    QVector<QString> voxelArrayNames = m->getAttributeMatrix(getCellAttributeMatrixName())->getAttributeArrayNames().toVector();
-    for(int32_t voxelArray = 0; voxelArray < voxelArrayNames.size(); voxelArray++)
-    {
-      AlignSectionsTransferDataImpl(this, dims, xshifts, yshifts, voxelArray)();
-    }
-#else
     QList<QString> voxelArrayNames = m->getAttributeMatrix(getCellAttributeMatrixName())->getAttributeArrayNames();
     size_t progIncrement = dims[2] / 100;
     size_t prog = 1;
@@ -340,7 +330,7 @@ void AlignSections::execute()
       {
         progressInt = static_cast<int>((static_cast<float>(i) / static_cast<float>(dims[2])) * 100.0f);
         QString ss = QObject::tr("Transferring Cell Data %1%").arg(progressInt);
-        notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+        notifyStatusMessage(ss);
         prog = prog + progIncrement;
       }
       if(getCancel())
@@ -375,28 +365,26 @@ void AlignSections::execute()
           currentPosition = (slice * dims[0] * dims[1]) + ((yspot + yshifts[i]) * dims[0]) + (xspot + xshifts[i]);
           if((yspot + yshifts[i]) >= 0 && (yspot + yshifts[i]) <= static_cast<int64_t>(dims[1]) - 1 && (xspot + xshifts[i]) >= 0 && (xspot + xshifts[i]) <= static_cast<int64_t>(dims[0]) - 1)
           {
-            for(QList<QString>::iterator iter = voxelArrayNames.begin(); iter != voxelArrayNames.end(); ++iter)
+            for(const auto& arrayName : voxelArrayNames)
             {
-              IDataArray::Pointer p = m->getAttributeMatrix(getCellAttributeMatrixName())->getAttributeArray(*iter);
+              IDataArray::Pointer p = m->getAttributeMatrix(getCellAttributeMatrixName())->getAttributeArray(arrayName);
               p->copyTuple(static_cast<size_t>(currentPosition), static_cast<size_t>(newPosition));
             }
           }
           if((yspot + yshifts[i]) < 0 || (yspot + yshifts[i]) > static_cast<int64_t>(dims[1] - 1) || (xspot + xshifts[i]) < 0 || (xspot + xshifts[i]) > static_cast<int64_t>(dims[0]) - 1)
           {
-            for(QList<QString>::iterator iter = voxelArrayNames.begin(); iter != voxelArrayNames.end(); ++iter)
+            for(const auto& arrayName : voxelArrayNames)
             {
-              IDataArray::Pointer p = m->getAttributeMatrix(getCellAttributeMatrixName())->getAttributeArray(*iter);
+              IDataArray::Pointer p = m->getAttributeMatrix(getCellAttributeMatrixName())->getAttributeArray(arrayName);
               EXECUTE_FUNCTION_TEMPLATE(this, initializeArrayValues, p, p, newPosition)
             }
           }
         }
       }
     }
-#endif
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -405,7 +393,7 @@ void AlignSections::execute()
 AbstractFilter::Pointer AlignSections::newFilterInstance(bool copyFilterParameters) const
 {
   AlignSections::Pointer filter = AlignSections::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

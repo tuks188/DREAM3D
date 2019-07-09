@@ -115,9 +115,9 @@ void RolledPresetDialog::setupGui()
   buttonBox->setStandardButtons(QDialogButtonBox::Cancel | QDialogButtonBox::Ok);
   verticalLayout_2->addWidget(buttonBox);
 
-  ALabel->setText(QApplication::translate("Rolled Preset Dialog", "A Axis Length:", 0));
-  BLabel->setText(QApplication::translate("Rolled Preset Dialog", "B Axis Length:", 0));
-  CLabel->setText(QApplication::translate("Rolled Preset Dialog", "C Axis Length:", 0));
+  ALabel->setText(QApplication::translate("Rolled Preset Dialog", "A Axis Length:", nullptr));
+  BLabel->setText(QApplication::translate("Rolled Preset Dialog", "B Axis Length:", nullptr));
+  CLabel->setText(QApplication::translate("Rolled Preset Dialog", "C Axis Length:", nullptr));
 
   QObject::connect(buttonBox, SIGNAL(accepted()), this, SLOT(accept()));
   QObject::connect(buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
@@ -169,7 +169,9 @@ float RolledPresetDialog::getA()
   bool ok = false;
   float d = A->text().toFloat(&ok);
   if(!ok)
+  {
     d = 0.0f;
+  }
   return d;
 }
 
@@ -181,7 +183,9 @@ float RolledPresetDialog::getB()
   bool ok = false;
   float d = B->text().toFloat(&ok);
   if(!ok)
+  {
     d = 0.0f;
+  }
   return d;
 }
 
@@ -193,6 +197,8 @@ float RolledPresetDialog::getC()
   bool ok = false;
   float d = C->text().toFloat(&ok);
   if(!ok)
+  {
     d = 0.0f;
+  }
   return d;
 }

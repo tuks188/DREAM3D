@@ -40,6 +40,7 @@
 #include "SIMPLib/FilterParameters/BooleanFilterParameter.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/IntFilterParameter.h"
+#include "SIMPLib/FilterParameters/MultiDataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
 
@@ -54,7 +55,6 @@ ErodeDilateCoordinationNumber::ErodeDilateCoordinationNumber()
 , m_CoordinationNumber(6)
 , m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
 , m_Neighbors(nullptr)
-, m_FeatureIds(nullptr)
 {
 }
 
@@ -68,7 +68,7 @@ ErodeDilateCoordinationNumber::~ErodeDilateCoordinationNumber() = default;
 // -----------------------------------------------------------------------------
 void ErodeDilateCoordinationNumber::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Coordination Number to Consider", CoordinationNumber, FilterParameter::Parameter, ErodeDilateCoordinationNumber));
   parameters.push_back(SIMPL_NEW_BOOL_FP("Loop Until Gone", Loop, FilterParameter::Parameter, ErodeDilateCoordinationNumber));
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
@@ -76,6 +76,10 @@ void ErodeDilateCoordinationNumber::setupFilterParameters()
     DataArraySelectionFilterParameter::RequirementType req =
         DataArraySelectionFilterParameter::CreateRequirement(SIMPL::TypeNames::Int32, 1, AttributeMatrix::Type::Cell, IGeometry::Type::Image);
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Feature Ids", FeatureIdsArrayPath, FilterParameter::RequiredArray, ErodeDilateCoordinationNumber, req));
+  }
+  {
+    MultiDataArraySelectionFilterParameter::RequirementType req;
+    parameters.push_back(SIMPL_NEW_MDA_SELECTION_FP("Attribute Arrays to Ignore", IgnoredDataArrayPaths, FilterParameter::Parameter, ErodeDilateCoordinationNumber, req));
   }
   setFilterParameters(parameters);
 }
@@ -105,8 +109,8 @@ void ErodeDilateCoordinationNumber::initialize()
 // -----------------------------------------------------------------------------
 void ErodeDilateCoordinationNumber::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
@@ -114,11 +118,10 @@ void ErodeDilateCoordinationNumber::dataCheck()
   if(getCoordinationNumber() < 0 || getCoordinationNumber() > 6)
   {
     QString ss = QObject::tr("The coordination number (%1) must be on the interval [0,6]").arg(getCoordinationNumber());
-    setErrorCondition(-5555);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-5555, ss);
   }
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -145,10 +148,10 @@ void ErodeDilateCoordinationNumber::preflight()
 // -----------------------------------------------------------------------------
 void ErodeDilateCoordinationNumber::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -156,12 +159,11 @@ void ErodeDilateCoordinationNumber::execute()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getFeatureIdsArrayPath().getDataContainerName());
   size_t totalPoints = m_FeatureIdsPtr.lock()->getNumberOfTuples();
 
-  Int32ArrayType::Pointer neighborsPtr = Int32ArrayType::CreateArray(totalPoints, "Neighbors");
+  Int32ArrayType::Pointer neighborsPtr = Int32ArrayType::CreateArray(totalPoints, "Neighbors", true);
   m_Neighbors = neighborsPtr->getPointer(0);
   neighborsPtr->initializeWithValue(-1);
 
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -196,16 +198,20 @@ void ErodeDilateCoordinationNumber::execute()
 
   QString attrMatName = m_FeatureIdsArrayPath.getAttributeMatrixName();
   QList<QString> voxelArrayNames = m->getAttributeMatrix(attrMatName)->getAttributeArrayNames();
+  for(const auto& dataArrayPath : m_IgnoredDataArrayPaths)
+  {
+    voxelArrayNames.removeAll(dataArrayPath.getDataArrayName());
+  }
 
   QVector<int32_t> n(numfeatures + 1, 0);
   QVector<int32_t> coordinationNumber(totalPoints, 0);
   bool keepgoing = true;
   int32_t counter = 1;
 
-  while(counter > 0 && keepgoing == true)
+  while(counter > 0 && keepgoing)
   {
     counter = 0;
-    if(m_Loop == false)
+    if(!m_Loop)
     {
       keepgoing = false;
     }
@@ -271,9 +277,9 @@ void ErodeDilateCoordinationNumber::execute()
           int32_t neighbor = m_Neighbors[point];
           if(coordinationNumber[point] >= m_CoordinationNumber && coordinationNumber[point] > 0)
           {
-            for(QList<QString>::iterator iter = voxelArrayNames.begin(); iter != voxelArrayNames.end(); ++iter)
+            for(const auto& arrayName : voxelArrayNames)
             {
-              IDataArray::Pointer p = m->getAttributeMatrix(attrMatName)->getAttributeArray(*iter);
+              IDataArray::Pointer p = m->getAttributeMatrix(attrMatName)->getAttributeArray(arrayName);
               p->copyTuple(neighbor, point);
             }
           }
@@ -335,8 +341,7 @@ void ErodeDilateCoordinationNumber::execute()
     }
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -345,7 +350,7 @@ void ErodeDilateCoordinationNumber::execute()
 AbstractFilter::Pointer ErodeDilateCoordinationNumber::newFilterInstance(bool copyFilterParameters) const
 {
   ErodeDilateCoordinationNumber::Pointer filter = ErodeDilateCoordinationNumber::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

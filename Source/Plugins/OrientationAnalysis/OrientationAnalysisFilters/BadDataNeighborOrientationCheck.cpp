@@ -56,10 +56,6 @@ BadDataNeighborOrientationCheck::BadDataNeighborOrientationCheck()
 , m_CellPhasesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Phases)
 , m_CrystalStructuresArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::CrystalStructures)
 , m_QuatsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Quats)
-, m_Quats(nullptr)
-, m_GoodVoxels(nullptr)
-, m_CellPhases(nullptr)
-, m_CrystalStructures(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 }
@@ -74,7 +70,7 @@ BadDataNeighborOrientationCheck::~BadDataNeighborOrientationCheck() = default;
 // -----------------------------------------------------------------------------
 void BadDataNeighborOrientationCheck::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_FLOAT_FP("Misorientation Tolerance (Degrees)", MisorientationTolerance, FilterParameter::Parameter, BadDataNeighborOrientationCheck));
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Required Number of Neighbors", NumberOfNeighbors, FilterParameter::Parameter, BadDataNeighborOrientationCheck));
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
@@ -129,21 +125,21 @@ void BadDataNeighborOrientationCheck::initialize()
 // -----------------------------------------------------------------------------
 void BadDataNeighborOrientationCheck::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   QVector<DataArrayPath> dataArrayPaths;
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getGoodVoxelsArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_GoodVoxelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getGoodVoxelsArrayPath(),
                                                                                                      cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_GoodVoxelsPtr.lock())                                                                      /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_GoodVoxels = m_GoodVoxelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getGoodVoxelsArrayPath());
   }
@@ -154,7 +150,7 @@ void BadDataNeighborOrientationCheck::dataCheck()
   {
     m_CellPhases = m_CellPhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getCellPhasesArrayPath());
   }
@@ -173,7 +169,7 @@ void BadDataNeighborOrientationCheck::dataCheck()
   {
     m_Quats = m_QuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getCellPhasesArrayPath());
   }
@@ -199,10 +195,10 @@ void BadDataNeighborOrientationCheck::preflight()
 // -----------------------------------------------------------------------------
 void BadDataNeighborOrientationCheck::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -213,8 +209,7 @@ void BadDataNeighborOrientationCheck::execute()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_GoodVoxelsArrayPath.getDataContainerName());
   size_t totalPoints = m_GoodVoxelsPtr.lock()->getNumberOfTuples();
 
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -243,7 +238,7 @@ void BadDataNeighborOrientationCheck::execute()
 
   for(size_t i = 0; i < totalPoints; i++)
   {
-    if(m_GoodVoxels[i] == false)
+    if(!m_GoodVoxels[i])
     {
       column = i % dims[0];
       row = (i / dims[0]) % dims[1];
@@ -276,7 +271,7 @@ void BadDataNeighborOrientationCheck::execute()
         {
           good = 0;
         }
-        if(good == 1 && m_GoodVoxels[neighbor] == true)
+        if(good == 1 && m_GoodVoxels[neighbor])
         {
           phase1 = m_CrystalStructures[m_CellPhases[i]];
           QuaternionMathF::Copy(quats[i], q1);
@@ -308,7 +303,7 @@ void BadDataNeighborOrientationCheck::execute()
       counter = 0;
       for(size_t i = 0; i < totalPoints; i++)
       {
-        if(neighborCount[i] >= currentLevel && m_GoodVoxels[i] == false)
+        if(neighborCount[i] >= currentLevel && !m_GoodVoxels[i])
         {
           m_GoodVoxels[i] = true;
           counter++;
@@ -343,7 +338,7 @@ void BadDataNeighborOrientationCheck::execute()
             {
               good = 0;
             }
-            if(good == 1 && m_GoodVoxels[neighbor] == false)
+            if(good == 1 && !m_GoodVoxels[neighbor])
             {
               phase1 = m_CrystalStructures[m_CellPhases[i]];
               QuaternionMathF::Copy(quats[i], q1);
@@ -367,8 +362,7 @@ void BadDataNeighborOrientationCheck::execute()
     currentLevel = currentLevel - 1;
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -377,7 +371,7 @@ void BadDataNeighborOrientationCheck::execute()
 AbstractFilter::Pointer BadDataNeighborOrientationCheck::newFilterInstance(bool copyFilterParameters) const
 {
   BadDataNeighborOrientationCheck::Pointer filter = BadDataNeighborOrientationCheck::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

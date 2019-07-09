@@ -56,7 +56,6 @@ AddBadData::AddBadData()
 , m_PoissonVolFraction(0.0f)
 , m_BoundaryNoise(false)
 , m_BoundaryVolFraction(0.0f)
-, m_GBEuclideanDistances(nullptr)
 {
 }
 
@@ -70,7 +69,7 @@ AddBadData::~AddBadData() = default;
 // -----------------------------------------------------------------------------
 void AddBadData::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   QStringList linkedProps("PoissonVolFraction");
   parameters.push_back(SIMPL_NEW_LINKED_BOOL_FP("Add Random Noise", PoissonNoise, FilterParameter::Parameter, AddBadData, linkedProps));
   parameters.push_back(SIMPL_NEW_FLOAT_FP("Volume Fraction of Random Noise", PoissonVolFraction, FilterParameter::Parameter, AddBadData));
@@ -112,19 +111,18 @@ void AddBadData::initialize()
 // -----------------------------------------------------------------------------
 void AddBadData::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getGBEuclideanDistancesArrayPath().getDataContainerName());
 
-  if((m_PoissonNoise == false) && (m_BoundaryNoise == false))
+  if((!m_PoissonNoise) && (!m_BoundaryNoise))
   {
     QString ss = QObject::tr("At least one type of noise must be selected");
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-1, ss);
   }
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_GBEuclideanDistancesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getGBEuclideanDistancesArrayPath(),
                                                                                                                   cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_GBEuclideanDistancesPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -151,18 +149,17 @@ void AddBadData::preflight()
 // -----------------------------------------------------------------------------
 void AddBadData::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   add_noise();
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -170,7 +167,7 @@ void AddBadData::execute()
 // -----------------------------------------------------------------------------
 void AddBadData::add_noise()
 {
-  notifyStatusMessage(getHumanLabel(), "Adding Noise");
+  notifyStatusMessage("Adding Noise");
   SIMPL_RANDOMNG_NEW()
 
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getGBEuclideanDistancesArrayPath().getDataContainerName());
@@ -182,7 +179,7 @@ void AddBadData::add_noise()
   size_t totalPoints = m->getGeometryAs<ImageGeom>()->getNumberOfElements();
   for(size_t i = 0; i < totalPoints; ++i)
   {
-    if(m_BoundaryNoise == true && m_GBEuclideanDistances[i] < 1)
+    if(m_BoundaryNoise && m_GBEuclideanDistances[i] < 1)
     {
       random = static_cast<float>(rg.genrand_res53());
       if(random < m_BoundaryVolFraction)
@@ -195,7 +192,7 @@ void AddBadData::add_noise()
         }
       }
     }
-    if(m_PoissonNoise == true)
+    if(m_PoissonNoise)
     {
       random = static_cast<float>(rg.genrand_res53());
       if(random < m_PoissonVolFraction)
@@ -217,7 +214,7 @@ void AddBadData::add_noise()
 AbstractFilter::Pointer AddBadData::newFilterInstance(bool copyFilterParameters) const
 {
   AddBadData::Pointer filter = AddBadData::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

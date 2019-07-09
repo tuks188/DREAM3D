@@ -33,9 +33,9 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "EMMPMLib/Common/EMMPM_Math.h"
 #include "EMMPMLib/Core/EMMPMUtilities.h"
@@ -218,11 +218,7 @@ bool EMMPMUtilities::isStoppingConditionLessThanTolerance(EMMPM_Data::Pointer da
   {
     return false;
   }
-  else if(data->currentMSE < data->stoppingThreshold)
-  {
-    return true;
-  }
-  return false;
+  return data->currentMSE < data->stoppingThreshold;
 }
 
 // -----------------------------------------------------------------------------
@@ -246,9 +242,7 @@ public:
     this->l = l;
     this->data = dPtr;
   }
-  virtual ~EstimateMeans()
-  {
-  }
+  virtual ~EstimateMeans() = default;
 
   void calc(int rowStart, int rowEnd, int colStart, int colEnd) const
   {
@@ -305,9 +299,7 @@ public:
     this->l = l;
     this->data = dPtr;
   }
-  virtual ~EstimateVariance()
-  {
-  }
+  virtual ~EstimateVariance() = default;
 
   void calc(int rowStart, int rowEnd, int colStart, int colEnd) const
   {

@@ -96,53 +96,30 @@ CtfReader::CtfReader() :
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-CtfReader::~CtfReader()
-{
-  deletePointers();
-}
+CtfReader::~CtfReader() = default;
 
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void CtfReader::initPointers(size_t numElements)
-{
-
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void CtfReader::deletePointers()
-{
-  // Clear out all the maps and vectors
-//  m_NameIndexMap.clear();
-//  m_DataParsers.clear();
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void CtfReader::setPointerByName(const QString& name, void* p)
-{
-  // First we need to see if the pointer already exists
-  QMap<QString, DataParser::Pointer>::iterator iter = m_NamePointerMap.find(name);
-  if (iter == m_NamePointerMap.end())
-  {
-    // Data does not exist in Map
-    DataParser::Pointer dparser = getParser(name, nullptr, getXCells() * getYCells());
-    dparser->setVoidPointer(p);
-    m_NamePointerMap[name] = dparser;
-  }
-  else
-  {
-    DataParser::Pointer dparser = m_NamePointerMap[name];
-    void* ptr = dparser->getVoidPointer();
-    deallocateArrayData(ptr);
-    dparser->setVoidPointer(p);
-  }
-
-}
-
+//// -----------------------------------------------------------------------------
+////
+//// -----------------------------------------------------------------------------
+// void CtfReader::setPointerByName(const QString& name, void* p)
+//{
+//  // First we need to see if the pointer already exists
+//  QMap<QString, DataParser::Pointer>::iterator iter = m_NamePointerMap.find(name);
+//  if (iter == m_NamePointerMap.end())
+//  {
+//    // Data does not exist in Map
+//    DataParser::Pointer dparser = getParser(name, nullptr, getXCells() * getYCells());
+//    dparser->setVoidPointer(p);
+//    m_NamePointerMap[name] = dparser;
+//  }
+//  else
+//  {
+//    DataParser::Pointer dparser = m_NamePointerMap[name];
+//    void* ptr = dparser->getVoidPointer();
+//    deallocateArrayData(ptr);
+//    dparser->setVoidPointer(p);
+//  }
+//}
 
 // -----------------------------------------------------------------------------
 //
@@ -150,7 +127,7 @@ void CtfReader::setPointerByName(const QString& name, void* p)
 void* CtfReader::getPointerByName(const QString& featureName)
 {
   void* ptr = nullptr;
-  if(m_NamePointerMap.contains(featureName) == true)
+  if(m_NamePointerMap.contains(featureName))
   {
     ptr = m_NamePointerMap.value(featureName)->getVoidPointer();
   }
@@ -320,8 +297,6 @@ void CtfReader::readOnlySliceIndex(int slice)
 // -----------------------------------------------------------------------------
 int CtfReader::readData(QFile& in)
 {
-  // Delete any currently existing pointers
-  deletePointers();
   QString sBuf;
   QTextStream ss(&sBuf);
   // Initialize new pointers
@@ -361,7 +336,7 @@ int CtfReader::readData(QFile& in)
       Int32Parser::Pointer dparser = Int32Parser::New(nullptr, totalScanPoints, name, i);
       didAllocate = dparser->allocateArray(totalScanPoints);
       //Q_ASSERT_X(dparser->getVoidPointer() != nullptr, __FILE__, "Could not allocate memory for Integer data in CTF File.");
-      if( didAllocate == true)
+      if(didAllocate)
       {
         ::memset(dparser->getVoidPointer(), 0xAB, sizeof(int32_t) * totalScanPoints);
         m_NamePointerMap.insert(name, dparser);
@@ -372,7 +347,7 @@ int CtfReader::readData(QFile& in)
       FloatParser::Pointer dparser = FloatParser::New(nullptr, totalScanPoints, name, i);
       didAllocate = dparser->allocateArray(totalScanPoints);
       //Q_ASSERT_X(dparser->getVoidPointer() != nullptr, __FILE__, "Could not allocate memory for Integer data in CTF File.");
-      if( didAllocate == true)
+      if(didAllocate)
       {
         ::memset(dparser->getVoidPointer(), 0xAB, sizeof(float) * totalScanPoints);
         m_NamePointerMap.insert(name, dparser);
@@ -383,12 +358,10 @@ int CtfReader::readData(QFile& in)
       ss.string()->clear();
       ss << "Column Header '" << tokens[i] << "' is not a recognized column for CTF Files. Please recheck your .ctf file and report this error to the DREAM3D developers.";
       setErrorMessage(ss.string());
-      deletePointers();
       return -107;
     }
 
-
-    if(didAllocate == false)
+    if(!didAllocate)
     {
       setErrorCode(-106);
       QString msg;
@@ -419,8 +392,8 @@ int CtfReader::readData(QFile& in)
         if ( (m_SingleSliceRead < 0) || (m_SingleSliceRead >= 0 && slice == m_SingleSliceRead) )
         {
 
-          if(in.atEnd() == true && buf.isEmpty() == true) // We have to have read to the end of the file AND the buffer is empty
-            // otherwise we read EXACTLY the last line and we still need to parse the line.
+          if(in.atEnd() && buf.isEmpty()) // We have to have read to the end of the file AND the buffer is empty
+                                          // otherwise we read EXACTLY the last line and we still need to parse the line.
           {
             //  ++counter; // We need to make sure this gets incremented before leaving
             break;
@@ -431,7 +404,7 @@ int CtfReader::readData(QFile& in)
         }
 
       }
-      if(in.atEnd() == true)
+      if(in.atEnd())
       {
         break;
       }
@@ -443,7 +416,7 @@ int CtfReader::readData(QFile& in)
     }
   }
 
-  if(counter != getNumberOfElements() && in.atEnd() == true)
+  if(counter != getNumberOfElements() && in.atEnd())
   {
     ss.string()->clear();
     ss << "Premature End Of File reached.\n" << getFileName() << "\nNumRows=" << getNumberOfElements() << "\ncounter=" << counter
@@ -495,7 +468,7 @@ int CtfReader::parseHeaderLines(QList<QByteArray>& headerLines)
         PRINT_HTML_TABLE_ROW(p)
       }
     }
-    else if(sLine.startsWith(Ebsd::Ctf::NumPhases) == true)
+    else if(sLine.startsWith(Ebsd::Ctf::NumPhases))
     {
       QByteArray key = tabTokens[0];
       EbsdHeaderEntry::Pointer p = m_HeaderMap[key];
@@ -514,7 +487,7 @@ int CtfReader::parseHeaderLines(QList<QByteArray>& headerLines)
       }
       ++i;
     }
-    else if(sLine.startsWith("Euler angles refer to Sample Coordinate system (CS0)!") == true)
+    else if(sLine.startsWith("Euler angles refer to Sample Coordinate system (CS0)!"))
     {
       // We parse out lots of stuff from this one line
       //Mag
@@ -542,7 +515,7 @@ int CtfReader::parseHeaderLines(QList<QByteArray>& headerLines)
       p5->parseValue(tabTokens[12]);
       PRINT_HTML_TABLE_ROW(p5);
     }
-    else if(sLine.startsWith("Channel Text File") == true || sLine.startsWith(":Channel Text File") == true)
+    else if(sLine.startsWith("Channel Text File") || sLine.startsWith(":Channel Text File"))
     {
       // We do not really do anything with this entry
     }
@@ -659,7 +632,7 @@ int CtfReader::getHeaderLines(QFile& reader, QList<QByteArray>& headerLines)
   QByteArray buf;
   bool ok = false;
   int numPhases = -1;
-  while (!reader.atEnd() && false == getHeaderIsComplete())
+  while(!reader.atEnd() && !getHeaderIsComplete())
   {
     buf = reader.readLine();
     // Append the line to the complete header
@@ -668,7 +641,7 @@ int CtfReader::getHeaderLines(QFile& reader, QList<QByteArray>& headerLines)
     // remove the newline at the end of the line
     buf.chop(1);
     headerLines.push_back(buf);
-    if (buf.startsWith("Phases") == true)
+    if(buf.startsWith("Phases"))
     {
       QList<QByteArray> tokens = buf.split('\t');
       numPhases = tokens.at(1).toInt(&ok, 10);

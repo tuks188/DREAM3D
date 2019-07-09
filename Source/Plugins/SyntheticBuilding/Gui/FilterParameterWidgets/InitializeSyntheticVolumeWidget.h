@@ -37,7 +37,6 @@
 #pragma once
 
 
-#include <QtCore/QObject>
 
 #include "SIMPLib/Common/SIMPLibSetGetMacros.h"
 #include "SIMPLib/FilterParameters/FilterParameter.h"
@@ -76,7 +75,7 @@ class InitializeSyntheticVolumeWidget : public FilterParameterWidget, private Ui
     void beforePreflight();
     void afterPreflight();
     void filterNeedsInputParameters(AbstractFilter* filter);
-    void displayErrorMessage(const PipelineMessage& msg);
+    void displayErrorMessage(const AbstractMessage::Pointer& msg);
 
   protected slots:
     // Auto Hookup Slots
@@ -104,14 +103,6 @@ class InitializeSyntheticVolumeWidget : public FilterParameterWidget, private Ui
      * @brief setWidgetListEnabled
      */
     void setWidgetListEnabled(bool v);
-
-    /**
-     * @brief verifyPathExists
-     * @param outFilePath
-     * @param lineEdit
-     * @return
-     */
-    bool verifyPathExists(QString outFilePath, QLineEdit* lineEdit);
 
     /**
      * @brief estimate_numFeatures
@@ -168,8 +159,11 @@ class InitializeSyntheticVolumeWidget : public FilterParameterWidget, private Ui
     DataArraySelectionFilterParameter::Pointer     m_PhaseTypesPath;
     DataArraySelectionFilterParameter::Pointer     m_CrystalStructuresPath;
 
+  public:
     InitializeSyntheticVolumeWidget(const InitializeSyntheticVolumeWidget&) = delete; // Copy Constructor Not Implemented
-    void operator=(const InitializeSyntheticVolumeWidget&) = delete;                  // Move assignment Not Implemented
+    InitializeSyntheticVolumeWidget(InitializeSyntheticVolumeWidget&&) = delete;      // Move Constructor Not Implemented
+    InitializeSyntheticVolumeWidget& operator=(const InitializeSyntheticVolumeWidget&) = delete; // Copy Assignment Not Implemented
+    InitializeSyntheticVolumeWidget& operator=(InitializeSyntheticVolumeWidget&&) = delete;      // Move Assignment Not Implemented
 };
 
 

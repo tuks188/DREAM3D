@@ -38,6 +38,7 @@
 #include "SIMPLib/Common/Constants.h"
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
@@ -59,13 +60,6 @@ FindFeatureReferenceCAxisMisorientations::FindFeatureReferenceCAxisMisorientatio
 , m_FeatureAvgCAxisMisorientationsArrayName(SIMPL::FeatureData::FeatureAvgCAxisMisorientations)
 , m_FeatureStdevCAxisMisorientationsArrayName(SIMPL::FeatureData::FeatureStdevCAxisMisorientations)
 , m_FeatureReferenceCAxisMisorientationsArrayName(SIMPL::CellData::FeatureReferenceCAxisMisorientations)
-, m_FeatureIds(nullptr)
-, m_CellPhases(nullptr)
-, m_Quats(nullptr)
-, m_AvgCAxes(nullptr)
-, m_FeatureReferenceCAxisMisorientations(nullptr)
-, m_FeatureAvgCAxisMisorientations(nullptr)
-, m_FeatureStdevCAxisMisorientations(nullptr)
 {
 }
 
@@ -78,7 +72,7 @@ FindFeatureReferenceCAxisMisorientations::~FindFeatureReferenceCAxisMisorientati
 // -----------------------------------------------------------------------------
 void FindFeatureReferenceCAxisMisorientations::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req =
@@ -102,11 +96,11 @@ void FindFeatureReferenceCAxisMisorientations::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Average C-Axes", AvgCAxesArrayPath, FilterParameter::RequiredArray, FindFeatureReferenceCAxisMisorientations, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Average C-Axis Misorientations", FeatureAvgCAxisMisorientationsArrayName, FilterParameter::CreatedArray, FindFeatureReferenceCAxisMisorientations));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Average C-Axis Misorientations", FeatureAvgCAxisMisorientationsArrayName, AvgCAxesArrayPath, AvgCAxesArrayPath, FilterParameter::CreatedArray, FindFeatureReferenceCAxisMisorientations));
   parameters.push_back(SeparatorFilterParameter::New("Cell Feature Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Feature Stdev C-Axis Misorientations", FeatureStdevCAxisMisorientationsArrayName, FilterParameter::CreatedArray, FindFeatureReferenceCAxisMisorientations));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Feature Stdev C-Axis Misorientations", FeatureStdevCAxisMisorientationsArrayName, AvgCAxesArrayPath, AvgCAxesArrayPath, FilterParameter::CreatedArray, FindFeatureReferenceCAxisMisorientations));
   parameters.push_back(
-      SIMPL_NEW_STRING_FP("Feature Reference C-Axis Misorientations", FeatureReferenceCAxisMisorientationsArrayName, FilterParameter::CreatedArray, FindFeatureReferenceCAxisMisorientations));
+    SIMPL_NEW_DA_WITH_LINKED_AM_FP("Feature Reference C-Axis Misorientations", FeatureReferenceCAxisMisorientationsArrayName, FeatureIdsArrayPath, FeatureIdsArrayPath, FilterParameter::CreatedArray, FindFeatureReferenceCAxisMisorientations));
   setFilterParameters(parameters);
 }
 
@@ -136,22 +130,22 @@ void FindFeatureReferenceCAxisMisorientations::initialize()
 // -----------------------------------------------------------------------------
 void FindFeatureReferenceCAxisMisorientations::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
 
   QVector<DataArrayPath> dataArrayPaths;
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeatureIdsArrayPath());
   }
@@ -162,7 +156,7 @@ void FindFeatureReferenceCAxisMisorientations::dataCheck()
   {
     m_CellPhases = m_CellPhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getCellPhasesArrayPath());
   }
@@ -206,7 +200,7 @@ void FindFeatureReferenceCAxisMisorientations::dataCheck()
   {
     m_Quats = m_QuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getQuatsArrayPath());
   }
@@ -232,10 +226,10 @@ void FindFeatureReferenceCAxisMisorientations::preflight()
 // -----------------------------------------------------------------------------
 void FindFeatureReferenceCAxisMisorientations::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -245,8 +239,8 @@ void FindFeatureReferenceCAxisMisorientations::execute()
   size_t totalFeatures = m_AvgCAxesPtr.lock()->getNumberOfTuples();
 
   int32_t avgMisoComps = 3;
-  QVector<size_t> dims(1, avgMisoComps);
-  FloatArrayType::Pointer avgmisoPtr = FloatArrayType::CreateArray(totalFeatures, dims, "_INTERNAL_USE_ONLY_AvgMiso_Temp");
+  std::vector<size_t> dims(1, avgMisoComps);
+  FloatArrayType::Pointer avgmisoPtr = FloatArrayType::CreateArray(totalFeatures, dims, "_INTERNAL_USE_ONLY_AvgMiso_Temp", true);
   avgmisoPtr->initializeWithZeros();
   float* avgmiso = avgmisoPtr->getPointer(0);
 
@@ -254,15 +248,14 @@ void FindFeatureReferenceCAxisMisorientations::execute()
   QuatF* quats = reinterpret_cast<QuatF*>(m_Quats);
 
   float w = 0.0f;
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   uint32_t maxUInt32 = std::numeric_limits<uint32_t>::max();
   // We have more points than can be allocated on a 32 bit machine. Assert Now.
   if(totalPoints > maxUInt32)
   {
     QString ss = QObject::tr("The volume is too large for a 32 bit machine. Try reducing the input volume size. Total Voxels: %1").arg(totalPoints);
-    notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+    notifyStatusMessage(ss);
     return;
   }
 
@@ -330,7 +323,7 @@ void FindFeatureReferenceCAxisMisorientations::execute()
     if(i % 1000 == 0)
     {
       QString ss = QObject::tr("Working On Feature %1 of %2").arg(i).arg(totalFeatures);
-      notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+      notifyStatusMessage(ss);
     }
     index = i * avgMisoComps;
     m_FeatureAvgCAxisMisorientations[i] = avgmiso[index + 1] / avgmiso[index];
@@ -354,7 +347,6 @@ void FindFeatureReferenceCAxisMisorientations::execute()
     m_FeatureStdevCAxisMisorientations[i] = sqrtf((1 / avgmiso[index]) * avgmiso[index + 2]);
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -363,7 +355,7 @@ void FindFeatureReferenceCAxisMisorientations::execute()
 AbstractFilter::Pointer FindFeatureReferenceCAxisMisorientations::newFilterInstance(bool copyFilterParameters) const
 {
   FindFeatureReferenceCAxisMisorientations::Pointer filter = FindFeatureReferenceCAxisMisorientations::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

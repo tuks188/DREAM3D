@@ -56,6 +56,15 @@
 #include "Reconstruction/ReconstructionConstants.h"
 #include "Reconstruction/ReconstructionVersion.h"
 
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  AttributeMatrixID21 = 21,
+
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
+
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
@@ -72,14 +81,6 @@ GroupMicroTextureRegions::GroupMicroTextureRegions()
 , m_CellParentIdsArrayName(SIMPL::CellData::ParentIds)
 , m_FeatureParentIdsArrayName(SIMPL::FeatureData::ParentIds)
 , m_ActiveArrayName(SIMPL::FeatureData::Active)
-, m_FeatureIds(nullptr)
-, m_AvgQuats(nullptr)
-, m_FeaturePhases(nullptr)
-, m_Volumes(nullptr)
-, m_CrystalStructures(nullptr)
-, m_Active(nullptr)
-, m_CellParentIds(nullptr)
-, m_FeatureParentIds(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
   m_AvgCAxes[0] = 0.0f;
@@ -101,7 +102,7 @@ void GroupMicroTextureRegions::setupFilterParameters()
 {
   GroupFeatures::setupFilterParameters();
 
-  FilterParameterVector parameters = getFilterParameters();
+  FilterParameterVectorType parameters = getFilterParameters();
 
   parameters.push_back(SIMPL_NEW_BOOL_FP("Group C-Axes With Running Average", UseRunningAverage, FilterParameter::Parameter, GroupMicroTextureRegions));
   parameters.push_back(SIMPL_NEW_FLOAT_FP("C-Axis Alignment Tolerance (Degrees)", CAxisTolerance, FilterParameter::Parameter, GroupMicroTextureRegions));
@@ -161,8 +162,8 @@ void GroupMicroTextureRegions::readFilterParameters(AbstractFilterParametersRead
 // -----------------------------------------------------------------------------
 void GroupMicroTextureRegions::updateFeatureInstancePointers()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   if(nullptr != m_ActivePtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
@@ -186,29 +187,29 @@ void GroupMicroTextureRegions::initialize()
 // -----------------------------------------------------------------------------
 void GroupMicroTextureRegions::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
   DataArrayPath tempPath;
 
   GroupFeatures::dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   DataContainer::Pointer m = getDataContainerArray()->getPrereqDataContainer(this, m_FeatureIdsArrayPath.getDataContainerName(), false);
-  if(getErrorCondition() < 0 || nullptr == m)
+  if(getErrorCode() < 0 || nullptr == m)
   {
     return;
   }
 
-  QVector<size_t> tDims(1, 0);
-  m->createNonPrereqAttributeMatrix(this, getNewCellFeatureAttributeMatrixName(), tDims, AttributeMatrix::Type::CellFeature);
+  std::vector<size_t> tDims(1, 0);
+  m->createNonPrereqAttributeMatrix(this, getNewCellFeatureAttributeMatrixName(), tDims, AttributeMatrix::Type::CellFeature, AttributeMatrixID21);
 
   QVector<DataArrayPath> dataArrayPaths;
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   // Cell Data
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
@@ -232,7 +233,7 @@ void GroupMicroTextureRegions::dataCheck()
   {
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeaturePhasesArrayPath());
   }
@@ -251,7 +252,7 @@ void GroupMicroTextureRegions::dataCheck()
   {
     m_Volumes = m_VolumesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getVolumesArrayPath());
   }
@@ -263,7 +264,7 @@ void GroupMicroTextureRegions::dataCheck()
   {
     m_AvgQuats = m_AvgQuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getVolumesArrayPath());
   }
@@ -271,8 +272,7 @@ void GroupMicroTextureRegions::dataCheck()
   // New Feature Data
   cDims[0] = 1;
   tempPath.update(m_FeatureIdsArrayPath.getDataContainerName(), getNewCellFeatureAttributeMatrixName(), getActiveArrayName());
-  m_ActivePtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<bool>, AbstractFilter, bool>(this, tempPath, true,
-                                                                                                             cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_ActivePtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<bool>, AbstractFilter, bool>(this, tempPath, true, cDims, "", DataArrayID31);
   if(nullptr != m_ActivePtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Active = m_ActivePtr.lock()->getPointer(0);
@@ -308,13 +308,13 @@ void GroupMicroTextureRegions::preflight()
 // -----------------------------------------------------------------------------
 void GroupMicroTextureRegions::randomizeFeatureIds(int64_t totalPoints, int64_t totalFeatures)
 {
-  notifyStatusMessage(getHumanLabel(), "Randomizing Parent Ids");
+  notifyStatusMessage("Randomizing Parent Ids");
   // Generate an even distribution of numbers between the min and max range
   const int32_t rangeMin = 0;
   const int32_t rangeMax = totalFeatures - 1;
   initializeVoxelSeedGenerator(rangeMin, rangeMax);
 
-  DataArray<int32_t>::Pointer rndNumbers = DataArray<int32_t>::CreateArray(totalFeatures, "_INTERNAL_USE_ONLY_NewFeatureIds");
+  DataArray<int32_t>::Pointer rndNumbers = DataArray<int32_t>::CreateArray(totalFeatures, "_INTERNAL_USE_ONLY_NewFeatureIds", true);
 
   int32_t* gid = rndNumbers->getPointer(0);
   gid[0] = 0;
@@ -352,8 +352,8 @@ void GroupMicroTextureRegions::randomizeFeatureIds(int64_t totalPoints, int64_t 
 // -----------------------------------------------------------------------------
 int32_t GroupMicroTextureRegions::getSeed(int32_t newFid)
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   int32_t numfeatures = static_cast<int32_t>(m_FeaturePhasesPtr.lock()->getNumberOfTuples());
 
@@ -390,11 +390,11 @@ int32_t GroupMicroTextureRegions::getSeed(int32_t newFid)
   if(seed >= 0)
   {
     m_FeatureParentIds[seed] = newFid;
-    QVector<size_t> tDims(1, newFid + 1);
+    std::vector<size_t> tDims(1, newFid + 1);
     getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName())->getAttributeMatrix(getNewCellFeatureAttributeMatrixName())->resizeAttributeArrays(tDims);
     updateFeatureInstancePointers();
 
-    if(m_UseRunningAverage == true)
+    if(m_UseRunningAverage)
     {
       QuaternionMathF::Copy(avgQuats[seed], q1);
       phase1 = m_CrystalStructures[m_FeaturePhases[seed]];
@@ -435,7 +435,7 @@ bool GroupMicroTextureRegions::determineGrouping(int32_t referenceFeature, int32
 
   if(m_FeatureParentIds[neighborFeature] == -1 && m_FeaturePhases[referenceFeature] > 0 && m_FeaturePhases[neighborFeature] > 0)
   {
-    if(m_UseRunningAverage == false)
+    if(!m_UseRunningAverage)
     {
       QuaternionMathF::Copy(avgQuats[referenceFeature], q1);
       phase1 = m_CrystalStructures[m_FeaturePhases[referenceFeature]];
@@ -465,7 +465,7 @@ bool GroupMicroTextureRegions::determineGrouping(int32_t referenceFeature, int32
       // dividing by the magnitudes (they would be 1)
       MatrixMath::Normalize3x1(c2);
 
-      if(m_UseRunningAverage == true)
+      if(m_UseRunningAverage)
       {
         w = GeometryMath::CosThetaBetweenVectors(m_AvgCAxes, c2);
       }
@@ -478,7 +478,7 @@ bool GroupMicroTextureRegions::determineGrouping(int32_t referenceFeature, int32
       if(w <= m_CAxisToleranceRad || (SIMPLib::Constants::k_Pi - w) <= m_CAxisToleranceRad)
       {
         m_FeatureParentIds[neighborFeature] = newFid;
-        if(m_UseRunningAverage == true)
+        if(m_UseRunningAverage)
         {
           MatrixMath::Multiply3x1withConstant(c2, m_Volumes[neighborFeature]);
           MatrixMath::Add3x1s(m_AvgCAxes, c2, m_AvgCAxes);
@@ -506,10 +506,10 @@ void GroupMicroTextureRegions::initializeVoxelSeedGenerator(const int32_t rangeM
 // -----------------------------------------------------------------------------
 void GroupMicroTextureRegions::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -526,8 +526,7 @@ void GroupMicroTextureRegions::execute()
   size_t totalFeatures = m_ActivePtr.lock()->getNumberOfTuples();
   if(totalFeatures < 2)
   {
-    setErrorCondition(-87000);
-    notifyErrorMessage(getHumanLabel(), "The number of grouped Features was 0 or 1 which means no grouped Features were detected. A grouping value may be set too high", getErrorCondition());
+    setErrorCondition(-87000, "The number of grouped Features was 0 or 1 which means no grouped Features were detected. A grouping value may be set too high");
     return;
   }
 
@@ -539,13 +538,12 @@ void GroupMicroTextureRegions::execute()
   }
 
   // By default we randomize grains
-  if(true == m_RandomizeParentIds)
+  if(m_RandomizeParentIds)
   {
     randomizeFeatureIds(totalPoints, totalFeatures);
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -554,7 +552,7 @@ void GroupMicroTextureRegions::execute()
 AbstractFilter::Pointer GroupMicroTextureRegions::newFilterInstance(bool copyFilterParameters) const
 {
   GroupMicroTextureRegions::Pointer filter = GroupMicroTextureRegions::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

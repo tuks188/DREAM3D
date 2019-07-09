@@ -41,6 +41,7 @@
 
 #include "SIMPLib/FilterParameters/AttributeMatrixSelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Geometry/TriangleGeom.h"
@@ -49,6 +50,13 @@
 #include "SurfaceMeshing/SurfaceMeshingConstants.h"
 #include "SurfaceMeshing/SurfaceMeshingVersion.h"
 
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
+
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
@@ -56,8 +64,6 @@ FindTriangleGeomSizes::FindTriangleGeomSizes()
 : m_FaceLabelsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceLabels)
 , m_FeatureAttributeMatrixName(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceFeatureAttributeMatrixName, "")
 , m_VolumesArrayName(SIMPL::FeatureData::Volumes)
-, m_FaceLabels(nullptr)
-, m_Volumes(nullptr)
 {
   initialize();
 }
@@ -72,8 +78,8 @@ FindTriangleGeomSizes::~FindTriangleGeomSizes() = default;
 // -----------------------------------------------------------------------------
 void FindTriangleGeomSizes::initialize()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   setCancel(false);
 }
 
@@ -82,7 +88,7 @@ void FindTriangleGeomSizes::initialize()
 // -----------------------------------------------------------------------------
 void FindTriangleGeomSizes::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   DataArraySelectionFilterParameter::RequirementType dasReq = DataArraySelectionFilterParameter::CreateRequirement(SIMPL::TypeNames::Int32, 2, AttributeMatrix::Type::Face, IGeometry::Type::Triangle);
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::RequiredArray));
   parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Face Labels", FaceLabelsArrayPath, FilterParameter::RequiredArray, FindTriangleGeomSizes, dasReq));
@@ -90,7 +96,7 @@ void FindTriangleGeomSizes::setupFilterParameters()
   AttributeMatrixSelectionFilterParameter::RequirementType amsReq = AttributeMatrixSelectionFilterParameter::CreateRequirement(AttributeMatrix::Type::FaceFeature, IGeometry::Type::Triangle);
   parameters.push_back(SIMPL_NEW_AM_SELECTION_FP("Face Feature Attribute Matrix", FeatureAttributeMatrixName, FilterParameter::RequiredArray, FindTriangleGeomSizes, amsReq));
   parameters.push_back(SeparatorFilterParameter::New("Face Feature Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Volumes", VolumesArrayName, FilterParameter::CreatedArray, FindTriangleGeomSizes));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Volumes", VolumesArrayName, FaceLabelsArrayPath, FeatureAttributeMatrixName, FilterParameter::CreatedArray, FindTriangleGeomSizes));
   setFilterParameters(parameters);
 }
 
@@ -99,18 +105,21 @@ void FindTriangleGeomSizes::setupFilterParameters()
 // -----------------------------------------------------------------------------
 void FindTriangleGeomSizes::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   QVector<IDataArray::Pointer> dataArrays;
 
   TriangleGeom::Pointer triangles = getDataContainerArray()->getPrereqGeometryFromDataContainer<TriangleGeom, AbstractFilter>(this, getFaceLabelsArrayPath().getDataContainerName());
 
-  if(getErrorCondition() < 0) { return; }
+  if(getErrorCode() < 0)
+  {
+    return;
+  }
 
   dataArrays.push_back(triangles->getTriangles());
 
-  QVector<size_t> cDims(1, 2);
+  std::vector<size_t> cDims(1, 2);
 
   m_FaceLabelsPtr =
       getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFaceLabelsArrayPath(), cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
@@ -118,7 +127,10 @@ void FindTriangleGeomSizes::dataCheck()
   {
     m_FaceLabels = m_FaceLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0) { dataArrays.push_back(m_FaceLabelsPtr.lock()); }
+  if(getErrorCode() >= 0)
+  {
+    dataArrays.push_back(m_FaceLabelsPtr.lock());
+  }
 
   getDataContainerArray()->getPrereqAttributeMatrixFromPath<AbstractFilter>(this, getFeatureAttributeMatrixName(), -301);
 
@@ -126,8 +138,7 @@ void FindTriangleGeomSizes::dataCheck()
 
   cDims[0] = 1;
 
-  m_VolumesPtr =
-      getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, path, 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_VolumesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, path, 0, cDims, "", DataArrayID31);
   if(nullptr != m_VolumesPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_Volumes = m_VolumesPtr.lock()->getPointer(0);
@@ -151,7 +162,7 @@ void FindTriangleGeomSizes::preflight()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-float FindTriangleGeomSizes::findTetrahedronVolume(int64_t vertIds[3], float* vertPtr)
+float FindTriangleGeomSizes::findTetrahedronVolume(MeshIndexType vertIds[3], float* vertPtr)
 {
   float vertMatrix[3][3] = { { vertPtr[3 * vertIds[1] + 0] - vertPtr[3 * vertIds[0] + 0],
                                vertPtr[3 * vertIds[2] + 0] - vertPtr[3 * vertIds[0] + 0],
@@ -174,28 +185,31 @@ void FindTriangleGeomSizes::execute()
 {
   initialize();
   dataCheck();
-  if(getErrorCondition() < 0) { return; }
+  if(getErrorCode() < 0)
+  {
+    return;
+  }
 
   TriangleGeom::Pointer triangles = getDataContainerArray()->getDataContainer(m_FaceLabelsArrayPath.getDataContainerName())->getGeometryAs<TriangleGeom>();
   float* vertPtr = triangles->getVertexPointer(0);
 
   std::set<int32_t> featureSet;
-  int64_t numTriangles = triangles->getNumberOfTris();
+  MeshIndexType numTriangles = triangles->getNumberOfTris();
 
-  for(int64_t i = 0; i < numTriangles; i++)
+  for(MeshIndexType i = 0; i < numTriangles; i++)
   {
     if(m_FaceLabels[2 * i + 0] > 0) { featureSet.insert(m_FaceLabels[2 * i + 0]); }
     if(m_FaceLabels[2 * i + 1] > 0) { featureSet.insert(m_FaceLabels[2 * i + 1]); }
   }
 
-  QVector<size_t> tDims(1, featureSet.size() + 1);
+  std::vector<size_t> tDims(1, featureSet.size() + 1);
   AttributeMatrix::Pointer featAttrMat = getDataContainerArray()->getDataContainer(m_FaceLabelsArrayPath.getDataContainerName())->getAttributeMatrix(m_FeatureAttributeMatrixName);
   featAttrMat->resizeAttributeArrays(tDims);
   m_Volumes = m_VolumesPtr.lock()->getPointer(0);
 
-  int64_t vertsAtTri[3] = {0, 0, 0};
+  MeshIndexType vertsAtTri[3] = {0, 0, 0};
 
-  for(int64_t i = 0; i < numTriangles; i++)
+  for(MeshIndexType i = 0; i < numTriangles; i++)
   {
     triangles->getVertsAtTri(i, vertsAtTri);
     if(m_FaceLabels[2 * i + 0] == -1)
@@ -215,7 +229,6 @@ void FindTriangleGeomSizes::execute()
     }
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -224,7 +237,7 @@ void FindTriangleGeomSizes::execute()
 AbstractFilter::Pointer FindTriangleGeomSizes::newFilterInstance(bool copyFilterParameters) const
 {
   FindTriangleGeomSizes::Pointer filter = FindTriangleGeomSizes::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

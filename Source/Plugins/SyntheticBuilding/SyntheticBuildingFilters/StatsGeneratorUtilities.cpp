@@ -47,9 +47,7 @@
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-StatsGeneratorUtilities::StatsGeneratorUtilities()
-{
-}
+StatsGeneratorUtilities::StatsGeneratorUtilities() = default;
 
 // -----------------------------------------------------------------------------
 //
@@ -82,7 +80,7 @@ void StatsGeneratorUtilities::GenerateODFBinData(StatsData* statsData, PhaseType
       Texture::CalculateHexODFData(e1s.data(), e2s.data(), e3s.data(), weights.data(), sigmas.data(), true, odf.data(), numEntries);
     }
   }
-  if(odf.size() > 0)
+  if(!odf.empty())
   {
     FloatArrayType::Pointer p = FloatArrayType::FromQVector(odf, SIMPL::StringConstants::ODF);
     if(phaseType == PhaseType::Type::Primary)
@@ -100,7 +98,7 @@ void StatsGeneratorUtilities::GenerateODFBinData(StatsData* statsData, PhaseType
       TransformationStatsData* tp = dynamic_cast<TransformationStatsData*>(statsData);
       tp->setODF(p);
     }
-    if(e1s.size() > 0)
+    if(!e1s.empty())
     {
       FloatArrayType::Pointer euler1 = FloatArrayType::FromQVector(e1s, SIMPL::StringConstants::Euler1);
       FloatArrayType::Pointer euler2 = FloatArrayType::FromQVector(e2s, SIMPL::StringConstants::Euler2);
@@ -148,7 +146,7 @@ void StatsGeneratorUtilities::GenerateAxisODFBinData(StatsData* statsData, Phase
     Texture::CalculateOrthoRhombicODFData(e1s.data(), e2s.data(), e3s.data(), weights.data(), sigmas.data(), true, aodf.data(), numEntries);
   }
 
-  if(aodf.size() > 0)
+  if(!aodf.empty())
   {
     FloatArrayType::Pointer aodfData = FloatArrayType::FromQVector(aodf, SIMPL::StringConstants::AxisOrientation);
     if(phaseType == PhaseType::Type::Primary)
@@ -166,7 +164,7 @@ void StatsGeneratorUtilities::GenerateAxisODFBinData(StatsData* statsData, Phase
       TransformationStatsData* tp = dynamic_cast<TransformationStatsData*>(statsData);
       tp->setAxisOrientation(aodfData);
     }
-    if(e1s.size() > 0)
+    if(!e1s.empty())
     {
       FloatArrayType::Pointer euler1 = FloatArrayType::FromQVector(e1s, SIMPL::StringConstants::Euler1);
       FloatArrayType::Pointer euler2 = FloatArrayType::FromQVector(e2s, SIMPL::StringConstants::Euler2);
@@ -257,9 +255,9 @@ void StatsGeneratorUtilities::GenerateMisorientationBinData(StatsData* statsData
     }
     // nElements = 36 * 36 * 12;
   }
-  if(mdf.size() > 0)
+  if(!mdf.empty())
   {
-    FloatArrayType::Pointer p = FloatArrayType::FromPointer(mdf.data(), mdf.size(), SIMPL::StringConstants::MisorientationBins);
+    FloatArrayType::Pointer p = FloatArrayType::CopyFromPointer(mdf.data(), mdf.size(), SIMPL::StringConstants::MisorientationBins);
     if(phaseType == PhaseType::Type::Primary)
     {
       PrimaryStatsData* pp = dynamic_cast<PrimaryStatsData*>(statsData);
@@ -276,11 +274,11 @@ void StatsGeneratorUtilities::GenerateMisorientationBinData(StatsData* statsData
       tp->setMisorientationBins(p);
     }
 
-    if(angles.size() > 0)
+    if(!angles.empty())
     {
-      FloatArrayType::Pointer anglesArray = FloatArrayType::FromPointer(angles.data(), angles.size(), SIMPL::StringConstants::Angle);
-      FloatArrayType::Pointer axisArray = FloatArrayType::FromPointer(axes.data(), axes.size(), SIMPL::StringConstants::Axis);
-      FloatArrayType::Pointer weightArray = FloatArrayType::FromPointer(weights.data(), weights.size(), SIMPL::StringConstants::Weight);
+      FloatArrayType::Pointer anglesArray = FloatArrayType::CopyFromPointer(angles.data(), angles.size(), SIMPL::StringConstants::Angle);
+      FloatArrayType::Pointer axisArray = FloatArrayType::CopyFromPointer(axes.data(), axes.size(), SIMPL::StringConstants::Axis);
+      FloatArrayType::Pointer weightArray = FloatArrayType::CopyFromPointer(weights.data(), weights.size(), SIMPL::StringConstants::Weight);
 
       VectorOfFloatArray mdfWeights;
       mdfWeights.push_back(anglesArray);

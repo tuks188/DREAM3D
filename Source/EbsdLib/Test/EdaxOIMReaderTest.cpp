@@ -35,9 +35,8 @@
 
 #include <string.h>
 
-#include <QtCore/QDir>
+#include <QtCore/QDebug>
 #include <QtCore/QFile>
-#include <QtCore/QtDebug>
 
 #include "EbsdLib/EbsdLib.h"
 #include "EbsdLib/TSL/AngReader.h"
@@ -49,12 +48,8 @@
 class EdaxOIMReaderTest
 {
 public:
-  EdaxOIMReaderTest()
-  {
-  }
-  virtual ~EdaxOIMReaderTest()
-  {
-  }
+  EdaxOIMReaderTest() = default;
+  virtual ~EdaxOIMReaderTest() = default;
 
   // -----------------------------------------------------------------------------
   //
@@ -116,7 +111,7 @@ public:
     {
       uint8_t* patterns = reader->getPatternData();
       DREAM3D_REQUIRE_VALID_POINTER(patterns)
-      int patternDims[2] = {0, 0};
+      std::array<int, 2> patternDims = {{0, 0}};
       reader->getPatternDims(patternDims);
       DREAM3D_REQUIRED(patternDims[0], ==, 60)
       DREAM3D_REQUIRED(patternDims[1], ==, 60)
@@ -126,9 +121,16 @@ public:
   void operator()()
   {
     int err = EXIT_SUCCESS;
+    std::cout << "#-- EdaxOIMReaderTest Starting " << std::endl;
 
     DREAM3D_REGISTER_TEST(TestH5OIMReader())
 
     DREAM3D_REGISTER_TEST(RemoveTestFiles())
   }
+
+public:
+  EdaxOIMReaderTest(const EdaxOIMReaderTest&) = delete;            // Copy Constructor Not Implemented
+  EdaxOIMReaderTest(EdaxOIMReaderTest&&) = delete;                 // Move Constructor Not Implemented
+  EdaxOIMReaderTest& operator=(const EdaxOIMReaderTest&) = delete; // Copy Assignment Not Implemented
+  EdaxOIMReaderTest& operator=(EdaxOIMReaderTest&&) = delete;      // Move Assignment Not Implemented
 };

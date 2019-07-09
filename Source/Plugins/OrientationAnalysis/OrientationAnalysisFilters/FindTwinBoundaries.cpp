@@ -47,6 +47,7 @@
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/FloatFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
@@ -93,9 +94,7 @@ public:
     m_OrientationOps = LaueOps::getOrientationOpsQVector();
   }
 
-  virtual ~CalculateTwinBoundaryImpl()
-  {
-  }
+  virtual ~CalculateTwinBoundaryImpl() = default;
 
   void generate(size_t start, size_t end) const
   {
@@ -226,13 +225,6 @@ FindTwinBoundaries::FindTwinBoundaries()
 , m_SurfaceMeshFaceNormalsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceNormals)
 , m_SurfaceMeshTwinBoundaryArrayName(SIMPL::FaceData::SurfaceMeshTwinBoundary)
 , m_SurfaceMeshTwinBoundaryIncoherenceArrayName(SIMPL::FaceData::SurfaceMeshTwinBoundaryIncoherence)
-, m_AvgQuats(nullptr)
-, m_FeaturePhases(nullptr)
-, m_CrystalStructures(nullptr)
-, m_SurfaceMeshFaceLabels(nullptr)
-, m_SurfaceMeshFaceNormals(nullptr)
-, m_SurfaceMeshTwinBoundary(nullptr)
-, m_SurfaceMeshTwinBoundaryIncoherence(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 }
@@ -246,7 +238,7 @@ FindTwinBoundaries::~FindTwinBoundaries() = default;
 // -----------------------------------------------------------------------------
 void FindTwinBoundaries::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_FLOAT_FP("Axis Tolerance (Degrees)", AxisTolerance, FilterParameter::Parameter, FindTwinBoundaries));
   parameters.push_back(SIMPL_NEW_FLOAT_FP("Angle Tolerance (Degrees)", AngleTolerance, FilterParameter::Parameter, FindTwinBoundaries));
   QStringList linkedProps;
@@ -282,8 +274,8 @@ void FindTwinBoundaries::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Face Normals", SurfaceMeshFaceNormalsArrayPath, FilterParameter::RequiredArray, FindTwinBoundaries, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Twin Boundary", SurfaceMeshTwinBoundaryArrayName, FilterParameter::CreatedArray, FindTwinBoundaries));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Twin Boundary Incoherence", SurfaceMeshTwinBoundaryIncoherenceArrayName, FilterParameter::CreatedArray, FindTwinBoundaries));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Twin Boundary", SurfaceMeshTwinBoundaryArrayName, SurfaceMeshFaceLabelsArrayPath, SurfaceMeshFaceLabelsArrayPath, FilterParameter::CreatedArray, FindTwinBoundaries));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Twin Boundary Incoherence", SurfaceMeshTwinBoundaryIncoherenceArrayName, SurfaceMeshFaceLabelsArrayPath, SurfaceMeshFaceLabelsArrayPath, FilterParameter::CreatedArray, FindTwinBoundaries));
   setFilterParameters(parameters);
 }
 // -----------------------------------------------------------------------------
@@ -308,21 +300,21 @@ void FindTwinBoundaries::readFilterParameters(AbstractFilterParametersReader* re
 // -----------------------------------------------------------------------------
 void FindTwinBoundaries::dataCheckVoxel()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   QVector<DataArrayPath> dataArrayPaths;
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getAvgQuatsArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 4);
+  std::vector<size_t> cDims(1, 4);
   m_AvgQuatsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getAvgQuatsArrayPath(),
                                                                                                     cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_AvgQuatsPtr.lock())                                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AvgQuats = m_AvgQuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getAvgQuatsArrayPath());
   }
@@ -334,7 +326,7 @@ void FindTwinBoundaries::dataCheckVoxel()
   {
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeaturePhasesArrayPath());
   }
@@ -354,22 +346,22 @@ void FindTwinBoundaries::dataCheckVoxel()
 // -----------------------------------------------------------------------------
 void FindTwinBoundaries::dataCheckSurfaceMesh()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
   QVector<DataArrayPath> dataArrayPaths;
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<TriangleGeom, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 2);
+  std::vector<size_t> cDims(1, 2);
   m_SurfaceMeshFaceLabelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath(),
                                                                                                                    cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_SurfaceMeshFaceLabelsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshFaceLabels = m_SurfaceMeshFaceLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getSurfaceMeshFaceLabelsArrayPath());
   }
@@ -383,7 +375,7 @@ void FindTwinBoundaries::dataCheckSurfaceMesh()
     {
       m_SurfaceMeshFaceNormals = m_SurfaceMeshFaceNormalsPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getSurfaceMeshFaceNormalsArrayPath());
     }
@@ -429,15 +421,15 @@ void FindTwinBoundaries::preflight()
 // -----------------------------------------------------------------------------
 void FindTwinBoundaries::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheckVoxel();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
   dataCheckSurfaceMesh();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -453,7 +445,7 @@ void FindTwinBoundaries::execute()
   float axistol = static_cast<float>(m_AxisTolerance * M_PI / 180.0f);
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, numTriangles), CalculateTwinBoundaryImpl(angtol, axistol, m_SurfaceMeshFaceLabels, m_SurfaceMeshFaceNormals, m_AvgQuats, m_FeaturePhases,
                                                                                              m_CrystalStructures, m_SurfaceMeshTwinBoundary, m_SurfaceMeshTwinBoundaryIncoherence, m_FindCoherence),
@@ -467,7 +459,6 @@ void FindTwinBoundaries::execute()
     serial.generate(0, numTriangles);
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -476,7 +467,7 @@ void FindTwinBoundaries::execute()
 AbstractFilter::Pointer FindTwinBoundaries::newFilterInstance(bool copyFilterParameters) const
 {
   FindTwinBoundaries::Pointer filter = FindTwinBoundaries::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

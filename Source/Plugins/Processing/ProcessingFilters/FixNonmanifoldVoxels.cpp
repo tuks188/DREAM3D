@@ -30,8 +30,8 @@ FixNonmanifoldVoxels::~FixNonmanifoldVoxels() = default;
 // -----------------------------------------------------------------------------
 void FixNonmanifoldVoxels::initialize()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   setCancel(false);
 }
 
@@ -40,7 +40,7 @@ void FixNonmanifoldVoxels::initialize()
 // -----------------------------------------------------------------------------
 void FixNonmanifoldVoxels::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   {
     DataArraySelectionFilterParameter::RequirementType req = DataArraySelectionFilterParameter::CreateCategoryRequirement(SIMPL::TypeNames::Int32, 1, AttributeMatrix::Category::Element);
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Feature Ids", FeatureIdsArrayPath, FilterParameter::RequiredArray, FixNonmanifoldVoxels, req));
@@ -53,19 +53,18 @@ void FixNonmanifoldVoxels::setupFilterParameters()
 // -----------------------------------------------------------------------------
 void FixNonmanifoldVoxels::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   IGeometry::Pointer geom = getDataContainerArray()->getPrereqGeometryFromDataContainer<IGeometry, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
   ImageGeom::Pointer imageGeom = std::dynamic_pointer_cast<ImageGeom>(geom);
   if(nullptr == imageGeom)
   {
-    setErrorCondition(-12001);
     QString ss = QObject::tr("This filter only works on ImageGeometry.");
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-12001, ss);
   }
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(), cDims);
   if(nullptr != m_FeatureIdsPtr.lock())
   {
@@ -102,8 +101,7 @@ void FixNonmanifoldVoxels::execute()
   DataArrayPath featurePath = getFeatureIdsArrayPath();
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(featurePath.getDataContainerName());
 
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]),
@@ -197,7 +195,6 @@ void FixNonmanifoldVoxels::execute()
     }
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------

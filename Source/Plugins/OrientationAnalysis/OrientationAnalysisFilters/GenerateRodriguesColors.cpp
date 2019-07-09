@@ -72,11 +72,6 @@ GenerateRodriguesColors::GenerateRodriguesColors()
 , m_GoodVoxelsArrayPath("", "", "")
 , m_CellRodriguesColorsArrayName(SIMPL::CellData::RodriguesColor)
 , m_UseGoodVoxels(false)
-, m_CellPhases(nullptr)
-, m_CellEulerAngles(nullptr)
-, m_CrystalStructures(nullptr)
-, m_CellRodriguesColors(nullptr)
-, m_GoodVoxels(nullptr)
 {
 }
 
@@ -90,7 +85,7 @@ GenerateRodriguesColors::~GenerateRodriguesColors() = default;
 // -----------------------------------------------------------------------------
 void GenerateRodriguesColors::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   QStringList linkedProps("GoodVoxelsArrayPath");
   parameters.push_back(SIMPL_NEW_LINKED_BOOL_FP("Apply to Good Voxels Only (Bad Voxels Will Be Black)", UseGoodVoxels, FilterParameter::Parameter, GenerateRodriguesColors, linkedProps));
@@ -145,10 +140,10 @@ void GenerateRodriguesColors::initialize()
 void GenerateRodriguesColors::dataCheck()
 {
   DataArrayPath tempPath;
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> dims(1, 1);
+  std::vector<size_t> dims(1, 1);
   m_CellPhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getCellPhasesArrayPath(),
                                                                                                         dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_CellPhasesPtr.lock())                                                                        /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -179,7 +174,7 @@ void GenerateRodriguesColors::dataCheck()
   } /* Now assign the raw pointer to data from the DataArray<T> object */
   // The good voxels array is optional, If it is available we are going to use it, otherwise we are going to create it
   dims[0] = 1;
-  if(getUseGoodVoxels() == true)
+  if(getUseGoodVoxels())
   {
     // The good voxels array is optional, If it is available we are going to use it, otherwise we are going to create it
     dims[0] = 1;
@@ -214,11 +209,10 @@ void GenerateRodriguesColors::preflight()
 // -----------------------------------------------------------------------------
 void GenerateRodriguesColors::execute()
 {
-  int err = 0;
-  QString ss;
-  setErrorCondition(err);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -259,7 +253,7 @@ void GenerateRodriguesColors::execute()
     m_CellRodriguesColors[index + 2] = 0;
 
     // Make sure we are using a valid Euler Angles with valid crystal symmetry
-    if((missingGoodVoxels == true || m_GoodVoxels[i] == true) && m_CrystalStructures[phase] < Ebsd::CrystalStructure::LaueGroupEnd)
+    if((missingGoodVoxels || m_GoodVoxels[i]) && m_CrystalStructures[phase] < Ebsd::CrystalStructure::LaueGroupEnd)
     {
       FOrientArrayType rod(4);
       FOrientTransformsType::eu2ro(FOrientArrayType(m_CellEulerAngles + index, 3), rod);
@@ -271,8 +265,7 @@ void GenerateRodriguesColors::execute()
     }
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -281,7 +274,7 @@ void GenerateRodriguesColors::execute()
 AbstractFilter::Pointer GenerateRodriguesColors::newFilterInstance(bool copyFilterParameters) const
 {
   GenerateRodriguesColors::Pointer filter = GenerateRodriguesColors::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

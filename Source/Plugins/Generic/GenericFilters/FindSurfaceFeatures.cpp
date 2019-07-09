@@ -46,14 +46,19 @@
 #include "Generic/GenericConstants.h"
 #include "Generic/GenericVersion.h"
 
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
+
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
 FindSurfaceFeatures::FindSurfaceFeatures()
 : m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
 , m_SurfaceFeaturesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, SIMPL::FeatureData::SurfaceFeatures)
-, m_FeatureIds(nullptr)
-, m_SurfaceFeatures(nullptr)
 {
 }
 
@@ -67,7 +72,7 @@ FindSurfaceFeatures::~FindSurfaceFeatures() = default;
 // -----------------------------------------------------------------------------
 void FindSurfaceFeatures::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req =
@@ -106,12 +111,12 @@ void FindSurfaceFeatures::initialize()
 // -----------------------------------------------------------------------------
 void FindSurfaceFeatures::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -119,8 +124,7 @@ void FindSurfaceFeatures::dataCheck()
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
-  m_SurfaceFeaturesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<bool>, AbstractFilter, bool>(
-      this, getSurfaceFeaturesArrayPath(), false, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_SurfaceFeaturesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<bool>, AbstractFilter, bool>(this, getSurfaceFeaturesArrayPath(), false, cDims, "", DataArrayID31);
   if(nullptr != m_SurfaceFeaturesPtr.lock())              /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceFeatures = m_SurfaceFeaturesPtr.lock()->getPointer(0);
@@ -161,7 +165,7 @@ void FindSurfaceFeatures::find_surfacefeatures()
       for(int64_t k = 0; k < xPoints; k++)
       {
         int32_t gnum = m_FeatureIds[zStride + yStride + k];
-        if(m_SurfaceFeatures[gnum] == false)
+        if(!m_SurfaceFeatures[gnum])
         {
           if(k <= 0)
           {
@@ -187,7 +191,7 @@ void FindSurfaceFeatures::find_surfacefeatures()
           {
             m_SurfaceFeatures[gnum] = true;
           }
-          if(m_SurfaceFeatures[gnum] == false)
+          if(!m_SurfaceFeatures[gnum])
           {
             if(m_FeatureIds[zStride + yStride + k - 1] == 0)
             {
@@ -252,7 +256,7 @@ void FindSurfaceFeatures::find_surfacefeatures2D()
     for(int64_t k = 0; k < xPoints; k++)
     {
       int32_t gnum = m_FeatureIds[yStride + k];
-      if(m_SurfaceFeatures[gnum] == false)
+      if(!m_SurfaceFeatures[gnum])
       {
         if(k <= 0)
         {
@@ -270,7 +274,7 @@ void FindSurfaceFeatures::find_surfacefeatures2D()
         {
           m_SurfaceFeatures[gnum] = true;
         }
-        if(m_SurfaceFeatures[gnum] == false)
+        if(!m_SurfaceFeatures[gnum])
         {
           if(m_FeatureIds[yStride + k - 1] == 0)
           {
@@ -299,10 +303,10 @@ void FindSurfaceFeatures::find_surfacefeatures2D()
 // -----------------------------------------------------------------------------
 void FindSurfaceFeatures::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -318,7 +322,6 @@ void FindSurfaceFeatures::execute()
     find_surfacefeatures2D();
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -327,7 +330,7 @@ void FindSurfaceFeatures::execute()
 AbstractFilter::Pointer FindSurfaceFeatures::newFilterInstance(bool copyFilterParameters) const
 {
   FindSurfaceFeatures::Pointer filter = FindSurfaceFeatures::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

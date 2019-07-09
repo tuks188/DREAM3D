@@ -41,9 +41,6 @@
 #include <QtCore/QFileInfo>
 #include <QtCore/QFileInfoList>
 #include <QtCore/QString>
-#include <QtCore/QThread>
-#include <QtCore/QUrl>
-#include <QtGui/QCloseEvent>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QPainter>
 #include <QtWidgets/QButtonGroup>
@@ -51,7 +48,6 @@
 #include <QtWidgets/QListWidget>
 #include <QtWidgets/QListWidgetItem>
 #include <QtWidgets/QMenu>
-#include <QtWidgets/QMessageBox>
 
 #include "SIMPLib/Common/Constants.h"
 #include "SIMPLib/Utilities/FilePathGenerator.h"
@@ -73,12 +69,10 @@
 // -----------------------------------------------------------------------------
 EbsdToH5EbsdWidget::EbsdToH5EbsdWidget(FilterParameter* parameter, AbstractFilter* filter, QWidget* parent)
 : FilterParameterWidget(parameter, filter, parent)
-, m_StackingGroup(nullptr)
 , m_TSLchecked(false)
 , m_HKLchecked(false)
 , m_HEDMchecked(false)
 , m_NoTranschecked(true)
-, m_DidCausePreflight(false)
 {
   m_SampleTransformation.angle = 0.0f;
   m_SampleTransformation.h = 0.0f;
@@ -205,6 +199,7 @@ void EbsdToH5EbsdWidget::keyPressEvent(QKeyEvent* event)
   {
     m_LineEdit->setText(m_CurrentText);
     m_LineEdit->setToolTip("");
+    setValidFilePath(m_LineEdit->text());
   }
 }
 
@@ -245,7 +240,7 @@ void EbsdToH5EbsdWidget::setupMenuField()
     connect(m_ShowFileAction, SIGNAL(triggered()), this, SLOT(showFileInFileSystem()));
   }
 
-  if(m_LineEdit->text().isEmpty() == false && fi.exists())
+  if(!m_LineEdit->text().isEmpty() && fi.exists())
   {
     m_ShowFileAction->setEnabled(true);
   }
@@ -267,6 +262,8 @@ void EbsdToH5EbsdWidget::getGuiParametersFromFilter()
     inputPath = QDir::homePath();
   }
   m_LineEdit->setText(inputPath);
+  setValidFilePath(m_LineEdit->text());
+
   m_OutputFile->setText(m_Filter->getOutputFile());
 
   QObjectList obs = children();
@@ -303,11 +300,8 @@ void EbsdToH5EbsdWidget::validateInputFile()
 {
   QString currentPath = m_Filter->getInputPath();
   QFileInfo fi(currentPath);
-  if(currentPath.isEmpty() == false && fi.exists() == false)
+  if(!currentPath.isEmpty() && !fi.exists())
   {
-    //    QString Ftype = getFilterParameter()->getFileType();
-    //    QString ext = getFilterParameter()->getFileExtension();
-    //    QString s = Ftype + QString(" Files (") + ext + QString(");;All Files(*.*)");
     QString defaultName = getInputDirectory();
     if(!m_LineEdit->text().isEmpty())
     {
@@ -317,7 +311,7 @@ void EbsdToH5EbsdWidget::validateInputFile()
     QString title = QObject::tr("Select a replacement input file in filter '%2'").arg(m_Filter->getHumanLabel());
 
     QString file = QFileDialog::getExistingDirectory(this, title, defaultName, QFileDialog::ShowDirsOnly);
-    if(true == file.isEmpty())
+    if(file.isEmpty())
     {
       file = currentPath;
     }
@@ -328,19 +322,6 @@ void EbsdToH5EbsdWidget::validateInputFile()
     m_Filter->setInputPath(file);
   }
 }
-
-#if 0
-
-QEbsdReferenceFrameDialog d("", this);
-d.setEbsdFileName("");
-d.setTSLDefault(m_TSLchecked);
-d.setHKLDefault(m_HKLchecked);
-d.setHEDMDefault(m_HEDMchecked);
-d.setNoTrans(m_NoTranschecked);
-d.getSampleTranformation(m_SampleTransformation.angle, m_SampleTransformationAxis[0], m_SampleTransformationAxis[1], m_SampleTransformationAxis[2]);
-d.getEulerTranformation(m_EulerTransformationAngle, m_EulerTransformationAxis[0], m_EulerTransformationAxis[1], m_EulerTransformationAxis[2]);
-
-#endif
 
 // -----------------------------------------------------------------------------
 //
@@ -361,11 +342,6 @@ void EbsdToH5EbsdWidget::on_m_OutputFile_textChanged(const QString& text)
     outputAbsPathLabel->hide();
   }
 
-  // if (verifyPathExists(text, m_OutputFile) == true )
-  //{
-  //  QFileInfo fi(text);
-  //  setOutputPath(fi.filePath());
-  //}
   emit parametersChanged();
 }
 
@@ -374,7 +350,7 @@ void EbsdToH5EbsdWidget::on_m_OutputFile_textChanged(const QString& text)
 // -----------------------------------------------------------------------------
 void EbsdToH5EbsdWidget::checkIOFiles()
 {
-  if(true == this->verifyPathExists(m_LineEdit->text(), this->m_LineEdit))
+  if(QtSFileUtils::VerifyPathExists(m_LineEdit->text(), this->m_LineEdit))
   {
     findEbsdMaxSliceAndPrefix();
   }
@@ -387,12 +363,11 @@ void EbsdToH5EbsdWidget::on_m_OutputFileBtn_clicked()
 {
   QString defaultName = getOutputPath();
   QString file = QFileDialog::getSaveFileName(this, tr("Save HDF5 EBSD File"), defaultName, tr("HDF5 EBSD Files (*.h5ebsd)"));
-  if(true == file.isEmpty())
+  if(file.isEmpty())
   {
     return;
   }
   QFileInfo fi(file);
-  QString ext = fi.suffix();
   m_OutputFile->setText(fi.absoluteFilePath());
   setOutputPath(file);
 }
@@ -409,6 +384,7 @@ void EbsdToH5EbsdWidget::on_m_InputDirBtn_clicked()
   {
     m_LineEdit->blockSignals(true);
     m_LineEdit->setText(QDir::toNativeSeparators(outputFile));
+    setValidFilePath(m_LineEdit->text());
     on_m_LineEdit_textChanged(m_LineEdit->text());
     setInputDirectory(outputFile);
     m_LineEdit->blockSignals(false);
@@ -434,20 +410,19 @@ void EbsdToH5EbsdWidget::on_m_LineEdit_textChanged(const QString& text)
     inputAbsPathLabel->hide();
   }
 
-  if(verifyPathExists(inputPath, m_LineEdit))
+  if(QtSFileUtils::VerifyPathExists(inputPath, m_LineEdit))
   {
     m_ShowFileAction->setEnabled(true);
     m_RefFrameOptionsBtn->setEnabled(true);
     findEbsdMaxSliceAndPrefix();
     QDir dir(inputPath);
-    QString dirname = dir.dirName();
     dir.cdUp();
 
     generateExampleEbsdInputFile();
     m_LineEdit->blockSignals(true);
     m_LineEdit->setText(QDir::toNativeSeparators(m_LineEdit->text()));
+    setValidFilePath(m_LineEdit->text());
     m_LineEdit->blockSignals(false);
-    referenceFrameCheck->setStyleSheet(QString("background-color: rgb(255, 232, 61);"));
     referenceFrameCheck->setText("Have you set the Reference Frame?");
   }
   else
@@ -581,12 +556,12 @@ void EbsdToH5EbsdWidget::generateExampleEbsdInputFile()
   m_FileListView->clear();
   QIcon greenDot = QIcon(QString(":/SIMPL/icons/images/bullet_ball_green.png"));
   QIcon redDot = QIcon(QString(":/SIMPL/icons/images/bullet_ball_red.png"));
-  for(QVector<QString>::size_type i = 0; i < fileList.size(); ++i)
+
+  for(const auto& filePath : fileList)
   {
-    QString filePath(fileList.at(i));
     QFileInfo fi(filePath);
     QListWidgetItem* item = new QListWidgetItem(filePath, m_FileListView);
-    if(fi.exists() == true)
+    if(fi.exists())
     {
       item->setIcon(greenDot);
     }
@@ -597,7 +572,7 @@ void EbsdToH5EbsdWidget::generateExampleEbsdInputFile()
     }
   }
 
-  if(hasMissingFiles == true)
+  if(hasMissingFiles)
   {
     m_ErrorMessage->setVisible(true);
     m_ErrorMessage->setText("Alert: Red Dot File(s) on the list do NOT exist on the filesystem. Please make sure all files exist");
@@ -614,7 +589,7 @@ void EbsdToH5EbsdWidget::generateExampleEbsdInputFile()
 // -----------------------------------------------------------------------------
 void EbsdToH5EbsdWidget::on_m_RefFrameOptionsBtn_clicked()
 {
-  referenceFrameCheck->setStyleSheet(QString(""));
+  //referenceFrameCheck->setStyleSheet(QString(""));
   referenceFrameCheck->setText("");
 
   int start = m_ZStartIndex->value();
@@ -628,7 +603,7 @@ void EbsdToH5EbsdWidget::on_m_RefFrameOptionsBtn_clicked()
   // Now generate all the file names the user is asking for and populate the table
   QVector<QString> fileList = FilePathGenerator::GenerateFileList(start, end, increment, hasMissingFiles, m_StackLowToHigh->isChecked(), inputPath, m_FilePrefix->text(), m_FileSuffix->text(),
                                                                   m_FileExt->text(), m_TotalDigits->value());
-  if(fileList.size() == 0)
+  if(fileList.empty())
   {
     return;
   }
@@ -715,19 +690,19 @@ void EbsdToH5EbsdWidget::findEbsdMaxSliceAndPrefix()
     filters << "*" + ext;
     dir.setNameFilters(filters);
     QFileInfoList angList = dir.entryInfoList();
-    if(angList.size() != 0)
+    if(!angList.empty())
     {
       m_FileExt->setText("ang");
     }
   }
-  if(m_FileExt->text().isEmpty() == true)
+  if(m_FileExt->text().isEmpty())
   {
     QString ext = ".ctf";
     QStringList filters;
     filters << "*" + ext;
     dir.setNameFilters(filters);
     QFileInfoList angList = dir.entryInfoList();
-    if(angList.size() != 0)
+    if(!angList.empty())
     {
       m_FileExt->setText("ctf");
     }
@@ -735,7 +710,7 @@ void EbsdToH5EbsdWidget::findEbsdMaxSliceAndPrefix()
   // Add in more file formats to look for here
 
   // Final check to make sure we have a valid file extension
-  if(m_FileExt->text().isEmpty() == true)
+  if(m_FileExt->text().isEmpty())
   {
     return;
   }
@@ -761,12 +736,11 @@ void EbsdToH5EbsdWidget::findEbsdMaxSliceAndPrefix()
   int minTotalDigits = 1000;
   foreach(QFileInfo fi, angList)
   {
-    if(fi.suffix().compare(ext) && fi.isFile() == true)
+    if((fi.suffix().compare(ext) != 0) && fi.isFile())
     {
       pos = 0;
       list.clear();
       QString fn = fi.baseName();
-      QString fns = fn;
       int length = fn.length();
       digitEnd = length - 1;
       while(digitEnd >= 0 && fn[digitEnd] >= '0' && fn[digitEnd] <= '9')
@@ -793,10 +767,10 @@ void EbsdToH5EbsdWidget::findEbsdMaxSliceAndPrefix()
         minTotalDigits = digitEnd - digitStart;
       }
       m_TotalDigits->setValue(minTotalDigits);
-      if(list.size() > 0)
+      if(!list.empty())
       {
         currValue = list.front().toInt(&ok);
-        if(false == flag)
+        if(!flag)
         {
           minSlice = currValue;
           flag = true;
@@ -873,7 +847,7 @@ void EbsdToH5EbsdWidget::filterNeedsInputParameters(AbstractFilter* filter)
 // -----------------------------------------------------------------------------
 void EbsdToH5EbsdWidget::beforePreflight()
 {
-  if(m_DidCausePreflight == false)
+  if(!m_DidCausePreflight)
   {
   }
 }
@@ -883,14 +857,6 @@ void EbsdToH5EbsdWidget::beforePreflight()
 // -----------------------------------------------------------------------------
 void EbsdToH5EbsdWidget::afterPreflight()
 {
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void EbsdToH5EbsdWidget::setInputDirectory(QString val)
-{
-  m_LineEdit->setText(val);
 }
 
 // -----------------------------------------------------------------------------
@@ -908,7 +874,7 @@ QString EbsdToH5EbsdWidget::getInputDirectory()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void EbsdToH5EbsdWidget::setOutputPath(QString val)
+void EbsdToH5EbsdWidget::setOutputPath(const QString& val)
 {
   m_OutputFile->setText(val);
 }
@@ -928,9 +894,18 @@ QString EbsdToH5EbsdWidget::getOutputPath()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
+void EbsdToH5EbsdWidget::setInputDirectory(const QString &val)
+{
+  m_LineEdit->setText(val);
+  setValidFilePath(m_LineEdit->text());
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
 void EbsdToH5EbsdWidget::showFileInFileSystem()
 {
-  verifyPathExists(m_LineEdit->text(), m_LineEdit); // This basically sets an internal variable of the superclass.
+  QtSFileUtils::VerifyPathExists(m_LineEdit->text(), m_LineEdit); // This basically sets an internal variable of the superclass.
   FilterParameterWidget::showFileInFileSystem();
 #if 0
   QFileInfo fi(m_CurrentlyValidPath);

@@ -58,7 +58,7 @@ class EbsdLib_EXPORT EbsdImporter
     EBSD_SHARED_POINTERS(EbsdImporter)
     EBSD_TYPE_MACRO(EbsdImporter)
 
-    virtual ~EbsdImporter() {}
+    virtual ~EbsdImporter() = default;
 
     /**
      * @brief Sets an Error Message
@@ -68,7 +68,7 @@ class EbsdLib_EXPORT EbsdImporter
     /**
      * @brief Sets an error condition
      */
-    EBSD_VIRTUAL_INSTANCE_PROPERTY(int, ErrorCondition)
+    EBSD_VIRTUAL_INSTANCE_PROPERTY(int, ErrorCode)
 
     /**
      * @brief Cancel the operation
@@ -117,7 +117,7 @@ class EbsdLib_EXPORT EbsdImporter
      * @param x The x resolution (out)
      * @param y The y resolution (out)
      */
-    virtual void getResolution(float& x, float& y) = 0;
+    virtual void getSpacing(float& x, float& y) = 0;
 
     /**
      * @brief Return the number of slices imported
@@ -133,16 +133,18 @@ class EbsdLib_EXPORT EbsdImporter
     virtual void setFileVersion(uint32_t version) = 0;
 
   protected:
-    EbsdImporter() :
-      m_ErrorCondition(0),
-      m_Cancel(false)
+    EbsdImporter()
+    : m_ErrorCode(0)
+    , m_Cancel(false)
     {
       m_PipelineMessage = "";
     }
 
-  private:
+  public:
     EbsdImporter(const EbsdImporter&) = delete;   // Copy Constructor Not Implemented
-    void operator=(const EbsdImporter&) = delete; // Move assignment Not Implemented
+    EbsdImporter(EbsdImporter&&) = delete;        // Move Constructor Not Implemented
+    EbsdImporter& operator=(const EbsdImporter&) = delete; // Copy Assignment Not Implemented
+    EbsdImporter& operator=(EbsdImporter&&) = delete;      // Move Assignment Not Implemented
 };
 
 

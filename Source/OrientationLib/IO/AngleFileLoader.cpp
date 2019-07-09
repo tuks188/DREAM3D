@@ -36,12 +36,11 @@
 
 #include "AngleFileLoader.h"
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include <QtCore/QFileInfo>
 #include <QtCore/QFile>
-#include <QtCore/QTextStream>
 #include <QtCore/QByteArray>
 
 #include "SIMPLib/Math/QuaternionMath.hpp"
@@ -65,16 +64,12 @@ AngleFileLoader::AngleFileLoader():
   m_AngleRepresentation(AngleFileLoader::EulerAngles),
   m_IgnoreMultipleDelimiters(true)
 {
-
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-AngleFileLoader::~AngleFileLoader()
-{
-
-}
+AngleFileLoader::~AngleFileLoader() = default;
 
 // -----------------------------------------------------------------------------
 //
@@ -94,7 +89,7 @@ FloatArrayType::Pointer AngleFileLoader::loadData()
   QFileInfo fi(getInputFile());
 
   // Make sure the file exists on disk
-  if (fi.exists() == false)
+  if(!fi.exists())
   {
     setErrorMessage("Input File does not exist at path");
     setErrorCode(-2);
@@ -147,7 +142,7 @@ FloatArrayType::Pointer AngleFileLoader::loadData()
     return angles;
   }
 
-  if(tokens[0].toStdString().compare("Angle Count") != 0)
+  if(tokens[0].toStdString() != "Angle Count")
   {
     QString msg = QObject::tr("Proper Header was not detected. The file should have a single header line of 'Angle Count:XXXX'");
     setErrorCode(-102);
@@ -157,8 +152,8 @@ FloatArrayType::Pointer AngleFileLoader::loadData()
   numOrients = tokens[1].toInt(&ok, 10);
 
   // Allocate enough for the angles
-  QVector<size_t> dims(1, 5);
-  angles = FloatArrayType::CreateArray(numOrients, dims, "EulerAngles_From_File");
+  std::vector<size_t> dims(1, 5);
+  angles = FloatArrayType::CreateArray(numOrients, dims, "EulerAngles_From_File", true);
 
   for(int i = 0; i < numOrients; i++)
   {
@@ -170,7 +165,7 @@ FloatArrayType::Pointer AngleFileLoader::loadData()
     buf = buf.trimmed();
 
     // Remove multiple Delimiters if wanted by the user.
-    if (m_IgnoreMultipleDelimiters == true)
+    if(m_IgnoreMultipleDelimiters)
     {
       buf = buf.simplified();
     }
@@ -213,14 +208,14 @@ FloatArrayType::Pointer AngleFileLoader::loadData()
     }
 
     // Values in File are in Radians and the user wants them in Degrees
-    if (m_FileAnglesInDegrees == false && m_OutputAnglesInDegrees == true)
+    if(!m_FileAnglesInDegrees && m_OutputAnglesInDegrees)
     {
       euler[0] = euler[0] * SIMPLib::Constants::k_RadToDeg;
       euler[1] = euler[1] * SIMPLib::Constants::k_RadToDeg;
       euler[2] = euler[2] * SIMPLib::Constants::k_RadToDeg;
     }
     // Values are in Degrees but user wants them in Radians
-    else if (m_FileAnglesInDegrees == true && m_OutputAnglesInDegrees == false)
+    else if(m_FileAnglesInDegrees && !m_OutputAnglesInDegrees)
     {
       euler[0] = euler[0] * SIMPLib::Constants::k_DegToRad;
       euler[1] = euler[1] * SIMPLib::Constants::k_DegToRad;

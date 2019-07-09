@@ -58,7 +58,6 @@ ErodeDilateMask::ErodeDilateMask()
 , m_ZDirOn(true)
 , m_MaskArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Mask)
 , m_MaskCopy(nullptr)
-, m_Mask(nullptr)
 {
 }
 
@@ -72,7 +71,7 @@ ErodeDilateMask::~ErodeDilateMask() = default;
 // -----------------------------------------------------------------------------
 void ErodeDilateMask::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   {
     ChoiceFilterParameter::Pointer parameter = ChoiceFilterParameter::New();
@@ -129,8 +128,8 @@ void ErodeDilateMask::initialize()
 // -----------------------------------------------------------------------------
 void ErodeDilateMask::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getMaskArrayPath().getDataContainerName());
@@ -138,11 +137,10 @@ void ErodeDilateMask::dataCheck()
   if(getNumIterations() <= 0)
   {
     QString ss = QObject::tr("The number of iterations (%1) must be positive").arg(getNumIterations());
-    setErrorCondition(-5555);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-5555, ss);
   }
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_MaskPtr =
       getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getMaskArrayPath(), cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_MaskPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -169,10 +167,10 @@ void ErodeDilateMask::preflight()
 // -----------------------------------------------------------------------------
 void ErodeDilateMask::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -180,12 +178,11 @@ void ErodeDilateMask::execute()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_MaskArrayPath.getDataContainerName());
   size_t totalPoints = m_MaskPtr.lock()->getNumberOfTuples();
 
-  BoolArrayType::Pointer maskCopyPtr = BoolArrayType::CreateArray(totalPoints, "_INTERNAL_USE_ONLY_MaskCopy");
+  BoolArrayType::Pointer maskCopyPtr = BoolArrayType::CreateArray(totalPoints, "_INTERNAL_USE_ONLY_MaskCopy", true);
   m_MaskCopy = maskCopyPtr->getPointer(0);
   maskCopyPtr->initializeWithValue(false);
 
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -219,43 +216,43 @@ void ErodeDilateMask::execute()
         for(int64_t i = 0; i < dims[0]; i++)
         {
           count = kstride + jstride + i;
-          if(m_Mask[count] == false)
+          if(!m_Mask[count])
           {
             for(int32_t l = 0; l < 6; l++)
             {
               good = 1;
               neighpoint = count + neighpoints[l];
-              if(l == 0 && (k == 0 || m_ZDirOn == false))
+              if(l == 0 && (k == 0 || !m_ZDirOn))
               {
                 good = 0;
               }
-              else if(l == 5 && (k == (dims[2] - 1) || m_ZDirOn == false))
+              else if(l == 5 && (k == (dims[2] - 1) || !m_ZDirOn))
               {
                 good = 0;
               }
-              else if(l == 1 && (j == 0 || m_YDirOn == false))
+              else if(l == 1 && (j == 0 || !m_YDirOn))
               {
                 good = 0;
               }
-              else if(l == 4 && (j == (dims[1] - 1) || m_YDirOn == false))
+              else if(l == 4 && (j == (dims[1] - 1) || !m_YDirOn))
               {
                 good = 0;
               }
-              else if(l == 2 && (i == 0 || m_XDirOn == false))
+              else if(l == 2 && (i == 0 || !m_XDirOn))
               {
                 good = 0;
               }
-              else if(l == 3 && (i == (dims[0] - 1) || m_XDirOn == false))
+              else if(l == 3 && (i == (dims[0] - 1) || !m_XDirOn))
               {
                 good = 0;
               }
               if(good == 1)
               {
-                if(m_Direction == 0 && m_Mask[neighpoint] == true)
+                if(m_Direction == 0 && m_Mask[neighpoint])
                 {
                   m_MaskCopy[count] = true;
                 }
-                if(m_Direction == 1 && m_Mask[neighpoint] == true)
+                if(m_Direction == 1 && m_Mask[neighpoint])
                 {
                   m_MaskCopy[neighpoint] = false;
                 }
@@ -271,8 +268,7 @@ void ErodeDilateMask::execute()
     }
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -281,7 +277,7 @@ void ErodeDilateMask::execute()
 AbstractFilter::Pointer ErodeDilateMask::newFilterInstance(bool copyFilterParameters) const
 {
   ErodeDilateMask::Pointer filter = ErodeDilateMask::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

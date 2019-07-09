@@ -39,6 +39,7 @@
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/FloatVec3FilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
@@ -59,21 +60,12 @@ FindBoundaryStrengths::FindBoundaryStrengths()
 , m_SurfaceMeshF1sptsArrayName(SIMPL::FaceData::SurfaceMeshF1spts)
 , m_SurfaceMeshF7sArrayName(SIMPL::FaceData::SurfaceMeshF7s)
 , m_SurfaceMeshmPrimesArrayName(SIMPL::FaceData::SurfaceMeshmPrimes)
-, m_FeaturePhases(nullptr)
-, m_AvgQuats(nullptr)
-, m_CrystalStructures(nullptr)
-, m_SurfaceMeshFaceLabels(nullptr)
-, m_SurfaceMeshF1s(nullptr)
-, m_SurfaceMeshF1spts(nullptr)
-, m_SurfaceMeshF7s(nullptr)
-, m_SurfaceMeshmPrimes(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 
-  m_Loading.x = 1.0f;
-  m_Loading.y = 1.0f;
-  m_Loading.z = 1.0f;
-
+  m_Loading[0] = 1.0f;
+  m_Loading[1] = 1.0f;
+  m_Loading[2] = 1.0f;
 }
 
 // -----------------------------------------------------------------------------
@@ -86,7 +78,7 @@ FindBoundaryStrengths::~FindBoundaryStrengths() = default;
 // -----------------------------------------------------------------------------
 void FindBoundaryStrengths::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_FLOAT_VEC3_FP("Loading Direction (XYZ)", Loading, FilterParameter::Parameter, FindBoundaryStrengths));
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::RequiredArray));
 
@@ -113,10 +105,10 @@ void FindBoundaryStrengths::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Crystal Structures", CrystalStructuresArrayPath, FilterParameter::RequiredArray, FindBoundaryStrengths, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Face Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("F1s", SurfaceMeshF1sArrayName, FilterParameter::CreatedArray, FindBoundaryStrengths));
-  parameters.push_back(SIMPL_NEW_STRING_FP("F1spts", SurfaceMeshF1sptsArrayName, FilterParameter::CreatedArray, FindBoundaryStrengths));
-  parameters.push_back(SIMPL_NEW_STRING_FP("F7s", SurfaceMeshF7sArrayName, FilterParameter::CreatedArray, FindBoundaryStrengths));
-  parameters.push_back(SIMPL_NEW_STRING_FP("mPrimes", SurfaceMeshmPrimesArrayName, FilterParameter::CreatedArray, FindBoundaryStrengths));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("F1s", SurfaceMeshF1sArrayName, SurfaceMeshFaceLabelsArrayPath, SurfaceMeshFaceLabelsArrayPath, FilterParameter::CreatedArray, FindBoundaryStrengths));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("F1spts", SurfaceMeshF1sptsArrayName, SurfaceMeshFaceLabelsArrayPath, SurfaceMeshFaceLabelsArrayPath, FilterParameter::CreatedArray, FindBoundaryStrengths));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("F7s", SurfaceMeshF7sArrayName, SurfaceMeshFaceLabelsArrayPath, SurfaceMeshFaceLabelsArrayPath, FilterParameter::CreatedArray, FindBoundaryStrengths));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("mPrimes", SurfaceMeshmPrimesArrayName, SurfaceMeshFaceLabelsArrayPath, SurfaceMeshFaceLabelsArrayPath, FilterParameter::CreatedArray, FindBoundaryStrengths));
 
   setFilterParameters(parameters);
 }
@@ -144,27 +136,27 @@ void FindBoundaryStrengths::readFilterParameters(AbstractFilterParametersReader*
 // -----------------------------------------------------------------------------
 void FindBoundaryStrengths::dataCheckSurfaceMesh()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
   TriangleGeom::Pointer triangles = getDataContainerArray()->getPrereqGeometryFromDataContainer<TriangleGeom, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath().getDataContainerName());
 
   QVector<IDataArray::Pointer> dataArrays;
 
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(triangles->getTriangles());
   }
 
-  QVector<size_t> cDims(1, 2);
+  std::vector<size_t> cDims(1, 2);
   m_SurfaceMeshFaceLabelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath(),
                                                                                                                    cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_SurfaceMeshFaceLabelsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshFaceLabels = m_SurfaceMeshFaceLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshFaceLabelsPtr.lock());
   }
@@ -209,21 +201,21 @@ void FindBoundaryStrengths::dataCheckSurfaceMesh()
 // -----------------------------------------------------------------------------
 void FindBoundaryStrengths::dataCheckVoxel()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getAvgQuatsArrayPath().getDataContainerName());
 
   QVector<DataArrayPath> dataArrayPaths;
 
-  QVector<size_t> cDims(1, 4);
+  std::vector<size_t> cDims(1, 4);
   m_AvgQuatsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getAvgQuatsArrayPath(),
                                                                                                     cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_AvgQuatsPtr.lock())                                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AvgQuats = m_AvgQuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getAvgQuatsArrayPath());
   }
@@ -235,7 +227,7 @@ void FindBoundaryStrengths::dataCheckVoxel()
   {
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeaturePhasesArrayPath());
   }
@@ -269,15 +261,15 @@ void FindBoundaryStrengths::preflight()
 // -----------------------------------------------------------------------------
 void FindBoundaryStrengths::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheckVoxel();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
   dataCheckSurfaceMesh();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -292,9 +284,9 @@ void FindBoundaryStrengths::execute()
 
   float LD[3] = {0.0f, 0.0f, 0.0f};
 
-  LD[0] = m_Loading.x;
-  LD[1] = m_Loading.y;
-  LD[2] = m_Loading.z;
+  LD[0] = m_Loading[0];
+  LD[1] = m_Loading[1];
+  LD[2] = m_Loading[2];
   MatrixMath::Normalize3x1(LD);
 
   for(size_t i = 0; i < numTriangles; i++)
@@ -349,7 +341,6 @@ void FindBoundaryStrengths::execute()
     m_SurfaceMeshF7s[2 * i + 1] = F7_2;
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -358,7 +349,7 @@ void FindBoundaryStrengths::execute()
 AbstractFilter::Pointer FindBoundaryStrengths::newFilterInstance(bool copyFilterParameters) const
 {
   FindBoundaryStrengths::Pointer filter = FindBoundaryStrengths::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

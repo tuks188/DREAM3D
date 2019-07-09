@@ -38,6 +38,7 @@
 #include "SIMPLib/Common/Constants.h"
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/ShapeTypeSelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
@@ -51,8 +52,6 @@
 EstablishShapeTypes::EstablishShapeTypes()
 : m_InputPhaseTypesArrayPath(SIMPL::Defaults::StatsGenerator, SIMPL::Defaults::CellEnsembleAttributeMatrixName, SIMPL::EnsembleData::PhaseTypes)
 , m_ShapeTypesArrayName(SIMPL::EnsembleData::ShapeTypes)
-, m_PhaseTypes(nullptr)
-, m_ShapeTypes(nullptr)
 {
 }
 
@@ -66,7 +65,7 @@ EstablishShapeTypes::~EstablishShapeTypes() = default;
 // -----------------------------------------------------------------------------
 void EstablishShapeTypes::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Cell Ensemble Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req =
@@ -78,7 +77,7 @@ void EstablishShapeTypes::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Phase Types", InputPhaseTypesArrayPath, FilterParameter::RequiredArray, EstablishShapeTypes, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Cell Ensemble Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Shape Types", ShapeTypesArrayName, FilterParameter::CreatedArray, EstablishShapeTypes));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Shape Types", ShapeTypesArrayName, InputPhaseTypesArrayPath, InputPhaseTypesArrayPath, FilterParameter::CreatedArray, EstablishShapeTypes));
   ShapeTypeSelectionFilterParameter::Pointer sType_parameter =
       SIMPL_NEW_SHAPETYPE_SELECTION_FP("Shape Types", ShapeTypeData, FilterParameter::CreatedArray, EstablishShapeTypes, "PhaseCount", "InputPhaseTypesArrayPath");
   parameters.push_back(sType_parameter);
@@ -116,13 +115,13 @@ void EstablishShapeTypes::initialize()
 // -----------------------------------------------------------------------------
 void EstablishShapeTypes::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
   DataContainerArray::Pointer dca = getDataContainerArray();
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_PhaseTypesPtr = dca->getPrereqArrayFromPath<DataArray<uint32_t>, AbstractFilter>(this, getInputPhaseTypesArrayPath(), cDims);
   if(nullptr != m_PhaseTypesPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
@@ -131,14 +130,14 @@ void EstablishShapeTypes::dataCheck()
 
   // Get the DataContainer first - same as phase types
   DataContainer::Pointer m = dca->getPrereqDataContainer(this, getInputPhaseTypesArrayPath().getDataContainerName());
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   // Now get the AttributeMatrix that the user wants to use to store the ShapeTypes array - same as phase types
   AttributeMatrix::Pointer cellEnsembleAttrMat = m->getPrereqAttributeMatrix(this, getInputPhaseTypesArrayPath().getAttributeMatrixName(), -990);
-  if(getErrorCondition() < 0 || nullptr == cellEnsembleAttrMat.get())
+  if(getErrorCode() < 0 || nullptr == cellEnsembleAttrMat.get())
   {
     return;
   }
@@ -169,10 +168,10 @@ void EstablishShapeTypes::preflight()
 // -----------------------------------------------------------------------------
 void EstablishShapeTypes::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -183,8 +182,7 @@ void EstablishShapeTypes::execute()
     m_ShapeTypesPtr.lock()->setValue(i, static_cast<ShapeType::EnumType>(m_ShapeTypeData[i]));
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -201,18 +199,12 @@ int EstablishShapeTypes::getPhaseCount()
     return 0;
   }
 
-  if(0)
-  {
-    qDebug() << "EstablishShapeTypes::getPhaseCount()  data->getNumberOfTuples(): " << inputAttrMat->getTupleDimensions();
-    qDebug() << "EstablishShapeTypes::getPhaseCount()  Name" << inputAttrMat->getName();
-  }
-
   if(inputAttrMat->getType() < AttributeMatrix::Type::VertexEnsemble || inputAttrMat->getType() > AttributeMatrix::Type::CellEnsemble)
   {
     return 0;
   }
 
-  QVector<size_t> tupleDims = inputAttrMat->getTupleDimensions();
+  std::vector<size_t> tupleDims = inputAttrMat->getTupleDimensions();
   size_t phaseCount = 1;
   for(int32_t i = 0; i < tupleDims.size(); i++)
   {
@@ -227,7 +219,7 @@ int EstablishShapeTypes::getPhaseCount()
 AbstractFilter::Pointer EstablishShapeTypes::newFilterInstance(bool copyFilterParameters) const
 {
   EstablishShapeTypes::Pointer filter = EstablishShapeTypes::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     filter->setFilterParameters(getFilterParameters());
     copyFilterParameterInstanceVariables(filter.get());

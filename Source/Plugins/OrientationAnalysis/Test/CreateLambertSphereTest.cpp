@@ -2,7 +2,6 @@
 // Insert your license & copyright information here
 // -----------------------------------------------------------------------------
 
-#include <QtCore/QCoreApplication>
 #include <QtCore/QFile>
 
 #include "SIMPLib/Common/SIMPLibSetGetMacros.h"
@@ -154,6 +153,7 @@ public:
   void operator()()
   {
     int err = EXIT_SUCCESS;
+    qDebug() << "---- CreateLambertSphereTest Starting ----";
 
     DREAM3D_REGISTER_TEST(TestFilterAvailability());
 
@@ -162,7 +162,9 @@ public:
     DREAM3D_REGISTER_TEST(RemoveTestFiles())
   }
 
-private:
-  CreateLambertSphereTest(const CreateLambertSphereTest&); // Copy Constructor Not Implemented
-  void operator=(const CreateLambertSphereTest&);          // Move assignment Not Implemented
+public:
+  CreateLambertSphereTest(const CreateLambertSphereTest&) = delete;            // Copy Constructor Not Implemented
+  CreateLambertSphereTest(CreateLambertSphereTest&&) = delete;                 // Move Constructor Not Implemented
+  CreateLambertSphereTest& operator=(const CreateLambertSphereTest&) = delete; // Copy Assignment Not Implemented
+  CreateLambertSphereTest& operator=(CreateLambertSphereTest&&) = delete;      // Move Assignment Not Implemented
 };

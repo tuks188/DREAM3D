@@ -4,6 +4,13 @@
 
 #include "GenerateQuaternionConjugate.h"
 
+#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_for.h>
+#include <tbb/partitioner.h>
+#include <tbb/task_scheduler_init.h>
+#endif
+
 #include "SIMPLib/Common/Constants.h"
 #include "SIMPLib/FilterParameters/BooleanFilterParameter.h"
 #include "SIMPLib/FilterParameters/DataArrayCreationFilterParameter.h"
@@ -12,12 +19,12 @@
 #include "OrientationAnalysis/OrientationAnalysisConstants.h"
 #include "OrientationAnalysis/OrientationAnalysisVersion.h"
 
-#ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-#include <tbb/blocked_range.h>
-#include <tbb/parallel_for.h>
-#include <tbb/partitioner.h>
-#include <tbb/task_scheduler_init.h>
-#endif
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
 
 class GenerateQuaternionConjugateImpl
 {
@@ -82,8 +89,8 @@ GenerateQuaternionConjugate::~GenerateQuaternionConjugate() = default;
 // -----------------------------------------------------------------------------
 void GenerateQuaternionConjugate::initialize()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   setCancel(false);
 }
 
@@ -92,10 +99,10 @@ void GenerateQuaternionConjugate::initialize()
 // -----------------------------------------------------------------------------
 void GenerateQuaternionConjugate::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   DataArraySelectionFilterParameter::RequirementType dasReq;
-  QVector<QVector<size_t>> comp;
-  comp.push_back(QVector<size_t>(1, 4));
+  std::vector<std::vector<size_t>> comp;
+  comp.push_back(std::vector<size_t>(1, 4));
   dasReq.componentDimensions = comp;
   dasReq.daTypes = { SIMPL::TypeNames::Float };
   parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Quaternion Array", QuaternionDataArrayPath, FilterParameter::Parameter, GenerateQuaternionConjugate, dasReq));
@@ -110,10 +117,10 @@ void GenerateQuaternionConjugate::setupFilterParameters()
 // -----------------------------------------------------------------------------
 void GenerateQuaternionConjugate::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   cDims[0] = 4;
   m_QuaternionsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getQuaternionDataArrayPath(), cDims);
   if(nullptr != m_QuaternionsPtr.lock())
@@ -122,8 +129,7 @@ void GenerateQuaternionConjugate::dataCheck()
   }
 
   cDims[0] = 4;
-  m_OutputQuaternionsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
-      this, getOutputDataArrayPath(), 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_OutputQuaternionsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, getOutputDataArrayPath(), 0, cDims, "", DataArrayID31);
   if(nullptr != m_OutputQuaternionsPtr.lock())
   {
     m_OutputQuaternions = m_OutputQuaternionsPtr.lock()->getPointer(0);
@@ -160,7 +166,7 @@ void GenerateQuaternionConjugate::execute()
 {
   initialize();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }

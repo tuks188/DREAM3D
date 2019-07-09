@@ -36,7 +36,6 @@
 
 #include "ModifiedLambertProjection.h"
 
-#include <QtCore/QSet>
 
 
 #include "SIMPLib/Math/SIMPLibMath.h"
@@ -54,16 +53,12 @@ ModifiedLambertProjection::ModifiedLambertProjection() :
   m_MaxCoord(0.0),
   m_MinCoord(0.0)
 {
-
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-ModifiedLambertProjection::~ModifiedLambertProjection()
-{
-
-}
+ModifiedLambertProjection::~ModifiedLambertProjection() = default;
 
 // -----------------------------------------------------------------------------
 //
@@ -113,7 +108,7 @@ ModifiedLambertProjection::Pointer ModifiedLambertProjection::LambertBallToSquar
 
     // Based on the XY coordinate, get the pointer index that the value corresponds to in the proper square
 //    sqIndex = squareProj->getSquareIndex(sqCoord);
-    if (nhCheck == true)
+    if(nhCheck)
     {
       //north increment by 1
 //      squareProj->addValue(ModifiedLambertProjection::NorthSquare, sqIndex, 1.0);
@@ -152,11 +147,11 @@ void ModifiedLambertProjection::initializeSquares(int dims, float sphereRadius)
   m_HalfDimension = static_cast<float>(m_Dimension) / 2.0;
   m_HalfDimensionTimesStepSize = m_HalfDimension * m_StepSize;
 
-  QVector<size_t> tDims(2, m_Dimension);
-  QVector<size_t> cDims(1, 1);
-  m_NorthSquare = DoubleArrayType::CreateArray(tDims, cDims, "ModifiedLambert_NorthSquare");
+  std::vector<size_t> tDims(2, m_Dimension);
+  std::vector<size_t> cDims(1, 1);
+  m_NorthSquare = DoubleArrayType::CreateArray(tDims, cDims, "ModifiedLambert_NorthSquare", true);
   m_NorthSquare->initializeWithZeros();
-  m_SouthSquare = DoubleArrayType::CreateArray(tDims, cDims, "ModifiedLambert_SouthSquare");
+  m_SouthSquare = DoubleArrayType::CreateArray(tDims, cDims, "ModifiedLambert_SouthSquare", true);
   m_SouthSquare->initializeWithZeros();
 
 
@@ -169,7 +164,7 @@ int ModifiedLambertProjection::writeHDF5Data(hid_t groupId)
 {
   int err = -1;
   #if 0
-  QVector<size_t> dims = { static_cast<size_t>(m_Dimension), static_cast<size_t>(m_Dimension), 1};
+  std::vector<size_t> dims = { static_cast<size_t>(m_Dimension), static_cast<size_t>(m_Dimension), 1};
   err = m_NorthSquare->writeH5Data(groupId, dims);
   std::cout << "Err: " << err << std::endl;
   err = m_SouthSquare->writeH5Data(groupId, dims);
@@ -322,10 +317,8 @@ double ModifiedLambertProjection::getValue(Square square, int index)
   {
     return m_NorthSquare->getValue(index);
   }
-  else
-  {
+
     return m_SouthSquare->getValue(index);
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -402,15 +395,13 @@ double ModifiedLambertProjection::getInterpolatedValue(Square square, float* sqC
     float interpolatedIntensity = ((intensity1 * (1 - modX) * (1 - modY)) + (intensity2 * (modX) * (1 - modY)) + (intensity3 * (1 - modX) * (modY)) + (intensity4 * (modX) * (modY)));
     return interpolatedIntensity;
   }
-  else
-  {
+
     float intensity1 = m_SouthSquare->getValue((abin1) + (bbin1 * m_Dimension));
     float intensity2 = m_SouthSquare->getValue((abin2) + (bbin2 * m_Dimension));
     float intensity3 = m_SouthSquare->getValue((abin3) + (bbin3 * m_Dimension));
     float intensity4 = m_SouthSquare->getValue((abin4) + (bbin4 * m_Dimension));
     float interpolatedIntensity = ((intensity1 * (1 - modX) * (1 - modY)) + (intensity2 * (modX) * (1 - modY)) + (intensity3 * (1 - modX) * (modY)) + (intensity4 * (modX) * (modY)));
     return interpolatedIntensity;
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -580,7 +571,7 @@ void ModifiedLambertProjection::createStereographicProjection(int dim, DoubleArr
           }
           nhCheck = getSquareCoord(xyz, sqCoord);
           //sqIndex = getSquareIndex(sqCoord);
-          if (nhCheck == true)
+          if(nhCheck)
           {
             //get Value from North square
             intensity[index] += getInterpolatedValue(ModifiedLambertProjection::NorthSquare, sqCoord);
@@ -604,9 +595,9 @@ void ModifiedLambertProjection::createStereographicProjection(int dim, DoubleArr
 // -----------------------------------------------------------------------------
 DoubleArrayType::Pointer ModifiedLambertProjection::createStereographicProjection(int dim)
 {
-  QVector<size_t> tDims(2, dim);
-  QVector<size_t> cDims(1, 1);
-  DoubleArrayType::Pointer stereoIntensity = DoubleArrayType::CreateArray(tDims, cDims, "ModifiedLambertProjection_StereographicProjection");
+  std::vector<size_t> tDims(2, dim);
+  std::vector<size_t> cDims(1, 1);
+  DoubleArrayType::Pointer stereoIntensity = DoubleArrayType::CreateArray(tDims, cDims, "ModifiedLambertProjection_StereographicProjection", true);
   stereoIntensity->initializeWithZeros();
   createStereographicProjection(dim, stereoIntensity.get());
   return stereoIntensity;

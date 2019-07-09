@@ -38,6 +38,7 @@
 #include "SIMPLib/Common/Constants.h"
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/AttributeMatrixSelectionFilterParameter.h"
+#include "SIMPLib/FilterParameters/DataContainerCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/FourthOrderPolynomialFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedChoicesFilterParameter.h"
@@ -94,7 +95,7 @@ WarpRegularGrid::~WarpRegularGrid() = default;
 // -----------------------------------------------------------------------------
 void WarpRegularGrid::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   {
     LinkedChoicesFilterParameter::Pointer parameter = LinkedChoicesFilterParameter::New();
@@ -129,7 +130,7 @@ void WarpRegularGrid::setupFilterParameters()
   QStringList linkedProps;
   linkedProps << "NewDataContainerName";
   parameters.push_back(SIMPL_NEW_LINKED_BOOL_FP("Save as New Data Container", SaveAsNewDataContainer, FilterParameter::Parameter, WarpRegularGrid, linkedProps));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Data Container", NewDataContainerName, FilterParameter::CreatedArray, WarpRegularGrid));
+  parameters.push_back(SIMPL_NEW_DC_CREATION_FP("Data Container", NewDataContainerName, FilterParameter::CreatedArray, WarpRegularGrid));
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::RequiredArray));
   {
     AttributeMatrixSelectionFilterParameter::RequirementType req = AttributeMatrixSelectionFilterParameter::CreateRequirement(AttributeMatrix::Type::Cell, IGeometry::Type::Image);
@@ -144,7 +145,7 @@ void WarpRegularGrid::setupFilterParameters()
 void WarpRegularGrid::readFilterParameters(AbstractFilterParametersReader* reader, int index)
 {
   reader->openFilterGroup(this, index);
-  setNewDataContainerName(reader->readString("NewDataContainerName", getNewDataContainerName()));
+  setNewDataContainerName(reader->readDataArrayPath("NewDataContainerName", getNewDataContainerName()));
   setCellAttributeMatrixPath(reader->readDataArrayPath("CellAttributeMatrixPath", getCellAttributeMatrixPath()));
   setSecondOrderACoeff(reader->readFloat2ndOrderPoly("SecondOrderACoeff", getSecondOrderACoeff()));
   setSecondOrderBCoeff(reader->readFloat2ndOrderPoly("SecondOrderBCoeff", getSecondOrderBCoeff()));
@@ -170,13 +171,13 @@ void WarpRegularGrid::dataCheck()
 {
   getDataContainerArray()->getPrereqAttributeMatrixFromPath<AbstractFilter>(this, getCellAttributeMatrixPath(), -301);
 
-  if(m_SaveAsNewDataContainer == false)
+  if(!m_SaveAsNewDataContainer)
   {
     getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getCellAttributeMatrixPath().getDataContainerName());
   }
   else
   {
-    getDataContainerArray()->duplicateDataContainer(getCellAttributeMatrixPath().getDataContainerName(), getNewDataContainerName());
+    getDataContainerArray()->duplicateDataContainer(getCellAttributeMatrixPath().getDataContainerName(), getNewDataContainerName().getDataContainerName());
   }
 }
 
@@ -216,16 +217,16 @@ void WarpRegularGrid::determine_warped_coordinates(float x, float y, float& newX
 // -----------------------------------------------------------------------------
 void WarpRegularGrid::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   DataContainer::Pointer m;
-  if(m_SaveAsNewDataContainer == false)
+  if(!m_SaveAsNewDataContainer)
   {
     m = getDataContainerArray()->getDataContainer(getCellAttributeMatrixPath().getDataContainerName());
   }
@@ -237,10 +238,8 @@ void WarpRegularGrid::execute()
   AttributeMatrix::Pointer cellAttrMat = m->getAttributeMatrix(getCellAttributeMatrixPath().getAttributeMatrixName());
   AttributeMatrix::Pointer newCellAttrMat = cellAttrMat->deepCopy(false);
 
-  size_t dims[3] = {0, 0, 0};
-  std::tie(dims[0], dims[1], dims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
-  float res[3] = {0.0f, 0.0f, 0.0f};
-  m->getGeometryAs<ImageGeom>()->getResolution(res);
+  SizeVec3Type dims = m->getGeometryAs<ImageGeom>()->getDimensions();
+  FloatVec3Type res = m->getGeometryAs<ImageGeom>()->getSpacing();
   size_t totalPoints = m->getGeometryAs<ImageGeom>()->getNumberOfElements();
 
   float x = 0.0f, y = 0.0f, z = 0.0f;
@@ -254,7 +253,7 @@ void WarpRegularGrid::execute()
   for(size_t i = 0; i < dims[2]; i++)
   {
     QString ss = QObject::tr("Warping Data - %1 Percent Complete").arg(((float)i / dims[2]) * 100);
-    notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+    notifyStatusMessage(ss);
     for(size_t j = 0; j < dims[1]; j++)
     {
       for(size_t k = 0; k < dims[0]; k++)
@@ -291,7 +290,7 @@ void WarpRegularGrid::execute()
     // the data container this will over write the current array with
     // the same name. At least in theory
     IDataArray::Pointer data = p->createNewArray(p->getNumberOfTuples(), p->getComponentDimensions(), p->getName());
-    data->resize(totalPoints);
+    data->resizeTuples(totalPoints);
     void* source = nullptr;
     void* destination = nullptr;
     size_t newIndicies_I = 0;
@@ -300,7 +299,7 @@ void WarpRegularGrid::execute()
     {
       newIndicies_I = newindicies[i];
 
-      if(goodPoint[i] == true)
+      if(goodPoint[i])
       {
         source = p->getVoidPointer((nComp * newIndicies_I));
         destination = data->getVoidPointer((data->getNumberOfComponents() * i));
@@ -313,12 +312,10 @@ void WarpRegularGrid::execute()
       }
     }
     cellAttrMat->removeAttributeArray(*iter);
-    newCellAttrMat->addAttributeArray(*iter, data);
+    newCellAttrMat->insertOrAssign(data);
   }
   m->removeAttributeMatrix(getCellAttributeMatrixPath().getAttributeMatrixName());
-  m->addAttributeMatrix(getCellAttributeMatrixPath().getAttributeMatrixName(), newCellAttrMat);
-
-  notifyStatusMessage(getHumanLabel(), "Complete");
+  m->addOrReplaceAttributeMatrix(newCellAttrMat);
 }
 
 // -----------------------------------------------------------------------------
@@ -327,7 +324,7 @@ void WarpRegularGrid::execute()
 AbstractFilter::Pointer WarpRegularGrid::newFilterInstance(bool copyFilterParameters) const
 {
   WarpRegularGrid::Pointer filter = WarpRegularGrid::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

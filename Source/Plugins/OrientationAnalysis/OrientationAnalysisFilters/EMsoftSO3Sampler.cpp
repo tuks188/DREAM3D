@@ -37,6 +37,7 @@
 #include "SIMPLib/FilterParameters/DoubleFilterParameter.h"
 #include "SIMPLib/FilterParameters/IntFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedChoicesFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Math/SIMPLibMath.h"
@@ -48,7 +49,15 @@
 #include "OrientationAnalysis/OrientationAnalysisConstants.h"
 #include "OrientationAnalysis/OrientationAnalysisVersion.h"
 
+enum createdPathID : RenameDataPath::DataID_t
+{
+  AttributeMatrixID21 = 21,
+  AttributeMatrixID22 = 22,
 
+  DataArrayID31 = 31,
+
+  DataContainerID = 1
+};
 
 // -----------------------------------------------------------------------------
 //
@@ -62,16 +71,14 @@ EMsoftSO3Sampler::EMsoftSO3Sampler()
 , m_OffsetGrid(false)
 , m_DataContainerName(SIMPL::Defaults::ImageDataContainerName)
 , m_EMsoftAttributeMatrixName(SIMPL::Defaults::CellAttributeMatrixName)
-, m_EulerAngles(nullptr)
 {
-  m_RefOr.x = 0.0;
-  m_RefOr.y = 0.0;
-  m_RefOr.z = 0.0;
+  m_RefOr[0] = 0.0;
+  m_RefOr[1] = 0.0;
+  m_RefOr[2] = 0.0;
 
-  m_RefOrFull.x = 0.0;
-  m_RefOrFull.y = 0.0;
-  m_RefOrFull.z = 0.0;
-
+  m_RefOrFull[0] = 0.0;
+  m_RefOrFull[1] = 0.0;
+  m_RefOrFull[2] = 0.0;
 }
 
 // -----------------------------------------------------------------------------
@@ -84,7 +91,7 @@ EMsoftSO3Sampler::~EMsoftSO3Sampler() = default;
 // -----------------------------------------------------------------------------
 void EMsoftSO3Sampler::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   {
     LinkedChoicesFilterParameter::Pointer parameter = LinkedChoicesFilterParameter::New();
     parameter->setHumanLabel("Select the desired SO(3) sampling mode");
@@ -131,7 +138,7 @@ void EMsoftSO3Sampler::setupFilterParameters()
 
   parameters.push_back(SeparatorFilterParameter::New("Output Data", FilterParameter::Parameter));
 
-  parameters.push_back(SIMPL_NEW_STRING_FP("Euler Angles", EulerAnglesArrayName, FilterParameter::CreatedArray, EMsoftSO3Sampler));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Euler Angles", EulerAnglesArrayName, DataContainerName, EMsoftAttributeMatrixName, FilterParameter::CreatedArray, EMsoftSO3Sampler));
 
   setFilterParameters(parameters);
 }
@@ -148,8 +155,8 @@ void EMsoftSO3Sampler::initialize()
 // -----------------------------------------------------------------------------
 void EMsoftSO3Sampler::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   // Try to get the DataContainer that the user has named.
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getDataContainerName());
@@ -158,39 +165,38 @@ void EMsoftSO3Sampler::dataCheck()
   {
     m = getDataContainerArray()->createNonPrereqDataContainer(this, getDataContainerName());
   }
-  if(getErrorCondition() < 0 || nullptr == m.get())
+  if(getErrorCode() < 0 || nullptr == m.get())
   {
     return;
   } // This truly is an error condition.
 
-  // DataContainer::Pointer m = getDataContainerArray()->createNonPrereqDataContainer<AbstractFilter>(this, getDataContainerName());
-  // if (getErrorCondition() < 0) { return; }
+  // DataContainer::Pointer m = getDataContainerArray()->createNonPrereqDataContainer<AbstractFilter>(this, getDataContainerName(), DataContainerID);
+  // if (getErrorCode() < 0) { return; }
 
   // Now try to either get or create the needed AttributeMatrix
-  QVector<size_t> tDims(1, 1);
+  std::vector<size_t> tDims(1, 1);
   AttributeMatrix::Pointer emsoftAttrMat = m->getAttributeMatrix(getEMsoftAttributeMatrixName());
   if(nullptr == emsoftAttrMat.get())
   {
-    emsoftAttrMat = m->createNonPrereqAttributeMatrix(this, getEMsoftAttributeMatrixName(), tDims, AttributeMatrix::Type::Generic);
+    emsoftAttrMat = m->createNonPrereqAttributeMatrix(this, getEMsoftAttributeMatrixName(), tDims, AttributeMatrix::Type::Generic, AttributeMatrixID21);
   }
-  if(getErrorCondition() < 0 || nullptr == emsoftAttrMat.get())
+  if(getErrorCode() < 0 || nullptr == emsoftAttrMat.get())
   {
     return;
   }
 
-  //  QVector<size_t> tDims(1, 1);
-  //  AttributeMatrix::Pointer emsoftAttrMat = m->createNonPrereqAttributeMatrix(this, getEMsoftAttributeMatrixName(), tDims, AttributeMatrix::Type::Generic);
-  //  if (getErrorCondition() < 0) { return; }
-  //  m->addAttributeMatrix(emsoftAttrMat->getName(),emsoftAttrMat);
+  //  std::vector<size_t> tDims(1, 1);
+  //  AttributeMatrix::Pointer emsoftAttrMat = m->createNonPrereqAttributeMatrix(this, getEMsoftAttributeMatrixName(), tDims, AttributeMatrix::Type::Generic, AttributeMatrixID22);
+  //  if (getErrorCode() < 0) { return; }
+  //  m->addOrReplaceAttributeMatrix(emsoftAttrMat->getName(),emsoftAttrMat);
 
   // check on the point group index; must be between 1 and 32.
   if(getsampleModeSelector() == 0)
   {
     if((getPointGroup() < 1) || (getPointGroup() > 32))
     {
-      setWarningCondition(-70001);
       QString ss = QObject::tr("Point group number must fall in interval [1,32]");
-      notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
+      setWarningCondition(-70001, ss);
     }
   }
 
@@ -199,50 +205,44 @@ void EMsoftSO3Sampler::dataCheck()
   {
     if((getMisOr() < 0.0) || (getMisOr() > 90.0))
     {
-      setWarningCondition(-70002);
       QString ss = QObject::tr("Misorientation angle must fall in interval [0,90]");
-      notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
+      setWarningCondition(-70002, ss);
     }
-    if((getRefOr().x < 0.0) || (getRefOr().x > 360.0f) || (getRefOr().y < 0.0f) || (getRefOr().y > 180.0f) || (getRefOr().z < 0.0f) || (getRefOr().z > 360.0f))
+    if((getRefOr()[0] < 0.0) || (getRefOr()[0] > 360.0f) || (getRefOr()[1] < 0.0f) || (getRefOr()[1] > 180.0f) || (getRefOr()[2] < 0.0f) || (getRefOr()[2] > 360.0f))
     {
-      setWarningCondition(-70003);
       QString ss = QObject::tr("Euler angles must be positive and less than [360°,180°,360°]");
-      notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
+      setWarningCondition(-70003, ss);
     }
   }
   if(getsampleModeSelector() == 2)
   {
     if((getMisOrFull() < 0.0) || (getMisOrFull() > 90.0))
     {
-      setWarningCondition(-70004);
       QString ss = QObject::tr("Misorientation angle must fall in interval [0,90]");
-      notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
+      setWarningCondition(-70004, ss);
     }
-    if((getRefOrFull().x < 0.0f) || (getRefOrFull().x > 360.0f) || (getRefOrFull().y < 0.0f) || (getRefOrFull().y > 180.0f) || (getRefOrFull().z < 0.0f) || (getRefOrFull().z > 360.0f))
+    if((getRefOrFull()[0] < 0.0f) || (getRefOrFull()[0] > 360.0f) || (getRefOrFull()[1] < 0.0f) || (getRefOrFull()[1] > 180.0f) || (getRefOrFull()[2] < 0.0f) || (getRefOrFull()[2] > 360.0f))
     {
-      setWarningCondition(-70005);
       QString ss = QObject::tr("Euler angles must be positive and less than [360°,180°,360°]");
-      notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
+      setWarningCondition(-70005, ss);
     }
   }
 
   // check on the number of sampling intervals (>1)
   if(getNumsp() < 1)
   {
-    setWarningCondition(-70002);
     QString ss = QObject::tr("Number of sampling intervals must be at least 1 ");
-    notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
+    setWarningCondition(-70002, ss);
   }
 
   QVector<DataArrayPath> dataArraypaths;
 
   // allocate space for the EulerAngles array, which will subsequently be filled by the SO(3) sampling code.
-  QVector<size_t> cDims(1);
+  std::vector<size_t> cDims(1);
   cDims[0] = 3;
   DataArrayPath tempPath;
-  tempPath.update(getDataContainerName(), getEMsoftAttributeMatrixName(), getEulerAnglesArrayName());
-  m_EulerAnglesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0.0f,
-                                                                                                                    cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  tempPath.update(getDataContainerName().getDataContainerName(), getEMsoftAttributeMatrixName(), getEulerAnglesArrayName());
+  m_EulerAnglesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, tempPath, 0.0f, cDims, "", DataArrayID31);
   if(nullptr != m_EulerAnglesPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_EulerAngles = m_EulerAnglesPtr.lock()->getPointer(0);
@@ -270,10 +270,10 @@ void EMsoftSO3Sampler::preflight()
 // -----------------------------------------------------------------------------
 void EMsoftSO3Sampler::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -364,7 +364,7 @@ void EMsoftSO3Sampler::execute()
       if(Di > Dc)
       {
         QString ss = QString("Euler Angles | Tested: %1 of %2 | Inside RFZ: %3 ").arg(QString::number(Di), QString::number(Totp), QString::number(Dg));
-        notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+        notifyStatusMessage(ss);
         Dc += Dn;
       }
       if(getCancel())
@@ -388,9 +388,9 @@ void EMsoftSO3Sampler::execute()
 
     // convert the reference orientation to a 3-component Rodrigues vector sigma
     DOrientArrayType sigm(4), sigma(3), referenceOrientation(3);
-    referenceOrientation[0] = static_cast<double>(getRefOr().x * SIMPLib::Constants::k_PiOver180);
-    referenceOrientation[1] = static_cast<double>(getRefOr().y * SIMPLib::Constants::k_PiOver180);
-    referenceOrientation[2] = static_cast<double>(getRefOr().z * SIMPLib::Constants::k_PiOver180);
+    referenceOrientation[0] = static_cast<double>(getRefOr()[0] * SIMPLib::Constants::k_PiOver180);
+    referenceOrientation[1] = static_cast<double>(getRefOr()[1] * SIMPLib::Constants::k_PiOver180);
+    referenceOrientation[2] = static_cast<double>(getRefOr()[2] * SIMPLib::Constants::k_PiOver180);
     OrientationTransformsType::eu2ro(referenceOrientation, sigm);
     sigma[0] = sigm[0] * sigm[3];
     sigma[1] = sigm[1] * sigm[3];
@@ -500,7 +500,7 @@ void EMsoftSO3Sampler::execute()
       if(Dg > Dc)
       {
         QString ss = QString("Euler Angles | Generated: %1 / %2").arg(QString::number(Dg), QString::number(Totp));
-        notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+        notifyStatusMessage(ss);
         Dc += Dn;
       }
     }
@@ -537,7 +537,7 @@ void EMsoftSO3Sampler::execute()
         if(Dg > Dc)
         {
           QString ss = QString("Euler Angles | Generated: %1 / %2").arg(QString::number(Dg), QString::number(Totp));
-          notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+          notifyStatusMessage(ss);
           Dc += Dn;
         }
       }
@@ -545,8 +545,8 @@ void EMsoftSO3Sampler::execute()
   }
 
   // resize the EulerAngles array to the number of items in FZlist; don't forget to redefine the hard pointer
-  AttributeMatrix::Pointer am = getDataContainerArray()->getAttributeMatrix(DataArrayPath(getDataContainerName(), getEMsoftAttributeMatrixName(), ""));
-  QVector<size_t> tDims(1, FZlist.size());
+  AttributeMatrix::Pointer am = getDataContainerArray()->getAttributeMatrix(DataArrayPath(getDataContainerName().getDataContainerName(), getEMsoftAttributeMatrixName(), ""));
+  std::vector<size_t> tDims(1, FZlist.size());
   am->resizeAttributeArrays(tDims);
   m_EulerAngles = m_EulerAnglesPtr.lock()->getPointer(0);
 
@@ -563,7 +563,6 @@ void EMsoftSO3Sampler::execute()
     m_EulerAngles[j * 3 + 2] = static_cast<float>(eu[2]);
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -630,15 +629,21 @@ bool EMsoftSO3Sampler::IsinsideFZ(double* rod, int FZtype, int FZorder)
     break;
   case OrientationAnalysisConstants::DihedralType:
     if(!std::isinf(rod[3]))
+    {
       insideFZ = insideDihedralFZ(rod, FZorder);
+    }
     break;
   case OrientationAnalysisConstants::TetrahedralType:
     if(!std::isinf(rod[3]))
+    {
       insideFZ = insideCubicFZ(rod, OrientationAnalysisConstants::TetrahedralType);
+    }
     break;
   case OrientationAnalysisConstants::OctahedralType:
     if(!std::isinf(rod[3]))
+    {
       insideFZ = insideCubicFZ(rod, OrientationAnalysisConstants::OctahedralType);
+    }
     break;
   default:
     insideFZ = false;
@@ -758,7 +763,7 @@ bool EMsoftSO3Sampler::insideCubicFZ(double* rod, int ot)
 AbstractFilter::Pointer EMsoftSO3Sampler::newFilterInstance(bool copyFilterParameters) const
 {
   EMsoftSO3Sampler::Pointer filter = EMsoftSO3Sampler::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

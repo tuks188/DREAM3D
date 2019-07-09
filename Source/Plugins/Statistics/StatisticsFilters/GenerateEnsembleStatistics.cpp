@@ -42,6 +42,7 @@
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/FloatFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/PhaseTypeSelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
@@ -61,6 +62,13 @@
 #include "Statistics/StatisticsVersion.h"
 
 #include "EbsdLib/EbsdConstants.h"
+
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
 
 // FIXME: #1 Need to update this to link the phase selectionwidget to the rest of the GUI, so that it preflights after it's updated.
 // FIXME: #2 Need to fix phase selectionWidget to not show phase 0
@@ -101,20 +109,6 @@ GenerateEnsembleStatistics::GenerateEnsembleStatistics()
 , m_CalculateMDF(false)
 , m_CalculateAxisODF(false)
 , m_SizeCorrelationResolution(1)
-, m_AvgQuats(nullptr)
-, m_FeatureEulerAngles(nullptr)
-, m_Volumes(nullptr)
-, m_BiasedFeatures(nullptr)
-, m_SurfaceFeatures(nullptr)
-, m_FeaturePhases(nullptr)
-, m_AxisEulerAngles(nullptr)
-, m_RadialDistFunc(nullptr)
-, m_Omega3s(nullptr)
-, m_AspectRatios(nullptr)
-, m_EquivalentDiameters(nullptr)
-, m_Neighborhoods(nullptr)
-, m_CrystalStructures(nullptr)
-, m_PhaseTypes(nullptr)
 {
   m_DistributionAnalysis.push_back(BetaOps::New());
   m_DistributionAnalysis.push_back(LogNormalOps::New());
@@ -143,7 +137,7 @@ void GenerateEnsembleStatistics::setupFilterParameters()
   choices.push_back("Beta");
   choices.push_back("Lognormal");
   choices.push_back("Power");
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   QStringList phaseTypeStrings;
   PhaseType::getPhaseTypeStrings(phaseTypeStrings);
   PhaseTypeSelectionFilterParameter::Pointer phaseType_parameter = PhaseTypeSelectionFilterParameter::New(
@@ -152,7 +146,7 @@ void GenerateEnsembleStatistics::setupFilterParameters()
         SIMPL_BIND_GETTER(GenerateEnsembleStatistics, this, PhaseTypeData),
         "PhaseTypeArray", "PhaseCount", "CellEnsembleAttributeMatrixPath", phaseTypeStrings);
   parameters.push_back(phaseType_parameter);
-  parameters.push_back(SIMPL_NEW_FLOAT_FP("Size Correlation Resolution", SizeCorrelationResolution, FilterParameter::Parameter, GenerateEnsembleStatistics));
+  parameters.push_back(SIMPL_NEW_FLOAT_FP("Size Correlation Spacing", SizeCorrelationResolution, FilterParameter::Parameter, GenerateEnsembleStatistics));
   parameters.push_back(SeparatorFilterParameter::New("Cell Feature Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req = DataArraySelectionFilterParameter::CreateCategoryRequirement(SIMPL::TypeNames::Int32, 1, AttributeMatrix::Category::Feature);
@@ -242,9 +236,9 @@ void GenerateEnsembleStatistics::setupFilterParameters()
   }
   parameters.push_back(SeparatorFilterParameter::New("Cell Ensemble Data", FilterParameter::CreatedArray));
   // The user types in an array name for the Phase Types
-  parameters.push_back(SIMPL_NEW_STRING_FP("Phase Types", PhaseTypesArrayName, FilterParameter::CreatedArray, GenerateEnsembleStatistics));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Phase Types", PhaseTypesArrayName, CellEnsembleAttributeMatrixPath, CellEnsembleAttributeMatrixPath, FilterParameter::CreatedArray, GenerateEnsembleStatistics));
   // The user types in an array name for Statistics
-  parameters.push_back(SIMPL_NEW_STRING_FP("Statistics", StatisticsArrayName, FilterParameter::CreatedArray, GenerateEnsembleStatistics));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Statistics", StatisticsArrayName, CellEnsembleAttributeMatrixPath, CellEnsembleAttributeMatrixPath, FilterParameter::CreatedArray, GenerateEnsembleStatistics));
 
   linkedProps.clear();
   linkedProps << "RDFArrayPath"
@@ -393,13 +387,13 @@ void GenerateEnsembleStatistics::initialize()
 // -----------------------------------------------------------------------------
 void GenerateEnsembleStatistics::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
 
   DataArrayPath tempPath;
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
 
   setComputeSizeDistribution(getCalculateMorphologicalStats());
   setComputeAspectRatioDistribution(getCalculateMorphologicalStats());
@@ -417,12 +411,12 @@ void GenerateEnsembleStatistics::dataCheck()
   {
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeaturePhasesArrayPath());
   }
 
-  if(m_ComputeSizeDistribution == true || m_ComputeOmega3Distribution == true || m_ComputeAspectRatioDistribution == true || m_ComputeNeighborhoodDistribution == true || m_CalculateAxisODF == true)
+  if(m_ComputeSizeDistribution || m_ComputeOmega3Distribution || m_ComputeAspectRatioDistribution || m_ComputeNeighborhoodDistribution || m_CalculateAxisODF)
   {
     m_BiasedFeaturesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getBiasedFeaturesArrayPath(),
                                                                                                            cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
@@ -430,7 +424,7 @@ void GenerateEnsembleStatistics::dataCheck()
     {
       m_BiasedFeatures = m_BiasedFeaturesPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getBiasedFeaturesArrayPath());
     }
@@ -441,13 +435,13 @@ void GenerateEnsembleStatistics::dataCheck()
     {
       m_EquivalentDiameters = m_EquivalentDiametersPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getEquivalentDiametersArrayPath());
     }
   }
 
-  if(m_ComputeNeighborhoodDistribution == true)
+  if(m_ComputeNeighborhoodDistribution)
   {
     m_NeighborhoodsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getNeighborhoodsArrayPath(),
                                                                                                              cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
@@ -455,13 +449,13 @@ void GenerateEnsembleStatistics::dataCheck()
     {
       m_Neighborhoods = m_NeighborhoodsPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getNeighborhoodsArrayPath());
     }
   }
 
-  if(m_ComputeAspectRatioDistribution == true)
+  if(m_ComputeAspectRatioDistribution)
   {
     cDims[0] = 2;
     m_AspectRatiosPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getAspectRatiosArrayPath(),
@@ -470,13 +464,13 @@ void GenerateEnsembleStatistics::dataCheck()
     {
       m_AspectRatios = m_AspectRatiosPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getAspectRatiosArrayPath());
     }
   }
 
-  if(m_ComputeOmega3Distribution == true)
+  if(m_ComputeOmega3Distribution)
   {
     cDims[0] = 1;
     m_Omega3sPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getOmega3sArrayPath(),
@@ -485,13 +479,13 @@ void GenerateEnsembleStatistics::dataCheck()
     {
       m_Omega3s = m_Omega3sPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getOmega3sArrayPath());
     }
   }
 
-  if(m_CalculateAxisODF == true)
+  if(m_CalculateAxisODF)
   {
     cDims[0] = 3;
     m_AxisEulerAnglesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getAxisEulerAnglesArrayPath(),
@@ -500,13 +494,13 @@ void GenerateEnsembleStatistics::dataCheck()
     {
       m_AxisEulerAngles = m_AxisEulerAnglesPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getAxisEulerAnglesArrayPath());
     }
   }
 
-  if(m_IncludeRadialDistFunc == true)
+  if(m_IncludeRadialDistFunc)
   {
     DataArray<float>::Pointer tempPtr = getDataContainerArray()->getPrereqIDataArrayFromPath<DataArray<float>, AbstractFilter>(this, getRDFArrayPath());
     if(nullptr != tempPtr.get())
@@ -524,7 +518,7 @@ void GenerateEnsembleStatistics::dataCheck()
     } /* Now assign the raw pointer to data from the DataArray<T> object */
   }
 
-  if(m_CalculateODF == true || m_CalculateMDF == true)
+  if(m_CalculateODF || m_CalculateMDF)
   {
     cDims[0] = 1;
     m_CrystalStructuresPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<unsigned int>, AbstractFilter>(
@@ -540,13 +534,13 @@ void GenerateEnsembleStatistics::dataCheck()
     {
       m_SurfaceFeatures = m_SurfaceFeaturesPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getSurfaceFeaturesArrayPath());
     }
   }
 
-  if(m_CalculateODF == true)
+  if(m_CalculateODF)
   {
     cDims[0] = 1;
     m_VolumesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getVolumesArrayPath(),
@@ -555,7 +549,7 @@ void GenerateEnsembleStatistics::dataCheck()
     {
       m_Volumes = m_VolumesPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getVolumesArrayPath());
     }
@@ -567,13 +561,13 @@ void GenerateEnsembleStatistics::dataCheck()
     {
       m_FeatureEulerAngles = m_FeatureEulerAnglesPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getFeatureEulerAnglesArrayPath());
     }
   }
 
-  if(m_CalculateMDF == true)
+  if(m_CalculateMDF)
   {
     cDims[0] = 4;
     m_AvgQuatsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getAvgQuatsArrayPath(),
@@ -582,7 +576,7 @@ void GenerateEnsembleStatistics::dataCheck()
     {
       m_AvgQuats = m_AvgQuatsPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getAvgQuatsArrayPath());
     }
@@ -590,7 +584,7 @@ void GenerateEnsembleStatistics::dataCheck()
     // Now we are going to get a "Pointer" to the NeighborList object out of the DataContainer
     cDims[0] = 1;
     m_SharedSurfaceAreaList = getDataContainerArray()->getPrereqArrayFromPath<NeighborList<float>, AbstractFilter>(this, getSharedSurfaceAreaListArrayPath(), cDims);
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getSharedSurfaceAreaListArrayPath());
     }
@@ -598,71 +592,63 @@ void GenerateEnsembleStatistics::dataCheck()
 
   cDims[0] = 1;
   m_NeighborList = getDataContainerArray()->getPrereqArrayFromPath<NeighborList<int>, AbstractFilter>(this, getNeighborListArrayPath(), cDims);
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getNeighborListArrayPath());
   }
 
-  if(m_PhaseTypeData.size() == 0)
+  if(m_PhaseTypeData.empty())
   {
-    setErrorCondition(-1000);
-    notifyErrorMessage(getHumanLabel(), "The phase type array must contain at least one member. An Ensemble Attribute Matrix must be selected", getErrorCondition());
+    setErrorCondition(-1000, "The phase type array must contain at least one member. An Ensemble Attribute Matrix must be selected");
     return;
   }
-  else if(m_PhaseTypeData.size() == 1 && m_PhaseTypeData[0] == PhaseType::Type::Unknown)
+  if(m_PhaseTypeData.size() == 1 && m_PhaseTypeData[0] == PhaseType::Type::Unknown)
   {
-    setErrorCondition(-1001);
-    notifyErrorMessage(getHumanLabel(), "The phase type array must contain at least one member. An Ensemble Attribute Matrix must be selected", getErrorCondition());
+    setErrorCondition(-1001, "The phase type array must contain at least one member. An Ensemble Attribute Matrix must be selected");
     return;
   }
-  else
-  {
+
     cDims[0] = 1;
     tempPath.update(getCellEnsembleAttributeMatrixPath().getDataContainerName(), getCellEnsembleAttributeMatrixPath().getAttributeMatrixName(), getPhaseTypesArrayName());
-    m_PhaseTypesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<uint32_t>, AbstractFilter, uint32_t>(
-        this, tempPath, static_cast<PhaseType::EnumType>(PhaseType::Type::Unknown), cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+    m_PhaseTypesPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<uint32_t>, AbstractFilter, uint32_t>(this, tempPath, static_cast<PhaseType::EnumType>(PhaseType::Type::Unknown),
+                                                                                                                           cDims, "", DataArrayID31);
     if(nullptr != m_PhaseTypesPtr.lock())                                                   /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
     {
       m_PhaseTypes = m_PhaseTypesPtr.lock()->getPointer(0);
       m_PhaseTypeData.resize(m_PhaseTypesPtr.lock()->getNumberOfTuples());
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-  }
 
   // now create and add the stats array itself
   DataContainer::Pointer m = getDataContainerArray()->getPrereqDataContainer(this, getCellEnsembleAttributeMatrixPath().getDataContainerName());
-  if(getErrorCondition() < 0 || m == nullptr)
+  if(getErrorCode() < 0 || m == nullptr)
   {
     return;
   }
   AttributeMatrix::Pointer attrMat = m->getPrereqAttributeMatrix(this, getCellEnsembleAttributeMatrixPath().getAttributeMatrixName(), -301);
-  if(getErrorCondition() < 0 || attrMat == nullptr)
+  if(getErrorCode() < 0 || attrMat == nullptr)
   {
     return;
   }
 
-  m_StatsDataArray = StatsDataArray::CreateArray(m_PhaseTypesPtr.lock()->getNumberOfTuples(), getStatisticsArrayName());
+  m_StatsDataArray = StatsDataArray::CreateArray(m_PhaseTypesPtr.lock()->getNumberOfTuples(), getStatisticsArrayName(), true);
   m_StatsDataArray->fillArrayWithNewStatsData(m_PhaseTypesPtr.lock()->getNumberOfTuples(), m_PhaseTypes);
-  attrMat->addAttributeArray(getStatisticsArrayName(), m_StatsDataArray);
+  attrMat->insertOrAssign(m_StatsDataArray);
 
   if(m_SizeDistributionFitType != SIMPL::DistributionType::LogNormal)
   {
-    setWarningCondition(-1000);
-    notifyWarningMessage(getHumanLabel(), "The size distribution needs to be a lognormal distribution otherwise unpredictable results may occur", getWarningCondition());
+    setWarningCondition(-1000, "The size distribution needs to be a lognormal distribution otherwise unpredictable results may occur");
   }
   if(m_AspectRatioDistributionFitType != SIMPL::DistributionType::Beta)
   {
-    setWarningCondition(-1000);
-    notifyWarningMessage(getHumanLabel(), "The aspect ratio distribution needs to be a beta distribution otherwise unpredictable results may occur", getWarningCondition());
+    setWarningCondition(-1000, "The aspect ratio distribution needs to be a beta distribution otherwise unpredictable results may occur");
   }
   if(m_Omega3DistributionFitType != SIMPL::DistributionType::Beta)
   {
-    setWarningCondition(-1000);
-    notifyWarningMessage(getHumanLabel(), "The Omega3 distribution needs to be a beta distribution otherwise unpredictable results may occur", getWarningCondition());
+    setWarningCondition(-1000, "The Omega3 distribution needs to be a beta distribution otherwise unpredictable results may occur");
   }
   if(m_NeighborhoodDistributionFitType != SIMPL::DistributionType::LogNormal)
   {
-    setWarningCondition(-1000);
-    notifyWarningMessage(getHumanLabel(), "The neighborhood distribution type needs to be a lognormal distribution otherwise unpredictable results may occur", getWarningCondition());
+    setWarningCondition(-1000, "The neighborhood distribution type needs to be a lognormal distribution otherwise unpredictable results may occur");
   }
 
   getDataContainerArray()->validateNumberOfTuples<AbstractFilter>(this, dataArrayPaths);
@@ -711,7 +697,7 @@ void GenerateEnsembleStatistics::gatherSizeStats()
   float vol = 0.0f;
   for(size_t i = 1; i < numfeatures; i++)
   {
-    if(m_BiasedFeatures[i] == false)
+    if(!m_BiasedFeatures[i])
     {
       values[m_FeaturePhases[i]][0].push_back(m_EquivalentDiameters[i]);
     }
@@ -735,7 +721,7 @@ void GenerateEnsembleStatistics::gatherSizeStats()
       DistributionAnalysisOps::determineMaxAndMinValues(values[i][0], maxdiam, mindiam);
       int32_t numbins = int32_t(maxdiam / m_SizeCorrelationResolution) + 1;
       pp->setFeatureDiameterInfo(m_SizeCorrelationResolution, maxdiam, mindiam);
-      binnumbers = FloatArrayType::CreateArray(numbins, SIMPL::StringConstants::BinNumber);
+      binnumbers = FloatArrayType::CreateArray(numbins, SIMPL::StringConstants::BinNumber, true);
       DistributionAnalysisOps::determineBinNumbers(maxdiam, mindiam, m_SizeCorrelationResolution, binnumbers);
       pp->setBinNumbers(binnumbers);
     }
@@ -748,7 +734,7 @@ void GenerateEnsembleStatistics::gatherSizeStats()
       DistributionAnalysisOps::determineMaxAndMinValues(values[i][0], maxdiam, mindiam);
       int32_t numbins = int32_t(maxdiam / m_SizeCorrelationResolution) + 1;
       pp->setFeatureDiameterInfo(m_SizeCorrelationResolution, maxdiam, mindiam);
-      binnumbers = FloatArrayType::CreateArray(numbins, SIMPL::StringConstants::BinNumber);
+      binnumbers = FloatArrayType::CreateArray(numbins, SIMPL::StringConstants::BinNumber, true);
       DistributionAnalysisOps::determineBinNumbers(maxdiam, mindiam, m_SizeCorrelationResolution, binnumbers);
       pp->setBinNumbers(binnumbers);
     }
@@ -761,7 +747,7 @@ void GenerateEnsembleStatistics::gatherSizeStats()
       DistributionAnalysisOps::determineMaxAndMinValues(values[i][0], maxdiam, mindiam);
       int numbins = int(maxdiam / m_SizeCorrelationResolution) + 1;
       tp->setFeatureDiameterInfo(m_SizeCorrelationResolution, maxdiam, mindiam);
-      binnumbers = FloatArrayType::CreateArray(numbins, SIMPL::StringConstants::BinNumber);
+      binnumbers = FloatArrayType::CreateArray(numbins, SIMPL::StringConstants::BinNumber, true);
       DistributionAnalysisOps::determineBinNumbers(maxdiam, mindiam, m_SizeCorrelationResolution, binnumbers);
       tp->setBinNumbers(binnumbers);
     }
@@ -829,7 +815,7 @@ void GenerateEnsembleStatistics::gatherAspectRatioStats()
     if (m_PhaseTypes[m_FeaturePhases[i]] == static_cast<PhaseType::EnumType>(PhaseType::Type::Primary) || m_PhaseTypes[m_FeaturePhases[i]] == static_cast<PhaseType::EnumType>(PhaseType::Type::Precipitate) ||
       m_PhaseTypes[m_FeaturePhases[i]] == static_cast<PhaseType::EnumType>(PhaseType::Type::Transformation))
     {
-      if(m_BiasedFeatures[i] == false)
+      if(!m_BiasedFeatures[i])
       {
         bin = size_t((m_EquivalentDiameters[i] - mindiams[m_FeaturePhases[i]]) / binsteps[m_FeaturePhases[i]]);
         bvalues[m_FeaturePhases[i]][bin].push_back(m_AspectRatios[2 * i]);
@@ -917,7 +903,7 @@ void GenerateEnsembleStatistics::gatherOmega3Stats()
     if (m_PhaseTypes[m_FeaturePhases[i]] == static_cast<PhaseType::EnumType>(PhaseType::Type::Primary) || m_PhaseTypes[m_FeaturePhases[i]] == static_cast<PhaseType::EnumType>(PhaseType::Type::Precipitate) ||
       m_PhaseTypes[m_FeaturePhases[i]] == static_cast<PhaseType::EnumType>(PhaseType::Type::Transformation))
     {
-      if(m_BiasedFeatures[i] == false)
+      if(!m_BiasedFeatures[i])
       {
         bin = size_t((m_EquivalentDiameters[i] - mindiams[m_FeaturePhases[i]]) / binsteps[m_FeaturePhases[i]]);
         values[m_FeaturePhases[i]][bin].push_back(m_Omega3s[i]);
@@ -999,7 +985,7 @@ void GenerateEnsembleStatistics::gatherNeighborhoodStats()
     if (m_PhaseTypes[m_FeaturePhases[i]] == static_cast<PhaseType::EnumType>(PhaseType::Type::Primary) || m_PhaseTypes[m_FeaturePhases[i]] == static_cast<PhaseType::EnumType>(PhaseType::Type::Precipitate) ||
       m_PhaseTypes[m_FeaturePhases[i]] == static_cast<PhaseType::EnumType>(PhaseType::Type::Transformation))
     {
-      if(m_BiasedFeatures[i] == false)
+      if(!m_BiasedFeatures[i])
       {
         bin = size_t((m_EquivalentDiameters[i] - mindiams[m_FeaturePhases[i]]) / binsteps[m_FeaturePhases[i]]);
         values[m_FeaturePhases[i]][bin].push_back(static_cast<float>(m_Neighborhoods[i]));
@@ -1052,7 +1038,7 @@ void GenerateEnsembleStatistics::gatherODFStats()
     if(m_CrystalStructures[i] == Ebsd::CrystalStructure::Hexagonal_High)
     {
       dims = 36 * 36 * 12;
-      eulerodf[i] = FloatArrayType::CreateArray(dims, SIMPL::StringConstants::ODF);
+      eulerodf[i] = FloatArrayType::CreateArray(dims, SIMPL::StringConstants::ODF, true);
       for(uint64_t j = 0; j < dims; j++)
       {
         eulerodf[i]->setValue(j, 0.0);
@@ -1061,7 +1047,7 @@ void GenerateEnsembleStatistics::gatherODFStats()
     else if(m_CrystalStructures[i] == Ebsd::CrystalStructure::Cubic_High)
     {
       dims = 18 * 18 * 18;
-      eulerodf[i] = FloatArrayType::CreateArray(dims, SIMPL::StringConstants::ODF);
+      eulerodf[i] = FloatArrayType::CreateArray(dims, SIMPL::StringConstants::ODF, true);
       for(uint64_t j = 0; j < dims; j++)
       {
         eulerodf[i]->setValue(j, 0.0);
@@ -1070,14 +1056,14 @@ void GenerateEnsembleStatistics::gatherODFStats()
   }
   for(size_t i = 1; i < numfeatures; i++)
   {
-    if(m_SurfaceFeatures[i] == false)
+    if(!m_SurfaceFeatures[i])
     {
       totalvol[m_FeaturePhases[i]] = totalvol[m_FeaturePhases[i]] + m_Volumes[i];
     }
   }
   for(size_t i = 1; i < numfeatures; i++)
   {
-    if(m_SurfaceFeatures[i] == false)
+    if(!m_SurfaceFeatures[i])
     {
       phase = m_CrystalStructures[m_FeaturePhases[i]];
       FOrientArrayType eu(&(m_FeatureEulerAngles[3 * i]), 3); // Wrap the pointer
@@ -1143,12 +1129,12 @@ void GenerateEnsembleStatistics::gatherMDFStats()
     if(Ebsd::CrystalStructure::Hexagonal_High == m_CrystalStructures[i])
     {
       numbins = 36 * 36 * 12;
-      misobin[i] = FloatArrayType::CreateArray(numbins, SIMPL::StringConstants::MisorientationBins);
+      misobin[i] = FloatArrayType::CreateArray(numbins, SIMPL::StringConstants::MisorientationBins, true);
     }
     else if(Ebsd::CrystalStructure::Cubic_High == m_CrystalStructures[i])
     {
       numbins = 18 * 18 * 18;
-      misobin[i] = FloatArrayType::CreateArray(numbins, SIMPL::StringConstants::MisorientationBins);
+      misobin[i] = FloatArrayType::CreateArray(numbins, SIMPL::StringConstants::MisorientationBins, true);
     }
     // Now initialize all bins to 0.0
     for(int32_t j = 0; j < numbins; j++)
@@ -1177,7 +1163,7 @@ void GenerateEnsembleStatistics::gatherMDFStats()
         FOrientArrayType rod(4);
         FOrientTransformsType::ax2ro(FOrientArrayType(n1, n2, n3, w), rod);
 
-        if((nname > i || m_SurfaceFeatures[nname] == true))
+        if((nname > i || m_SurfaceFeatures[nname]))
         {
           mbin = m_OrientationOps[phase1]->getMisoBin(rod);
           nsa = neighborsurfacearealist[i][j];
@@ -1232,7 +1218,7 @@ void GenerateEnsembleStatistics::gatherAxisODFStats()
   for(size_t i = 1; i < numXTals; i++)
   {
     totalaxes[i] = 0.0;
-    axisodf[i] = FloatArrayType::CreateArray((36 * 36 * 36), SIMPL::StringConstants::AxisOrientation);
+    axisodf[i] = FloatArrayType::CreateArray((36 * 36 * 36), SIMPL::StringConstants::AxisOrientation, true);
     for(int32_t j = 0; j < (36 * 36 * 36); j++)
     {
       axisodf[i]->setValue(j, 0.0);
@@ -1240,14 +1226,14 @@ void GenerateEnsembleStatistics::gatherAxisODFStats()
   }
   for(size_t i = 1; i < numfeatures; i++)
   {
-    if(m_BiasedFeatures[i] == false)
+    if(!m_BiasedFeatures[i])
     {
       totalaxes[m_FeaturePhases[i]]++;
     }
   }
   for(size_t i = 1; i < numfeatures; i++)
   {
-    if(m_BiasedFeatures[i] == false)
+    if(!m_BiasedFeatures[i])
     {
       FOrientArrayType rod(4);
       FOrientTransformsType::eu2ro(FOrientArrayType(&(m_AxisEulerAngles[3 * i]), 3), rod);
@@ -1395,7 +1381,7 @@ int GenerateEnsembleStatistics::getPhaseCount()
 
   // qDebug() << getNameOfClass() << "::getPhaseCount() data->getNumberOfTuples(): " << inputAttrMat->getTupleDimensions();
   // qDebug() << "Name" << inputAttrMat->getName();
-  QVector<size_t> tupleDims = inputAttrMat->getTupleDimensions();
+  std::vector<size_t> tupleDims = inputAttrMat->getTupleDimensions();
 
   size_t phaseCount = 1;
   for(int32_t i = 0; i < tupleDims.size(); i++)
@@ -1410,10 +1396,10 @@ int GenerateEnsembleStatistics::getPhaseCount()
 // -----------------------------------------------------------------------------
 void GenerateEnsembleStatistics::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -1421,18 +1407,17 @@ void GenerateEnsembleStatistics::execute()
   size_t totalEnsembles = m_PhaseTypesPtr.lock()->getNumberOfTuples();
 
   // Check to see if the user has over ridden the phase types for this filter
-  if(m_PhaseTypeData.size() > 0)
+  if(!m_PhaseTypeData.empty())
   {
     if(static_cast<int32_t>(m_PhaseTypeData.size()) < totalEnsembles)
     {
-      setErrorCondition(-3013);
-      notifyErrorMessage(getHumanLabel(), "The number of phase types entered is less than the number of Ensembles", -999);
+      setErrorCondition(-3013, "The number of phase types entered is less than the number of Ensembles");
       return;
     }
     if(static_cast<int32_t>(m_PhaseTypeData.size()) > totalEnsembles)
     {
       QString ss = QObject::tr("The number of phase types entered is more than the number of Ensembles. Only the first %1 will be used").arg(totalEnsembles - 1);
-      notifyErrorMessage(getHumanLabel(), ss, -3014);
+      setErrorCondition(-3014, ss);
     }
     for(int32_t r = 0; r < totalEnsembles; ++r)
     {
@@ -1441,42 +1426,41 @@ void GenerateEnsembleStatistics::execute()
     m_StatsDataArray->fillArrayWithNewStatsData(m_PhaseTypesPtr.lock()->getNumberOfTuples(), m_PhaseTypes);
   }
 
-  if(m_ComputeSizeDistribution == true)
+  if(m_ComputeSizeDistribution)
   {
     gatherSizeStats();
   }
-  if(m_ComputeAspectRatioDistribution == true)
+  if(m_ComputeAspectRatioDistribution)
   {
     gatherAspectRatioStats();
   }
-  if(m_ComputeOmega3Distribution == true)
+  if(m_ComputeOmega3Distribution)
   {
     gatherOmega3Stats();
   }
-  if(m_ComputeNeighborhoodDistribution == true)
+  if(m_ComputeNeighborhoodDistribution)
   {
     gatherNeighborhoodStats();
   }
-  if(m_CalculateODF == true)
+  if(m_CalculateODF)
   {
     gatherODFStats();
   }
-  if(m_CalculateMDF == true)
+  if(m_CalculateMDF)
   {
     gatherMDFStats();
   }
-  if(m_CalculateAxisODF == true)
+  if(m_CalculateAxisODF)
   {
     gatherAxisODFStats();
   }
-  if(m_IncludeRadialDistFunc == true)
+  if(m_IncludeRadialDistFunc)
   {
     gatherRadialDistFunc();
   }
 
   calculatePPTBoundaryFrac();
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -1485,7 +1469,7 @@ void GenerateEnsembleStatistics::execute()
 AbstractFilter::Pointer GenerateEnsembleStatistics::newFilterInstance(bool copyFilterParameters) const
 {
   GenerateEnsembleStatistics::Pointer filter = GenerateEnsembleStatistics::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
     // Here we need to set all sorts of stuff that is going to get missed. This

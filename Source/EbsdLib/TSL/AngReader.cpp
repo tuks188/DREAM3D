@@ -49,7 +49,6 @@
 //
 // -----------------------------------------------------------------------------
 AngReader::AngReader()
-: EbsdReader()
 {
   // Init all the arrays to nullptr
   m_Phi1 = nullptr;
@@ -99,54 +98,56 @@ AngReader::AngReader()
 // -----------------------------------------------------------------------------
 AngReader::~AngReader()
 {
-  deletePointers();
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void AngReader::initPointers(size_t numElements)
-{
-  setNumberOfElements(numElements);
-  size_t numBytes = numElements * sizeof(float);
-  m_Phi1 = allocateArray<float>(numElements);
-  m_Phi = allocateArray<float>(numElements);
-  m_Phi2 = allocateArray<float>(numElements);
-  m_Iq = allocateArray<float>(numElements);
-  m_Ci = allocateArray<float>(numElements);
-  m_PhaseData = allocateArray<int>(numElements);
-  m_X = allocateArray<float>(numElements);
-  m_Y = allocateArray<float>(numElements);
-  m_SEMSignal = allocateArray<float>(numElements);
-  m_Fit = allocateArray<float>(numElements);
-
-  ::memset(m_Phi1, 0, numBytes);
-  ::memset(m_Phi, 0, numBytes);
-  ::memset(m_Phi2, 0, numBytes);
-  ::memset(m_Iq, 0, numBytes);
-  ::memset(m_Ci, 0, numBytes);
-  ::memset(m_PhaseData, 0, numBytes);
-  ::memset(m_X, 0, numBytes);
-  ::memset(m_Y, 0, numBytes);
-  ::memset(m_SEMSignal, 0, numBytes);
-  ::memset(m_Fit, 0, numBytes);
-}
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-void AngReader::deletePointers()
-{
-  this->deallocateArrayData<float>(m_Phi1);
-  this->deallocateArrayData<float>(m_Phi);
-  this->deallocateArrayData<float>(m_Phi2);
-  this->deallocateArrayData<float>(m_Iq);
-  this->deallocateArrayData<float>(m_Ci);
-  this->deallocateArrayData<int>(m_PhaseData);
-  this->deallocateArrayData<float>(m_X);
-  this->deallocateArrayData<float>(m_Y);
-  this->deallocateArrayData<float>(m_SEMSignal);
-  this->deallocateArrayData<float>(m_Fit);
+  if(m_Phi1Cleanup)
+  {
+    deallocateArrayData<float>(m_Phi1);
+    m_Phi1 = nullptr;
+  }
+  if(m_PhiCleanup)
+  {
+    deallocateArrayData<float>(m_Phi);
+    m_Phi = nullptr;
+  }
+  if(m_Phi2Cleanup)
+  {
+    deallocateArrayData<float>(m_Phi2);
+    m_Phi2 = nullptr;
+  }
+  if(m_IqCleanup)
+  {
+    deallocateArrayData<float>(m_Iq);
+    m_Iq = nullptr;
+  }
+  if(m_CiCleanup)
+  {
+    deallocateArrayData<float>(m_Ci);
+    m_Ci = nullptr;
+  }
+  if(m_PhaseDataCleanup)
+  {
+    deallocateArrayData<int32_t>(m_PhaseData);
+    m_PhaseData = nullptr;
+  }
+  if(m_XCleanup)
+  {
+    deallocateArrayData<float>(m_X);
+    m_X = nullptr;
+  }
+  if(m_YCleanup)
+  {
+    deallocateArrayData<float>(m_Y);
+    m_Y = nullptr;
+  }
+  if(m_SEMSignalCleanup)
+  {
+    deallocateArrayData<float>(m_SEMSignal);
+    m_SEMSignal = nullptr;
+  }
+  if(m_FitCleanup)
+  {
+    deallocateArrayData<float>(m_Fit);
+    m_Fit = nullptr;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -266,11 +267,11 @@ int AngReader::readHeaderOnly()
   QTextStream ostr(&origHeader);
   m_PhaseVector.clear();
 
-  while(!in.atEnd() && false == getHeaderIsComplete())
+  while(!in.atEnd() && !getHeaderIsComplete())
   {
     buf = in.readLine();
     parseHeaderLine(buf);
-    if(getHeaderIsComplete() == false)
+    if(!getHeaderIsComplete())
     {
       ostr << buf << "\n";
     }
@@ -303,7 +304,7 @@ int AngReader::readFile()
   setOriginalHeader(origHeader);
   m_PhaseVector.clear();
 
-  while(!in.atEnd() && false == getHeaderIsComplete())
+  while(!in.atEnd() && !getHeaderIsComplete())
   {
     buf = in.readLine();
     if(buf.at(0) != '#')
@@ -330,7 +331,7 @@ int AngReader::readFile()
     setErrorMessage(msg);
     return -110;
   }
-  if(m_PhaseVector.size() == 0)
+  if(m_PhaseVector.empty())
   {
     setErrorCode(-150);
     setErrorMessage("No phase was parsed in the header portion of the file. This possibly means that part of the header is missing.");
@@ -354,9 +355,6 @@ void AngReader::readData(QFile& in, QByteArray& buf)
   QString streamBuf;
   QTextStream ss(&streamBuf);
 
-  // Delete any currently existing pointers
-  deletePointers();
-  // Initialize new pointers
   size_t totalDataPoints = 0;
 
   QString grid = getGrid();
@@ -371,7 +369,7 @@ void AngReader::readData(QFile& in, QByteArray& buf)
     setErrorMessage("NumRows Sanity Check not correct. Check the entry for NROWS in the .ang file");
     return;
   }
-  else if(grid.startsWith(Ebsd::Ang::SquareGrid) == true)
+  if(grid.startsWith(Ebsd::Ang::SquareGrid))
   {
     if(nOddCols > 0)
     {
@@ -386,13 +384,13 @@ void AngReader::readData(QFile& in, QByteArray& buf)
       totalDataPoints = 0;
     }
   }
-  else if(grid.startsWith(Ebsd::Ang::HexGrid) == true && m_ReadHexGrid == false)
+  else if(grid.startsWith(Ebsd::Ang::HexGrid) && !m_ReadHexGrid)
   {
     setErrorCode(-400);
     setErrorMessage("Ang Files with Hex Grids Are NOT currently supported - Try converting them to Square Grid with the Hex2Sqr Converter filter.");
     return;
   }
-  else if(grid.startsWith(Ebsd::Ang::HexGrid) == true && m_ReadHexGrid == true)
+  else if(grid.startsWith(Ebsd::Ang::HexGrid) && m_ReadHexGrid)
   {
     bool evenRow = false;
     totalDataPoints = 0;
@@ -417,7 +415,31 @@ void AngReader::readData(QFile& in, QByteArray& buf)
     return;
   }
 
-  initPointers(totalDataPoints);
+  // Initialize all the pointers and allocate memory
+  setNumberOfElements(totalDataPoints);
+  size_t numBytes = totalDataPoints * sizeof(float);
+  m_Phi1 = allocateArray<float>(totalDataPoints);
+  m_Phi = allocateArray<float>(totalDataPoints);
+  m_Phi2 = allocateArray<float>(totalDataPoints);
+  m_Iq = allocateArray<float>(totalDataPoints);
+  m_Ci = allocateArray<float>(totalDataPoints);
+  m_PhaseData = allocateArray<int>(totalDataPoints);
+  m_X = allocateArray<float>(totalDataPoints);
+  m_Y = allocateArray<float>(totalDataPoints);
+  m_SEMSignal = allocateArray<float>(totalDataPoints);
+  m_Fit = allocateArray<float>(totalDataPoints);
+
+  ::memset(m_Phi1, 0, numBytes);
+  ::memset(m_Phi, 0, numBytes);
+  ::memset(m_Phi2, 0, numBytes);
+  ::memset(m_Iq, 0, numBytes);
+  ::memset(m_Ci, 0, numBytes);
+  ::memset(m_PhaseData, 0, numBytes);
+  ::memset(m_X, 0, numBytes);
+  ::memset(m_Y, 0, numBytes);
+  ::memset(m_SEMSignal, 0, numBytes);
+  ::memset(m_Fit, 0, numBytes);
+
   if(nullptr == m_Phi1 || nullptr == m_Phi || nullptr == m_Phi2 || nullptr == m_Iq || nullptr == m_SEMSignal || nullptr == m_Ci || nullptr == m_PhaseData || m_X == nullptr || m_Y == nullptr)
   {
     ss.string()->clear();
@@ -446,7 +468,7 @@ void AngReader::readData(QFile& in, QByteArray& buf)
       buf = in.readLine();
       ++counter;
     }
-    this->parseDataLine(buf, i);
+    parseDataLine(buf, i);
     if(getErrorCode() < 0)
     {
       ss.string()->clear();
@@ -477,7 +499,7 @@ void AngReader::readData(QFile& in, QByteArray& buf)
     {
       ++nxEven;
     }
-    if(in.atEnd() == true)
+    if(in.atEnd())
     {
       break;
     }
@@ -492,18 +514,18 @@ void AngReader::readData(QFile& in, QByteArray& buf)
 
   if(getNumFeatures() < 10)
   {
-    this->deallocateArrayData<float>(m_Fit);
+    deallocateArrayData<float>(m_Fit);
   }
   if(getNumFeatures() < 9)
   {
-    this->deallocateArrayData<float>(m_SEMSignal);
+    deallocateArrayData<float>(m_SEMSignal);
   }
   if(getErrorCode() < 0)
   {
     return;
   }
 
-  if(counter != totalDataPoints && in.atEnd() == true)
+  if(counter != totalDataPoints && in.atEnd())
   {
     ss.string()->clear();
 
@@ -602,7 +624,7 @@ void AngReader::parseHeaderLine(QByteArray& buf)
       m_CurrentPhase->parseHKLFamilies(tokens);
     }
   }
-  else if(word.startsWith(Ebsd::Ang::Categories) == true && m_CurrentPhase.get() != nullptr)
+  else if(word.startsWith(Ebsd::Ang::Categories) && m_CurrentPhase.get() != nullptr)
   {
     if(tokens.size() > 1)
     {
@@ -631,7 +653,7 @@ std::cout << "m_HeaderMap[Ebsd::Ang::" << word << "] = AngHeaderEntry<float>::Ne
 #endif
       return;
     }
-    else if(tokens.size() > 1)
+    if(tokens.size() > 1)
     {
       p->parseValue(tokens[1]);
 #if 0
@@ -670,7 +692,7 @@ void AngReader::parseDataLine(QByteArray& line, size_t i)
   QList<QByteArray> tokens = line.trimmed().simplified().split(' ');
   bool ok = true;
   offset = i;
-  if(tokens.size() >= 1)
+  if(!tokens.empty())
   {
     p1 = tokens[0].toFloat(&ok);
     if(!ok)

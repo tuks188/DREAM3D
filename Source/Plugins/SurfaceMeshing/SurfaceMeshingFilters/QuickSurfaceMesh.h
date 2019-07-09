@@ -32,13 +32,13 @@
 *    United States Prime Contract Navy N00173-07-C-2068
 *
 * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 #pragma once
 
 #include "SIMPLib/Common/SIMPLibSetGetMacros.h"
 #include "SIMPLib/Filtering/AbstractFilter.h"
 #include "SIMPLib/Geometry/IGeometryGrid.h"
 #include "SIMPLib/SIMPLib.h"
+
 
 #include "SurfaceMeshing/SurfaceMeshingFilters/SurfaceMeshFilter.h"
 
@@ -52,7 +52,7 @@ class SurfaceMeshing_EXPORT QuickSurfaceMesh : public AbstractFilter
   Q_OBJECT
     PYB11_CREATE_BINDINGS(QuickSurfaceMesh SUPERCLASS AbstractFilter)
     PYB11_PROPERTY(QVector<DataArrayPath> SelectedDataArrayPaths READ getSelectedDataArrayPaths WRITE setSelectedDataArrayPaths)
-    PYB11_PROPERTY(QString SurfaceDataContainerName READ getSurfaceDataContainerName WRITE setSurfaceDataContainerName)
+    PYB11_PROPERTY(DataArrayPath SurfaceDataContainerName READ getSurfaceDataContainerName WRITE setSurfaceDataContainerName)
     PYB11_PROPERTY(QString VertexAttributeMatrixName READ getVertexAttributeMatrixName WRITE setVertexAttributeMatrixName)
     PYB11_PROPERTY(QString FaceAttributeMatrixName READ getFaceAttributeMatrixName WRITE setFaceAttributeMatrixName)
     PYB11_PROPERTY(DataArrayPath FeatureIdsArrayPath READ getFeatureIdsArrayPath WRITE setFeatureIdsArrayPath)
@@ -69,8 +69,11 @@ public:
   SIMPL_FILTER_PARAMETER(QVector<DataArrayPath>, SelectedDataArrayPaths)
   Q_PROPERTY(QVector<DataArrayPath> SelectedDataArrayPaths READ getSelectedDataArrayPaths WRITE setSelectedDataArrayPaths)
 
-  SIMPL_FILTER_PARAMETER(QString, SurfaceDataContainerName)
-  Q_PROPERTY(QString SurfaceDataContainerName READ getSurfaceDataContainerName WRITE setSurfaceDataContainerName)
+  SIMPL_FILTER_PARAMETER(DataArrayPath, SurfaceDataContainerName)
+  Q_PROPERTY(DataArrayPath SurfaceDataContainerName READ getSurfaceDataContainerName WRITE setSurfaceDataContainerName)
+
+  SIMPL_FILTER_PARAMETER(DataArrayPath, TripleLineDataContainerName)
+  Q_PROPERTY(DataArrayPath TripleLineDataContainerName READ getTripleLineDataContainerName WRITE setTripleLineDataContainerName)
 
   SIMPL_FILTER_PARAMETER(QString, VertexAttributeMatrixName)
   Q_PROPERTY(QString VertexAttributeMatrixName READ getVertexAttributeMatrixName WRITE setVertexAttributeMatrixName)
@@ -206,7 +209,41 @@ private:
    * @param z
    * @param coords
    */
-  void getGridCoordinates(IGeometryGrid::Pointer grid, size_t x, size_t y, size_t z, float* coords);
+  void getGridCoordinates(const IGeometryGrid::Pointer &grid, size_t x, size_t y, size_t z, float* coords);
+
+  /**
+   * @brief flipProblemVoxelCase1
+   * @param v1
+   * @param v2
+   * @param v3
+   * @param v4
+   * @param v5
+   * @param v6
+   */
+  void flipProblemVoxelCase1(MeshIndexType v1, MeshIndexType v2, MeshIndexType v3, MeshIndexType v4, MeshIndexType v5, MeshIndexType v6);
+
+  /**
+   * @brief flipProblemVoxelCase2
+   * @param v1
+   * @param v2
+   * @param v3
+   * @param v4
+   */
+  void flipProblemVoxelCase2(MeshIndexType v1, MeshIndexType v2, MeshIndexType v3, MeshIndexType v4);
+
+  /**
+   * @brief flipProblemVoxelCase3
+   * @param v1
+   * @param v2
+   * @param v3
+   */
+  void flipProblemVoxelCase3(MeshIndexType v1, MeshIndexType v2, MeshIndexType v3);
+
+  void correctProblemVoxels();
+
+  void determineActiveNodes(std::vector<MeshIndexType>& m_NodeIds, MeshIndexType& nodeCount, MeshIndexType& triangleCount);
+
+  void createNodesAndTriangles(std::vector<MeshIndexType> m_NodeIds, MeshIndexType nodeCount, MeshIndexType triangleCount);
 
   /**
    * @brief updateFaceInstancePointers Updates raw Face pointers
@@ -217,7 +254,7 @@ private:
    * @brief updateVertexInstancePointers Updates raw Vertex pointers
    */
   void updateVertexInstancePointers();
-  
+
   /**
    * @brief generateTripleLines
    */

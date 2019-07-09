@@ -35,8 +35,6 @@
 
 #pragma once
 
-#include <QtCore/QFutureWatcher>
-#include <QtGui/QImage>
 #include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QWidget>
 
@@ -77,12 +75,11 @@ class StatsGenODFWidget : public QWidget, private Ui::StatsGenAxisODFWidget
 
 public:
   StatsGenODFWidget(QWidget* parent = nullptr);
-  virtual ~StatsGenODFWidget();
+  ~StatsGenODFWidget() override;
 
   void setupGui();
 
   void initQwtPlot(QString xAxisName, QString yAxisName, QwtPlot* plot);
-  void enableMDFTab(bool b);
 
   SIMPL_INSTANCE_PROPERTY(bool, EnableAxisDecorations)
 
@@ -98,8 +95,6 @@ public:
   void updatePlots();
 
   SGODFTableModel* tableModel();
-
-  StatsGenMDFWidget* getMDFWidget();
 
   void drawODFPlotGrid(QwtPlot* plot);
 
@@ -117,9 +112,6 @@ protected slots:
 
   void tableDataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight);
 
-  void on_m_ODFParametersBtn_clicked(bool b);
-  void on_m_MDFParametersBtn_clicked(bool b);
-
   void on_m_WeightSpreads_clicked(bool b);
   void on_m_WeightSpreadsBulkLoad_clicked(bool b);
   
@@ -132,6 +124,7 @@ protected slots:
 signals:
   void dataChanged();
   void bulkLoadEvent(bool fail);
+  void odfDataChanged();
 
 protected:
   /**
@@ -155,7 +148,10 @@ private:
 
   QString m_OpenDialogLastFilePath; // Must be last in the list
 
+public:
   StatsGenODFWidget(const StatsGenODFWidget&) = delete; // Copy Constructor Not Implemented
-  void operator=(const StatsGenODFWidget&) = delete;    // Move assignment Not Implemented
+  StatsGenODFWidget(StatsGenODFWidget&&) = delete;      // Move Constructor Not Implemented
+  StatsGenODFWidget& operator=(const StatsGenODFWidget&) = delete; // Copy Assignment Not Implemented
+  StatsGenODFWidget& operator=(StatsGenODFWidget&&) = delete;      // Move Assignment Not Implemented
 };
 

@@ -38,7 +38,6 @@
 #include "SGAbstractTableModel.h"
 #include <QtCore/QVariant>
 #include <QtCore/QVector>
-#include <QtGui/QColor>
 
 class QAbstractItemDelegate;
 
@@ -142,7 +141,10 @@ private:
   QVector<float> m_StdDev;
   QVector<SIMPL::Rgb> m_Colors;
 
+public:
   SGLogNormalTableModel(const SGLogNormalTableModel&) = delete; // Copy Constructor Not Implemented
-  void operator=(const SGLogNormalTableModel&) = delete;        // Move assignment Not Implemented
+  SGLogNormalTableModel(SGLogNormalTableModel&&) = delete;      // Move Constructor Not Implemented
+  SGLogNormalTableModel& operator=(const SGLogNormalTableModel&) = delete; // Copy Assignment Not Implemented
+  SGLogNormalTableModel& operator=(SGLogNormalTableModel&&) = delete;      // Move Assignment Not Implemented
 };
 

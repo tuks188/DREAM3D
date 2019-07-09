@@ -36,7 +36,6 @@
 #include <iostream>
 #include <limits>
 
-#include <QtCore/QCoreApplication>
 #include <QtCore/QString>
 #include <QtCore/QVector>
 
@@ -121,7 +120,7 @@ public:
   // -----------------------------------------------------------------------------
   template <typename T> void GenerateEulers(size_t nSteps, AttributeMatrix::Pointer attrMat)
   {
-    QVector<size_t> cDims(1, 3);
+    std::vector<size_t> cDims(1, 3);
 
     T phi1_min = static_cast<T>(0.0);
     T phi1_max = DConst::k_2Pi;
@@ -136,7 +135,7 @@ public:
     T phi2_delta = (phi2_max - phi2_min) / static_cast<T>(nSteps);
 
     size_t nStepsCubed = (nSteps + 1) * (nSteps + 1) * (nSteps + 1);
-    typename DataArray<T>::Pointer eulers = DataArray<T>::CreateArray(nStepsCubed, cDims, k_InputNames[0]);
+    typename DataArray<T>::Pointer eulers = DataArray<T>::CreateArray(nStepsCubed, cDims, k_InputNames[0], true);
 
     size_t counter = 0;
     for(int i = 0; i <= nSteps; i++)
@@ -179,7 +178,7 @@ public:
     euConv->toOrientationMatrix();
     typename DataArray<T>::Pointer om = euConv->getOutputData();
     om->setName(k_InputNames[1]);
-    attrMat->addAttributeArray(om->getName(), om);
+    attrMat->insertOrAssign(om);
 
     // Create an Orientation matrix from the Eulers and then transform BACK to Eulers to transform
     // the values of the Eulers into the convention set forth in the Rotations Paper.
@@ -190,32 +189,32 @@ public:
     eulers->setName(k_InputNames[0]);
     euConv->setInputData(eulers);
 
-    attrMat->addAttributeArray(eulers->getName(), eulers);
+    attrMat->insertOrAssign(eulers);
 
     euConv->toQuaternion();
     typename DataArray<T>::Pointer q = euConv->getOutputData();
     q->setName(k_InputNames[2]);
-    attrMat->addAttributeArray(q->getName(), q);
+    attrMat->insertOrAssign(q);
 
     euConv->toAxisAngle();
     typename DataArray<T>::Pointer ax = euConv->getOutputData();
     ax->setName(k_InputNames[3]);
-    attrMat->addAttributeArray(ax->getName(), ax);
+    attrMat->insertOrAssign(ax);
 
     euConv->toRodrigues();
     typename DataArray<T>::Pointer ro = euConv->getOutputData();
     ro->setName(k_InputNames[4]);
-    attrMat->addAttributeArray(ro->getName(), ro);
+    attrMat->insertOrAssign(ro);
 
     euConv->toHomochoric();
     typename DataArray<T>::Pointer ho = euConv->getOutputData();
     ho->setName(k_InputNames[5]);
-    attrMat->addAttributeArray(ho->getName(), ho);
+    attrMat->insertOrAssign(ho);
 
     euConv->toCubochoric();
     typename DataArray<T>::Pointer cu = euConv->getOutputData();
     cu->setName(k_InputNames[6]);
-    attrMat->addAttributeArray(cu->getName(), cu);
+    attrMat->insertOrAssign(cu);
   }
 
   // -----------------------------------------------------------------------------
@@ -275,10 +274,10 @@ public:
     }
 
     Observer obs;
-    obs.connect(convFilt.get(), SIGNAL(filterGeneratedMessage(const PipelineMessage&)), &obs, SLOT(processPipelineMessage(const PipelineMessage&)));
+    obs.connect(convFilt.get(), SIGNAL(messageGenerated(const AbstractMessage::Pointer&)), &obs, SLOT(processPipelineMessage(const AbstractMessage::Pointer&)));
 
     convFilt->execute();
-    int err = convFilt->getErrorCondition();
+    int err = convFilt->getErrorCode();
     DREAM3D_REQUIRED(err, >=, 0)
 
     return outputName;
@@ -367,10 +366,10 @@ public:
 
       size_t nStepsCubed = (nSteps + 1) * (nSteps + 1) * (nSteps + 1);
 
-      QVector<size_t> tDims(1, nStepsCubed);
+      std::vector<size_t> tDims(1, nStepsCubed);
       AttributeMatrix::Pointer attrMat = AttributeMatrix::New(tDims, AMName, AttributeMatrix::Type::Cell);
-      m->addAttributeMatrix(AMName, attrMat);
-      dca->addDataContainer(m);
+      m->addOrReplaceAttributeMatrix(attrMat);
+      dca->addOrReplaceDataContainer(m);
 
       // Make all the starting data
       GenerateEulers<K>(nSteps, attrMat);
@@ -456,15 +455,15 @@ public:
         }
 
         //      Observer obs;
-        //      obs.connect(diffMapFilt.get(), SIGNAL(filterGeneratedMessage(const PipelineMessage&)),
-        //                  &obs, SLOT(processPipelineMessage(const PipelineMessage&)));
+        //      obs.connect(diffMapFilt.get(), SIGNAL(messageGenerated(const AbstractMessage::Pointer&)),
+        //                  &obs, SLOT(processPipelineMessage(const AbstractMessage::Pointer&)));
 
         diffMapFilt->execute();
-        int err = diffMapFilt->getErrorCondition();
+        int err = diffMapFilt->getErrorCode();
         DREAM3D_REQUIRED(err, >=, 0)
 
         DataArrayPath daPath(DCName, AMName, diffMapArrayName);
-        QVector<size_t> cDims(1, k_CompDims[cDim]);
+        std::vector<size_t> cDims(1, k_CompDims[cDim]);
         typename DataArray<K>::Pointer diff = dca->getPrereqArrayFromPath<DataArray<K>, AbstractFilter>(diffMapFilt.get(), daPath, cDims);
 #if 1
         size_t tuples = diff->getNumberOfTuples();
@@ -546,7 +545,7 @@ public:
         entry.pop_back();
       }
 
-      typename DataArray<K>::Pointer junk = DataArray<K>::CreateArray(1, "Junk");
+      typename DataArray<K>::Pointer junk = DataArray<K>::CreateArray(1, "Junk", true);
       QString typeName = junk->getTypeAsString();
 #if REMOVE_TEST_FILES
       {
@@ -576,7 +575,7 @@ public:
           qDebug() << "Unable to set property OutputFile";
         }
         writer->execute();
-        int err = writer->getErrorCondition();
+        int err = writer->getErrorCode();
         DREAM3D_REQUIRED(err, >=, 0)
       }
 #endif

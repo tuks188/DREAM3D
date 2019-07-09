@@ -109,20 +109,15 @@ if(SIMPL_USE_MKDOCS)
   foreach(DocGroup ${DREAM3DDoc_GROUPS})
     file(APPEND "${docsCmakeFile}" "# ${DocGroup}\n")
     if(${DocGroup} STREQUAL "Core" OR ${DocGroup} STREQUAL "Test")
-      #message(STATUS "${DocGroup}_SOURCE_DIR: ${${DocGroup}_SOURCE_DIR}")
-      string(REPLACE "/${DocGroup}Filters" "/Documentation/SIMPLibFilters" tempstring ${${DocGroup}_SOURCE_DIR})
-      #message(STATUS "tempstring: ${tempstring}")
+      set(DREAM3D_${DocGroup}_SOURCE_DIR ${${DocGroup}_SOURCE_DIR})
+      string(REPLACE "/${DocGroup}Filters" "/Documentation/SIMPLibFilters" tempstring ${DREAM3D_${DocGroup}_SOURCE_DIR})
       file(APPEND "${docsCmakeFile}" "file(COPY \n       \"${tempstring}/${DocGroup}Filters\"
      DESTINATION
      \"${docsDestDir}/Filters\")\n")
     else()
-      file(APPEND "${docsCmakeFile}" "file(COPY \n      \"${${DocGroup}_SOURCE_DIR}/Documentation/${DocGroup}Filters\"
+      file(APPEND "${docsCmakeFile}" "file(COPY \n      \"${DREAM3D_${DocGroup}_SOURCE_DIR}/Documentation/${DocGroup}Filters\"
      DESTINATION
       \"${docsDestDir}/Filters\")\n")
-    #   file(APPEND "${docsCmakeFile}"
-    #  "file(RENAME
-    #  \"${docsDestDir}/Filters/${DocGroup}Filters\"
-    #  \"${docsDestDir}/Filters/${DocGroup}\")\n")
     endif()
   endforeach()
 
@@ -145,32 +140,52 @@ if(SIMPL_USE_MKDOCS)
   file(APPEND "${docsCmakeFile}" "file(RENAME \"${docsDestDir}/128x128.png\" \"${docsDestDir}/logo.png\")\n")
 
   find_package(PythonInterp)
-  find_program (
+
+
+  if(NOT MKDOCS_EXECUTABLE)
+    find_program (
           MKDOCS_EXECUTABLE
           mkdocs
-  )
+    )
+    if("${MKDOCS_EXECUTABLE}" STREQUAL "MKDOCS_EXECUTABLE-NOTFOUND")
+      message(FATAL_ERROR "mkdocs was not found on your system. Typical installation under python is\n\
+      pip install mkdocs-material\n\
+      You may also need to do\n\
+      pip install msgpack\n\
+      If you are on macOS and are having trouble installing to try adding the --user to the above commands\n\
+      to install those python modules into your home directory.\n\
+      You can also define PYTHON_EXECUTABLE and MKDOCS_EXECUTABLE in your DREAM3D_SDK.cmake file or on the command line\n\
+      using the standard '-DPYTHON_EXECUTABLE=.....' syntax")
+    endif()
+  endif()
+  
 
   if(APPLE)
-    set(MKDOCS_EXECUTABLE "${DREAM3DDocRoot}/ReferenceManual/mkdocs")
-    file(WRITE "${MKDOCS_EXECUTABLE}" "#!/usr/bin/python\n")
-    file(APPEND "${MKDOCS_EXECUTABLE}" "# -*- coding: utf-8 -*-\n")
-    file(APPEND "${MKDOCS_EXECUTABLE}" "import re\n")
-    file(APPEND "${MKDOCS_EXECUTABLE}" "import sys\n")
-    file(APPEND "${MKDOCS_EXECUTABLE}" "from mkdocs.__main__ import cli\n")
-    file(APPEND "${MKDOCS_EXECUTABLE}" "if __name__ == '__main__':\n")
-    file(APPEND "${MKDOCS_EXECUTABLE}" "  sys.argv[0] = re.sub(r'(-script\.pyw?|\.exe)?$', '', sys.argv[0])\n")
-    file(APPEND "${MKDOCS_EXECUTABLE}" "  sys.exit(cli())\n")
-    file(APPEND "${MKDOCS_EXECUTABLE}" "\n")
-    execute_process(COMMAND "/bin/chmod" ug+rwx ${MKDOCS_EXECUTABLE}
+    set(MKDOCS_EXECUTABLE_SCRIPT "${DREAM3DDocRoot}/ReferenceManual/mkdocs")
+    file(WRITE "${MKDOCS_EXECUTABLE_SCRIPT}" "#!/usr/bin/python\n")
+    file(APPEND "${MKDOCS_EXECUTABLE_SCRIPT}" "# -*- coding: utf-8 -*-\n")
+    file(APPEND "${MKDOCS_EXECUTABLE_SCRIPT}" "#    This script is generated automatically from CMake for macOS systems to get the encoding correct.\n")
+    file(APPEND "${MKDOCS_EXECUTABLE_SCRIPT}" "#    Generated in code from ${CMAKE_CURRENT_LIST_FILE}\n")
+    file(APPEND "${MKDOCS_EXECUTABLE_SCRIPT}" "import re\n")
+    file(APPEND "${MKDOCS_EXECUTABLE_SCRIPT}" "import sys\n")
+    file(APPEND "${MKDOCS_EXECUTABLE_SCRIPT}" "from mkdocs.__main__ import cli\n")
+    file(APPEND "${MKDOCS_EXECUTABLE_SCRIPT}" "if __name__ == '__main__':\n")
+    file(APPEND "${MKDOCS_EXECUTABLE_SCRIPT}" "  sys.argv[0] = re.sub(r'(-script\.pyw?|\.exe)?$', '', sys.argv[0])\n")
+    file(APPEND "${MKDOCS_EXECUTABLE_SCRIPT}" "  sys.exit(cli())\n")
+    file(APPEND "${MKDOCS_EXECUTABLE_SCRIPT}" "\n")
+    execute_process(COMMAND "/bin/chmod" ug+rwx ${MKDOCS_EXECUTABLE_SCRIPT}
                   OUTPUT_VARIABLE chmod_output
                   RESULT_VARIABLE chmod_result
                   ERROR_VARIABLE chmod_error
                   WORKING_DIRECTORY ${DREAM3DDocRoot}/ReferenceManual
     )
-    message(STATUS "chmod_output: ${chmod_output}")
-    message(STATUS "chmod_result: ${chmod_result}")
-    message(STATUS "chmod_error: ${chmod_error}")
-
+    if(DEBUG)
+      message(STATUS "chmod_output: ${chmod_output}")
+      message(STATUS "chmod_result: ${chmod_result}")
+      message(STATUS "chmod_error: ${chmod_error}")
+    endif()
+    set(MKDOCS_EXECUTABLE "${MKDOCS_EXECUTABLE_SCRIPT}")
+    message(STATUS "MKDOCS_EXECUTABLE_SCRIPT: ${MKDOCS_EXECUTABLE_SCRIPT}")
   else()
     # Find Python Executable
     if("${PYTHON_EXECUTABLE}" STREQUAL "")
@@ -190,7 +205,7 @@ if(SIMPL_USE_MKDOCS)
 
   message(STATUS "PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
   if("${PYTHON_EXECUTABLE}" STREQUAL "PYTHON_EXECUTABLE-NOTFOUND")
-    message(FATAL_ERROR "Python was not found. Please set the 'PYTHON_EXECUTABLE' variable manually")
+    message(FATAL_ERROR "Python was not found. Please set the 'PYTHON_EXECUTABLE' variable manually or install python.")
   endif()
 
   message(STATUS "MKDOCS_EXECUTABLE: ${MKDOCS_EXECUTABLE}")
@@ -273,7 +288,7 @@ if(SIMPL_USE_DISCOUNT)
     get_property(DREAM3DDoc_GROUPS GLOBAL PROPERTY DREAM3DDoc_GROUPS)
     set(NEED_COMMA_DOC_GROUP 0)
     foreach(DocGroup ${DREAM3DDoc_GROUPS})
-      #message(STATUS "  DocGroup: ${${DocGroup}_SOURCE_DIR}" )
+      #message(STATUS "  DocGroup: ${DREAM3D_${DocGroup}_SOURCE_DIR}" )
 
       if(NEED_COMMA_DOC_GROUP)
         file(APPEND "${PluginJsonFile}" " ,\n")
@@ -284,7 +299,7 @@ if(SIMPL_USE_DISCOUNT)
       file(APPEND "${PluginJsonFile}" "  \"${DocGroup}\": { \n")
 
       if(${DocGroup} STREQUAL "Core" OR ${DocGroup} STREQUAL "Test")
-        get_filename_component(core_PARENT ${${DocGroup}_SOURCE_DIR} DIRECTORY)
+        get_filename_component(core_PARENT ${DREAM3D_${DocGroup}_SOURCE_DIR} DIRECTORY)
 
         file(APPEND "${PluginJsonFile}" "    \"SOURCE_DIR\": \"${core_PARENT}\",\n")
         file(APPEND "${PluginJsonFile}" "    \"DOC_DIR\": \"Documentation/SIMPLibFilters/${DocGroup}Filters\",\n")
@@ -293,9 +308,9 @@ if(SIMPL_USE_DISCOUNT)
         endif()
 
       else()
-        file(APPEND "${PluginJsonFile}" "    \"SOURCE_DIR\": \"${${DocGroup}_SOURCE_DIR}\",\n")
+        file(APPEND "${PluginJsonFile}" "    \"SOURCE_DIR\": \"${DREAM3D_${DocGroup}_SOURCE_DIR}\",\n")
         file(APPEND "${PluginJsonFile}" "    \"DOC_DIR\": \"Documentation/${DocGroup}Filters\",\n")
-        if(EXISTS "${${DocGroup}_SOURCE_DIR}/Documentation/${DocGroup}Filters/Images")
+        if(EXISTS "${DREAM3D_${DocGroup}_SOURCE_DIR}/Documentation/${DocGroup}Filters/Images")
           file(APPEND "${PluginJsonFile}" "    \"IMAGES_DIR\": \"Documentation/${DocGroup}Filters/Images\",\n")
         endif()
 
@@ -315,14 +330,14 @@ if(SIMPL_USE_DISCOUNT)
         endif()
 
         if(${DocGroup} STREQUAL "Core" OR ${DocGroup} STREQUAL "Test")
-          string(REPLACE "/${DocGroup}Filters" "/Documentation/SIMPLibFilters/${DocGroup}Filters" tempstring ${${DocGroup}_SOURCE_DIR})
+          string(REPLACE "/${DocGroup}Filters" "/Documentation/SIMPLibFilters/${DocGroup}Filters" tempstring ${DREAM3D_${DocGroup}_SOURCE_DIR})
           string(REPLACE "${tempstring}/" "" tempstring ${docListItem})
           string(REPLACE "Filters" "" tempstring ${tempstring})
           string(REPLACE "Plugins/${DocGroup}/" "" filterName ${tempstring})
           string(REPLACE ".md" "" filterName ${filterName})
           file(APPEND "${PluginJsonFile}" "        \"${filterName}\"")
         else()
-          string(REPLACE "${${DocGroup}_SOURCE_DIR}/Documentation/" "" tempstring ${docListItem})
+          string(REPLACE "${DREAM3D_${DocGroup}_SOURCE_DIR}/Documentation/" "" tempstring ${docListItem})
           string(REPLACE "Filters" "" tempstring ${tempstring})
           string(REPLACE "${DocGroup}/" "" filterName ${tempstring})
           string(REPLACE ".md" "" filterName ${filterName})

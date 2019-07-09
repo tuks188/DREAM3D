@@ -66,7 +66,7 @@ GroupFeatures::~GroupFeatures() = default;
 // -----------------------------------------------------------------------------
 void GroupFeatures::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   QStringList linkedProps("NonContiguousNeighborListArrayPath");
   parameters.push_back(SIMPL_NEW_LINKED_BOOL_FP("Use Non-Contiguous Neighbors", UseNonContiguousNeighbors, FilterParameter::Parameter, GroupFeatures, linkedProps));
   parameters.push_back(SeparatorFilterParameter::New("Feature Data", FilterParameter::RequiredArray));
@@ -107,14 +107,14 @@ void GroupFeatures::initialize()
 // -----------------------------------------------------------------------------
 void GroupFeatures::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_ContiguousNeighborList = getDataContainerArray()->getPrereqArrayFromPath<NeighborList<int32_t>, AbstractFilter>(this, getContiguousNeighborListArrayPath(), cDims);
 
-  if(m_UseNonContiguousNeighbors == true)
+  if(m_UseNonContiguousNeighbors)
   {
     m_NonContiguousNeighborList = getDataContainerArray()->getPrereqArrayFromPath<NeighborList<int32_t>, AbstractFilter>(this, getNonContiguousNeighborListArrayPath(), cDims);
   }
@@ -170,10 +170,10 @@ bool GroupFeatures::growGrouping(int32_t referenceFeature, int32_t neighborFeatu
 // -----------------------------------------------------------------------------
 void GroupFeatures::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -199,13 +199,13 @@ void GroupFeatures::execute()
       {
         int32_t firstfeature = grouplist[j];
         list1size = int32_t(neighborlist[firstfeature].size());
-        if(m_UseNonContiguousNeighbors == true)
+        if(m_UseNonContiguousNeighbors)
         {
           list2size = nonContigNeighList->getListSize(firstfeature);
         }
         for(int32_t k = 0; k < 2; k++)
         {
-          if(m_PatchGrouping == true)
+          if(m_PatchGrouping)
           {
             k = 1;
           }
@@ -229,9 +229,9 @@ void GroupFeatures::execute()
             }
             if(neigh != firstfeature)
             {
-              if(determineGrouping(firstfeature, neigh, parentcount) == true)
+              if(determineGrouping(firstfeature, neigh, parentcount))
               {
-                if(m_PatchGrouping == false)
+                if(!m_PatchGrouping)
                 {
                   grouplist.push_back(neigh);
                 }
@@ -240,9 +240,9 @@ void GroupFeatures::execute()
           }
         }
       }
-      if(m_PatchGrouping == true)
+      if(m_PatchGrouping)
       {
-        if(growPatch(parentcount) == true)
+        if(growPatch(parentcount))
         {
           for(std::vector<int32_t>::size_type j = 0; j < grouplist.size(); j++)
           {
@@ -253,7 +253,7 @@ void GroupFeatures::execute()
               neigh = neighborlist[firstfeature][l];
               if(neigh != firstfeature)
               {
-                if(growGrouping(firstfeature, neigh, parentcount) == true)
+                if(growGrouping(firstfeature, neigh, parentcount))
                 {
                   grouplist.push_back(neigh);
                 }
@@ -266,8 +266,7 @@ void GroupFeatures::execute()
     grouplist.clear();
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -276,7 +275,7 @@ void GroupFeatures::execute()
 AbstractFilter::Pointer GroupFeatures::newFilterInstance(bool copyFilterParameters) const
 {
   GroupFeatures::Pointer filter = GroupFeatures::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

@@ -41,6 +41,7 @@
 #include "SIMPLib/FilterParameters/ChoiceFilterParameter.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/IntFilterParameter.h"
+#include "SIMPLib/FilterParameters/MultiDataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
 
@@ -58,7 +59,6 @@ ErodeDilateBadData::ErodeDilateBadData()
 , m_ZDirOn(true)
 , m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
 , m_Neighbors(nullptr)
-, m_FeatureIds(nullptr)
 {
 }
 
@@ -72,7 +72,7 @@ ErodeDilateBadData::~ErodeDilateBadData() = default;
 // -----------------------------------------------------------------------------
 void ErodeDilateBadData::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   {
     ChoiceFilterParameter::Pointer parameter = ChoiceFilterParameter::New();
     parameter->setHumanLabel("Operation");
@@ -96,6 +96,10 @@ void ErodeDilateBadData::setupFilterParameters()
     DataArraySelectionFilterParameter::RequirementType req =
         DataArraySelectionFilterParameter::CreateRequirement(SIMPL::TypeNames::Int32, 1, AttributeMatrix::Type::Cell, IGeometry::Type::Image);
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Feature Ids", FeatureIdsArrayPath, FilterParameter::RequiredArray, ErodeDilateBadData, req));
+  }
+  {
+    MultiDataArraySelectionFilterParameter::RequirementType req;
+    parameters.push_back(SIMPL_NEW_MDA_SELECTION_FP("Attribute Arrays to Ignore", IgnoredDataArrayPaths, FilterParameter::Parameter, ErodeDilateBadData, req));
   }
   setFilterParameters(parameters);
 }
@@ -128,19 +132,18 @@ void ErodeDilateBadData::initialize()
 // -----------------------------------------------------------------------------
 void ErodeDilateBadData::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
 
   if(getNumIterations() <= 0)
   {
     QString ss = QObject::tr("The number of iterations (%1) must be positive").arg(getNumIterations());
-    setErrorCondition(-5555);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-5555, ss);
   }
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -167,10 +170,10 @@ void ErodeDilateBadData::preflight()
 // -----------------------------------------------------------------------------
 void ErodeDilateBadData::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -178,12 +181,11 @@ void ErodeDilateBadData::execute()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getFeatureIdsArrayPath().getDataContainerName());
   size_t totalPoints = m_FeatureIdsPtr.lock()->getNumberOfTuples();
 
-  Int32ArrayType::Pointer neighborsPtr = Int32ArrayType::CreateArray(totalPoints, "_INTERNAL_USE_ONLY_Neighbors");
+  Int32ArrayType::Pointer neighborsPtr = Int32ArrayType::CreateArray(totalPoints, "_INTERNAL_USE_ONLY_Neighbors", true);
   m_Neighbors = neighborsPtr->getPointer(0);
   neighborsPtr->initializeWithValue(-1);
 
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -237,27 +239,27 @@ void ErodeDilateBadData::execute()
             {
               good = 1;
               neighpoint = count + neighpoints[l];
-              if(l == 0 && (k == 0 || m_ZDirOn == false))
+              if(l == 0 && (k == 0 || !m_ZDirOn))
               {
                 good = 0;
               }
-              else if(l == 5 && (k == (dims[2] - 1) || m_ZDirOn == false))
+              else if(l == 5 && (k == (dims[2] - 1) || !m_ZDirOn))
               {
                 good = 0;
               }
-              else if(l == 1 && (j == 0 || m_YDirOn == false))
+              else if(l == 1 && (j == 0 || !m_YDirOn))
               {
                 good = 0;
               }
-              else if(l == 4 && (j == (dims[1] - 1) || m_YDirOn == false))
+              else if(l == 4 && (j == (dims[1] - 1) || !m_YDirOn))
               {
                 good = 0;
               }
-              else if(l == 2 && (i == 0 || m_XDirOn == false))
+              else if(l == 2 && (i == 0 || !m_XDirOn))
               {
                 good = 0;
               }
-              else if(l == 3 && (i == (dims[0] - 1) || m_XDirOn == false))
+              else if(l == 3 && (i == (dims[0] - 1) || !m_XDirOn))
               {
                 good = 0;
               }
@@ -324,6 +326,10 @@ void ErodeDilateBadData::execute()
 
     QString attrMatName = m_FeatureIdsArrayPath.getAttributeMatrixName();
     QList<QString> voxelArrayNames = m->getAttributeMatrix(attrMatName)->getAttributeArrayNames();
+    for(const auto& dataArrayPath : m_IgnoredDataArrayPaths)
+    {
+      voxelArrayNames.removeAll(dataArrayPath.getDataArrayName());
+    }
 
     for(size_t j = 0; j < totalPoints; j++)
     {
@@ -333,9 +339,9 @@ void ErodeDilateBadData::execute()
       {
         if((featurename == 0 && m_FeatureIds[neighbor] > 0 && m_Direction == 1) || (featurename > 0 && m_FeatureIds[neighbor] == 0 && m_Direction == 0))
         {
-          for(QList<QString>::iterator iter = voxelArrayNames.begin(); iter != voxelArrayNames.end(); ++iter)
+          for(const auto& arrayName : voxelArrayNames)
           {
-            IDataArray::Pointer p = m->getAttributeMatrix(attrMatName)->getAttributeArray(*iter);
+            IDataArray::Pointer p = m->getAttributeMatrix(attrMatName)->getAttributeArray(arrayName);
             p->copyTuple(neighbor, j);
           }
         }
@@ -343,8 +349,7 @@ void ErodeDilateBadData::execute()
     }
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -353,7 +358,7 @@ void ErodeDilateBadData::execute()
 AbstractFilter::Pointer ErodeDilateBadData::newFilterInstance(bool copyFilterParameters) const
 {
   ErodeDilateBadData::Pointer filter = ErodeDilateBadData::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

@@ -35,6 +35,8 @@
 
 #include "EMMPMFilter.h"
 
+#include <QtGui/QColor>
+
 #include "EMMPM/EMMPMConstants.h"
 #include "EMMPM/EMMPMLib/Common/EMMPM_Math.h"
 #include "EMMPM/EMMPMLib/Common/EMTime.h"
@@ -57,9 +59,66 @@
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
+#include "SIMPLib/Messages/AbstractMessageHandler.h"
+#include "SIMPLib/Messages/GenericProgressMessage.h"
+#include "SIMPLib/Messages/GenericStatusMessage.h"
+#include "SIMPLib/Messages/GenericErrorMessage.h"
+#include "SIMPLib/Messages/GenericWarningMessage.h"
 #include "SIMPLib/SIMPLibVersion.h"
 
 #include "EMMPM/EMMPMVersion.h"
+
+/**
+ * @brief This message handler is used by EMMPMFilter instances to re-emit incoming generic messages from the
+ * EMMPM observable object as its own filter messages
+ */
+class EMMPMFilterMessageHandler : public AbstractMessageHandler
+{
+  public:
+    explicit EMMPMFilterMessageHandler(EMMPMFilter* filter) : m_Filter(filter) {}
+
+    /**
+     * @brief Re-emits incoming GenericProgressMessages as FilterProgressMessages.
+     */
+    void processMessage(const GenericProgressMessage* msg) const override
+    {
+      emit m_Filter->notifyProgressMessage(msg->getProgressValue(), msg->getMessageText());
+    }
+
+    /**
+     * @brief Re-emits incoming GenericStatusMessages as FilterStatusMessages.
+     */
+    void processMessage(const GenericStatusMessage* msg) const override
+    {
+      emit m_Filter->notifyStatusMessage(msg->getMessageText());
+    }
+
+    /**
+     * @brief Re-emits incoming GenericErrorMessages as FilterErrorMessages.
+     */
+    void processMessage(const GenericErrorMessage* msg) const override
+    {
+      emit m_Filter->setErrorCondition(msg->getCode(), msg->getMessageText());
+    }
+
+    /**
+     * @brief Re-emits incoming GenericWarningMessages as FilterWarningMessages.
+     */
+    void processMessage(const GenericWarningMessage* msg) const override
+    {
+      emit m_Filter->setWarningCondition(msg->getCode(), msg->getMessageText());
+    }
+
+  private:
+    EMMPMFilter* m_Filter = nullptr;
+};
+
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
 
 // -----------------------------------------------------------------------------
 //
@@ -111,7 +170,7 @@ EMMPMFilter::~EMMPMFilter() = default;
 // -----------------------------------------------------------------------------
 void EMMPMFilter::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   {
     EMMPMFilterParameter::Pointer parameter = EMMPMFilterParameter::New();
@@ -204,12 +263,12 @@ void EMMPMFilter::initialize()
 // -----------------------------------------------------------------------------
 void EMMPMFilter::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getInputDataArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 1); // We need a single component, gray scale image
+  std::vector<size_t> cDims(1, 1); // We need a single component, gray scale image
   m_InputImagePtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<uint8_t>, AbstractFilter>(this, getInputDataArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_InputImagePtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -217,8 +276,7 @@ void EMMPMFilter::dataCheck()
     m_InputImage = m_InputImagePtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to Data from the DataArray<T> object */
 
-  m_OutputImagePtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<uint8_t>, AbstractFilter, uint8_t>(
-      this, getOutputDataArrayPath(), 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_OutputImagePtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<uint8_t>, AbstractFilter, uint8_t>(this, getOutputDataArrayPath(), 0, cDims, "", DataArrayID31);
   if(nullptr != m_OutputImagePtr.lock())         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_OutputImage = m_OutputImagePtr.lock()->getPointer(0);
@@ -226,15 +284,13 @@ void EMMPMFilter::dataCheck()
 
   if(getNumClasses() > 15)
   {
-    setErrorCondition(-89100);
     QString ss = QObject::tr("The maximum number of classes is 15");
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-89100, ss);
   }
   if(getNumClasses() < 2)
   {
-    setErrorCondition(-89101);
     QString ss = QObject::tr("The minimum number of classes is 2");
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-89101, ss);
   }
 }
 
@@ -257,10 +313,10 @@ void EMMPMFilter::preflight()
 // -----------------------------------------------------------------------------
 void EMMPMFilter::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -269,7 +325,7 @@ void EMMPMFilter::execute()
   // This is the routine that sets up the EM/MPM to segment the image
   segment(getEmmpmInitType());
 
-  if (m_UseOneBasedValues == true && m_OutputImagePtr.lock().get() != nullptr)
+  if(m_UseOneBasedValues && m_OutputImagePtr.lock() != nullptr)
   {
     UInt8ArrayType::Pointer outputArray =  m_OutputImagePtr.lock();
     for (int i=0; i<outputArray->getNumberOfTuples(); i++)
@@ -280,8 +336,7 @@ void EMMPMFilter::execute()
     }
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -328,18 +383,18 @@ void EMMPMFilter::segment(EMMPM_InitializationType initType)
 
   DataArrayPath dap = getInputDataArrayPath();
   AttributeMatrix::Pointer am = getDataContainerArray()->getAttributeMatrix(dap);
-  QVector<size_t> tDims = am->getTupleDimensions();
+  std::vector<size_t> tDims = am->getTupleDimensions();
   IDataArray::Pointer iDataArray = am->getAttributeArray(getInputDataArrayPath().getDataArrayName());
-  QVector<size_t> cDims = iDataArray->getComponentDimensions();
+  std::vector<size_t> cDims = iDataArray->getComponentDimensions();
 
   m_Data->columns = tDims[0];
   m_Data->rows = tDims[1];
   m_Data->inputImageChannels = cDims[0];
 
   m_Data->simulatedAnnealing = (char)(getUseSimulatedAnnealing());
-  m_Data->useGradientPenalty = getUseGradientPenalty();
+  m_Data->useGradientPenalty = static_cast<char>(getUseGradientPenalty());
   m_Data->beta_e = getGradientBetaE();
-  m_Data->useCurvaturePenalty = getUseCurvaturePenalty();
+  m_Data->useCurvaturePenalty = static_cast<char>(getUseCurvaturePenalty());
   m_Data->beta_c = getCurvatureBetaC();
   m_Data->r_max = getCurvatureRMax();
   m_Data->ccostLoopDelay = getCurvatureEMLoopDelay();
@@ -374,10 +429,9 @@ void EMMPMFilter::segment(EMMPM_InitializationType initType)
   emmpm->setData(m_Data);
   emmpm->setStatsDelegate(statsDelegate.get());
   emmpm->setInitializationFunction(initFunction);
-  emmpm->setMessagePrefix(getMessagePrefix());
 
   // Connect up the Error/Warning/Progress object so the filter can report those things
-  connect(emmpm.get(), SIGNAL(filterGeneratedMessage(const PipelineMessage&)), this, SLOT(broadcastPipelineMessage(const PipelineMessage&)));
+  connect(emmpm.get(), SIGNAL(messageGenerated(const AbstractMessage::Pointer&)), this, SLOT(handleEmmpmMessage(const AbstractMessage::Pointer&)));
 
   emmpm->execute();
 
@@ -389,19 +443,15 @@ void EMMPMFilter::segment(EMMPM_InitializationType initType)
   // into the initialization of the next Image to be Segmented
   m_PreviousMu.resize(getNumClasses() * m_Data->dims);
   m_PreviousSigma.resize(getNumClasses() * m_Data->dims);
-  if(0)
-  {
-    std::cout << "--------------------------------------------------------------" << std::endl;
-    for(std::vector<float>::size_type i = 0; i < getNumClasses(); i++)
-    {
-      std::cout << "Mu: " << m_Data->mean[i] << " Variance: " << sqrtf(m_Data->variance[i]) << std::endl;
-      for(uint32_t d = 0; d < m_Data->dims; d++)
-      {
-        m_PreviousMu[i * m_Data->dims + d] = m_Data->mean[i * m_Data->dims + d];
-        m_PreviousSigma[i * m_Data->dims + d] = m_Data->variance[i * m_Data->dims + d];
-      }
-    }
-  }
+}
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
+void EMMPMFilter::handleEmmpmMessage(const AbstractMessage::Pointer &msg)
+{
+  EMMPMFilterMessageHandler msgHandler(this);
+  msg->visit(&msgHandler);
 }
 
 // -----------------------------------------------------------------------------
@@ -410,7 +460,7 @@ void EMMPMFilter::segment(EMMPM_InitializationType initType)
 AbstractFilter::Pointer EMMPMFilter::newFilterInstance(bool copyFilterParameters) const
 {
   EMMPMFilter::Pointer filter = EMMPMFilter::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

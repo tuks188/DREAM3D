@@ -37,9 +37,7 @@
 
 #include <QtGui/QKeyEvent>
 #include <QtGui/QPainter>
-#include <QtWidgets/QComboBox>
 #include <QtWidgets/QFileDialog>
-#include <QtWidgets/QLabel>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMessageBox>
 
@@ -67,7 +65,6 @@
 // -----------------------------------------------------------------------------
 ReadH5EbsdWidget::ReadH5EbsdWidget(FilterParameter* parameter, AbstractFilter* filter, QWidget* parent)
 : FilterParameterWidget(parameter, filter, parent)
-, m_DidCausePreflight(false)
 , m_NewFileLoaded(false)
 , m_Version4Warning(false)
 {
@@ -177,6 +174,7 @@ void ReadH5EbsdWidget::setupGui()
   }
 
   m_LineEdit->setText(inputPath);
+  setValidFilePath(m_LineEdit->text());
 
   // Update the widget when the data directory changes
   SIMPLDataPathValidator* validator = SIMPLDataPathValidator::Instance();
@@ -210,6 +208,8 @@ void ReadH5EbsdWidget::keyPressEvent(QKeyEvent* event)
   if(event->key() == Qt::Key_Escape)
   {
     m_LineEdit->setText(m_CurrentText);
+    setValidFilePath(m_LineEdit->text());
+
     m_LineEdit->setStyleSheet("");
     m_LineEdit->setToolTip("");
   }
@@ -249,7 +249,7 @@ void ReadH5EbsdWidget::setupMenuField()
     connect(m_ShowFileAction, SIGNAL(triggered()), this, SLOT(showFileInFileSystem()));
   }
 
-  if(m_LineEdit->text().isEmpty() == false && fi.exists())
+  if(!m_LineEdit->text().isEmpty() && fi.exists())
   {
     m_ShowFileAction->setEnabled(true);
   }
@@ -266,12 +266,12 @@ void ReadH5EbsdWidget::validateInputFile()
 {
   QString currentPath = m_Filter->getInputFile();
   QFileInfo fi(currentPath);
-  if(currentPath.isEmpty() == false && fi.exists() == false)
+  if(!currentPath.isEmpty() && !fi.exists())
   {
     QString Ftype = m_FilterParameter->getFileType();
     QString ext = m_FilterParameter->getFileExtension();
     QString s = tr("All Files(*.*)");
-    if (ext.isEmpty() == false && Ftype.isEmpty() == false)
+    if(!ext.isEmpty() && !Ftype.isEmpty())
     {
       s = s.prepend(tr("%1 Files (*.%2);;").arg(Ftype).arg(ext));
     }
@@ -279,7 +279,7 @@ void ReadH5EbsdWidget::validateInputFile()
     QString title = QObject::tr("Select a replacement input file in filter '%2'").arg(m_Filter->getHumanLabel());
 
     QString file = QFileDialog::getOpenFileName(this, title, getInputFilePath(), s);
-    if(true == file.isEmpty())
+    if(file.isEmpty())
     {
       file = currentPath;
     }
@@ -305,7 +305,7 @@ void ReadH5EbsdWidget::on_m_LineEditBtn_clicked()
   QString s = Ftype + QString("HDF5 EBSD Files (*.h5 *.hdf5 *.h5ang *.h5ebsd)");
 
   QString inputFile = QFileDialog::getOpenFileName(this, tr("Select H5Ebsd Input File"), getInputFilePath(), s);
-  if(true == inputFile.isEmpty())
+  if(inputFile.isEmpty())
   {
     return;
   }
@@ -314,6 +314,7 @@ void ReadH5EbsdWidget::on_m_LineEditBtn_clicked()
   if(!inputFile.isNull())
   {
     m_LineEdit->setText(inputFile); // Should cause a signal to be emitted
+    setValidFilePath(m_LineEdit->text());
   }
 }
 
@@ -336,7 +337,7 @@ void ReadH5EbsdWidget::on_m_LineEdit_textChanged(const QString& text)
     absPathLabel->hide();
   }
   
-  if(verifyPathExists(inputPath, m_LineEdit))
+  if(QtSFileUtils::VerifyPathExists(inputPath, m_LineEdit))
   {
     m_ShowFileAction->setEnabled(true);
   }
@@ -529,7 +530,7 @@ QSet<QString> ReadH5EbsdWidget::getSelectedEnsembleNames()
 void ReadH5EbsdWidget::beforePreflight()
 {
 
-  if(m_NewFileLoaded == true)
+  if(m_NewFileLoaded)
   {
     // Get all the arrays from the file
     QSet<QString> arrayNames = m_Filter->getDataArrayNames();
@@ -542,7 +543,7 @@ void ReadH5EbsdWidget::beforePreflight()
     m_NewFileLoaded = false; // We are all done with our update based a new file being loaded
   }
 
-  if(m_DidCausePreflight == false)
+  if(!m_DidCausePreflight)
   {
     QSet<QString> arrayNames = m_Filter->getDataArrayNames();
     updateModelFromFilter(arrayNames);
@@ -572,7 +573,7 @@ void ReadH5EbsdWidget::updateModelFromFilter(QSet<QString>& arrayNames, bool set
   foreach(QString item, arrayNames)
   {
     QListWidgetItem* listItem = new QListWidgetItem(item, m_CellList);
-    if((selections.find(item) != selections.end()) || (setChecked == true))
+    if((selections.find(item) != selections.end()) || (setChecked))
     {
       listItem->setCheckState(Qt::Checked);
     }
@@ -592,7 +593,7 @@ void ReadH5EbsdWidget::updateFileInfoWidgets()
   SIMPLDataPathValidator* validator = SIMPLDataPathValidator::Instance();
   QString inputPath = validator->convertToAbsolutePath(m_LineEdit->text());
 
-  if(verifyPathExists(inputPath, m_LineEdit))
+  if(QtSFileUtils::VerifyPathExists(inputPath, m_LineEdit))
   {
     QFileInfo fi(inputPath);
     if(fi.exists() && fi.isFile())
@@ -615,7 +616,7 @@ void ReadH5EbsdWidget::updateFileInfoWidgets()
       if(h5Reader->readVolumeInfo() >= 0)
       {
 
-        h5Reader->getResolution(xres, yres, zres);
+        h5Reader->getSpacing(xres, yres, zres);
         m_XRes->setText(QString::number(xres));
         m_YRes->setText(QString::number(yres));
         m_ZRes->setText(QString::number(zres));
@@ -655,7 +656,7 @@ void ReadH5EbsdWidget::updateFileInfoWidgets()
 
       m_RefFrameZDir->setText(Ebsd::StackingOrder::Utils::getStringForEnum(h5Reader->getStackingOrder()));
 
-      if(h5Reader->getFileVersion() == 4 && m_Version4Warning == false)
+      if(h5Reader->getFileVersion() == 4 && !m_Version4Warning)
       {
         QMessageBox msgBox;
         msgBox.setText("H5Ebsd File Needs Updating");
@@ -691,12 +692,12 @@ void ReadH5EbsdWidget::updateFileInfoWidgets()
       if(h5Reader->getFileVersion() >= 4)
       {
         m_SampleTransformation.angle = h5Reader->getSampleTransformationAngle();
-        QVector<float> sampleTransAxis = h5Reader->getSampleTransformationAxis();
+        std::array<float, 3> sampleTransAxis = h5Reader->getSampleTransformationAxis();
         m_SampleTransformation.h = sampleTransAxis[0];
         m_SampleTransformation.k = sampleTransAxis[1];
         m_SampleTransformation.l = sampleTransAxis[2];
         m_EulerTransformation.angle = h5Reader->getEulerTransformationAngle();
-        QVector<float> eulerTransAxis = h5Reader->getEulerTransformationAxis();
+        std::array<float, 3> eulerTransAxis = h5Reader->getEulerTransformationAxis();
         m_EulerTransformation.h = eulerTransAxis[0];
         m_EulerTransformation.k = eulerTransAxis[1];
         m_EulerTransformation.l = eulerTransAxis[2];
@@ -747,6 +748,7 @@ void ReadH5EbsdWidget::resetGuiFileInfoWidgets()
 void ReadH5EbsdWidget::setInputFilePath(QString val)
 {
   m_LineEdit->setText(val);
+  setValidFilePath(m_LineEdit->text());
 }
 
 // -----------------------------------------------------------------------------

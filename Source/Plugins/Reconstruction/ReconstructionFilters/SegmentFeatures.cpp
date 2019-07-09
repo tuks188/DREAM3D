@@ -76,8 +76,8 @@ void SegmentFeatures::initialize()
 // -----------------------------------------------------------------------------
 void SegmentFeatures::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<IGeometryGrid, AbstractFilter>(this, getDataContainerName());
 }
@@ -116,18 +116,17 @@ bool SegmentFeatures::determineGrouping(int64_t referencepoint, int64_t neighbor
 // -----------------------------------------------------------------------------
 void SegmentFeatures::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(getDataContainerName());
 
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<IGeometryGrid>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<IGeometryGrid>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -136,7 +135,7 @@ void SegmentFeatures::execute()
   int32_t gnum = 1;
   int64_t seed = 0;
   int64_t neighbor = 0;
-  bool good = 0;
+  bool good = false;
   int64_t col = 0, row = 0, plane = 0;
   size_t size = 0;
   size_t initialVoxelsListSize = 100000;
@@ -194,9 +193,9 @@ void SegmentFeatures::execute()
           {
             good = false;
           }
-          if(good == true)
+          if(good)
           {
-            if(determineGrouping(currentpoint, neighbor, gnum) == true)
+            if(determineGrouping(currentpoint, neighbor, gnum))
             {
               voxelslist[size] = neighbor;
               size++;
@@ -223,7 +222,7 @@ void SegmentFeatures::execute()
       QString ss = QObject::tr("Total Features: %1").arg(gnum);
       if(gnum % 100 == 0)
       {
-        notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+        notifyStatusMessage(ss);
       }
     }
     if(getCancel())
@@ -232,8 +231,7 @@ void SegmentFeatures::execute()
     }
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -242,7 +240,7 @@ void SegmentFeatures::execute()
 AbstractFilter::Pointer SegmentFeatures::newFilterInstance(bool copyFilterParameters) const
 {
   SegmentFeatures::Pointer filter = SegmentFeatures::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

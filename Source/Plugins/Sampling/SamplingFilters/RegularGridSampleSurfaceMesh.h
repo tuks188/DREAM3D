@@ -52,23 +52,23 @@ class Sampling_EXPORT RegularGridSampleSurfaceMesh : public SampleSurfaceMesh
 {
   Q_OBJECT
     PYB11_CREATE_BINDINGS(RegularGridSampleSurfaceMesh SUPERCLASS SampleSurfaceMesh)
-    PYB11_PROPERTY(QString DataContainerName READ getDataContainerName WRITE setDataContainerName)
+    PYB11_PROPERTY(DataArrayPath DataContainerName READ getDataContainerName WRITE setDataContainerName)
     PYB11_PROPERTY(QString CellAttributeMatrixName READ getCellAttributeMatrixName WRITE setCellAttributeMatrixName)
     PYB11_PROPERTY(int XPoints READ getXPoints WRITE setXPoints)
     PYB11_PROPERTY(int YPoints READ getYPoints WRITE setYPoints)
     PYB11_PROPERTY(int ZPoints READ getZPoints WRITE setZPoints)
-    PYB11_PROPERTY(FloatVec3_t Resolution READ getResolution WRITE setResolution)
-    PYB11_PROPERTY(FloatVec3_t Origin READ getOrigin WRITE setOrigin)
+    PYB11_PROPERTY(FloatVec3Type Spacing READ getSpacing WRITE setSpacing)
+    PYB11_PROPERTY(FloatVec3Type Origin READ getOrigin WRITE setOrigin)
     PYB11_PROPERTY(QString FeatureIdsArrayName READ getFeatureIdsArrayName WRITE setFeatureIdsArrayName)
 public:
   SIMPL_SHARED_POINTERS(RegularGridSampleSurfaceMesh)
   SIMPL_FILTER_NEW_MACRO(RegularGridSampleSurfaceMesh)
   SIMPL_TYPE_MACRO_SUPER_OVERRIDE(RegularGridSampleSurfaceMesh, AbstractFilter)
 
-  virtual ~RegularGridSampleSurfaceMesh();
+  ~RegularGridSampleSurfaceMesh() override;
 
-  SIMPL_FILTER_PARAMETER(QString, DataContainerName)
-  Q_PROPERTY(QString DataContainerName READ getDataContainerName WRITE setDataContainerName)
+  SIMPL_FILTER_PARAMETER(DataArrayPath, DataContainerName)
+  Q_PROPERTY(DataArrayPath DataContainerName READ getDataContainerName WRITE setDataContainerName)
 
   SIMPL_FILTER_PARAMETER(QString, CellAttributeMatrixName)
   Q_PROPERTY(QString CellAttributeMatrixName READ getCellAttributeMatrixName WRITE setCellAttributeMatrixName)
@@ -82,11 +82,11 @@ public:
   SIMPL_FILTER_PARAMETER(int, ZPoints)
   Q_PROPERTY(int ZPoints READ getZPoints WRITE setZPoints)
 
-  SIMPL_FILTER_PARAMETER(FloatVec3_t, Resolution)
-  Q_PROPERTY(FloatVec3_t Resolution READ getResolution WRITE setResolution)
+  SIMPL_FILTER_PARAMETER(FloatVec3Type, Spacing)
+  Q_PROPERTY(FloatVec3Type Spacing READ getSpacing WRITE setSpacing)
 
-  SIMPL_FILTER_PARAMETER(FloatVec3_t, Origin)
-  Q_PROPERTY(FloatVec3_t Origin READ getOrigin WRITE setOrigin)
+  SIMPL_FILTER_PARAMETER(FloatVec3Type, Origin)
+  Q_PROPERTY(FloatVec3Type Origin READ getOrigin WRITE setOrigin)
 
   SIMPL_FILTER_PARAMETER(QString, FeatureIdsArrayName)
   Q_PROPERTY(QString FeatureIdsArrayName READ getFeatureIdsArrayName WRITE setFeatureIdsArrayName)
@@ -109,11 +109,6 @@ public:
    * @return
    */
   const QString getFilterVersion() const override;
-
-  /**
-   * @brief newFilterInstance Reimplemented from @see AbstractFilter class
-   */
-  AbstractFilter::Pointer newFilterInstance(bool copyFilterParameters) const override;
 
   /**
    * @brief getGroupName Reimplemented from @see AbstractFilter class
@@ -172,18 +167,21 @@ protected:
    * @brief generate_points Reimplemented from @see SampleSurfaceMesh class
    * @return VertexGeom object
    */
-  virtual VertexGeom::Pointer generate_points();
+  VertexGeom::Pointer generate_points() override;
 
   /**
    * @brief assign_points Reimplemented from @see SampleSurfaceMesh class
    * @param iArray Sampled Feature Ids from superclass
    */
-  virtual void assign_points(Int32ArrayType::Pointer iArray);
+  void assign_points(Int32ArrayType::Pointer iArray) override;
 
 private:
   DEFINE_DATAARRAY_VARIABLE(int32_t, FeatureIds)
 
+public:
   RegularGridSampleSurfaceMesh(const RegularGridSampleSurfaceMesh&) = delete; // Copy Constructor Not Implemented
-  void operator=(const RegularGridSampleSurfaceMesh&);                        // Move assignment Not Implemented
+  RegularGridSampleSurfaceMesh(RegularGridSampleSurfaceMesh&&) = delete;      // Move Constructor Not Implemented
+  RegularGridSampleSurfaceMesh& operator=(const RegularGridSampleSurfaceMesh&) = delete; // Copy Assignment Not Implemented
+  RegularGridSampleSurfaceMesh& operator=(RegularGridSampleSurfaceMesh&&) = delete;      // Move Assignment Not Implemented
 };
 

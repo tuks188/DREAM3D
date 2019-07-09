@@ -57,9 +57,6 @@ FindFeatureHistogram::FindFeatureHistogram()
 , m_FeaturePhasesArrayPath("", "", "")
 , m_BiasedFeaturesArrayPath("", "", "")
 , m_NewEnsembleArrayArrayPath("", "", "")
-, m_BiasedFeatures(nullptr)
-, m_NewEnsembleArray(nullptr)
-, m_FeaturePhases(nullptr)
 {
 }
 
@@ -73,7 +70,7 @@ FindFeatureHistogram::~FindFeatureHistogram() = default;
 // -----------------------------------------------------------------------------
 void FindFeatureHistogram::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   {
     ChoiceFilterParameter::Pointer parameter = ChoiceFilterParameter::New();
@@ -134,10 +131,10 @@ void FindFeatureHistogram::initialize()
 // -----------------------------------------------------------------------------
 void FindFeatureHistogram::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> dims(1, 1);
+  std::vector<size_t> dims(1, 1);
   m_FeaturePhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeaturePhasesArrayPath(),
                                                                                                            dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeaturePhasesPtr.lock())                                                                        /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -145,10 +142,9 @@ void FindFeatureHistogram::dataCheck()
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
-  if(m_SelectedFeatureArrayPath.isEmpty() == true)
+  if(m_SelectedFeatureArrayPath.isEmpty())
   {
-    setErrorCondition(-11000);
-    notifyErrorMessage(getHumanLabel(), "An array from the Volume DataContainer must be selected.", getErrorCondition());
+    setErrorCondition(-11000, "An array from the Volume DataContainer must be selected.");
   }
 
   int numComp = m_NumberOfBins;
@@ -161,7 +157,7 @@ void FindFeatureHistogram::dataCheck()
     m_NewEnsembleArray = m_NewEnsembleArrayPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
-  if(m_RemoveBiasedFeatures == true)
+  if(m_RemoveBiasedFeatures)
   {
     dims[0] = 1;
     m_BiasedFeaturesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<bool>, AbstractFilter>(this, getBiasedFeaturesArrayPath(),
@@ -221,7 +217,7 @@ template <typename T> void findHistogram(IDataArray::Pointer inputData, int32_t*
 
   for(size_t i = 1; i < numfeatures; i++)
   {
-    if(removeBiasedFeatures == false || biasedFeatures[i] == false)
+    if(!removeBiasedFeatures || !biasedFeatures[i])
     {
       ensemble = eIds[i];
       bin = (fPtr[i] - min) / stepsize;
@@ -239,10 +235,10 @@ template <typename T> void findHistogram(IDataArray::Pointer inputData, int32_t*
 // -----------------------------------------------------------------------------
 void FindFeatureHistogram::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -255,8 +251,7 @@ void FindFeatureHistogram::execute()
   if(nullptr == inputData.get())
   {
     ss = QObject::tr("Selected array '%1' does not exist in the Voxel Data Container. Was it spelled correctly?").arg(m_SelectedFeatureArrayPath.getDataArrayName());
-    setErrorCondition(-11001);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-11001, ss);
     return;
   }
 
@@ -307,7 +302,6 @@ void FindFeatureHistogram::execute()
     findHistogram<bool>(inputData, m_NewEnsembleArray, m_FeaturePhases, m_NumberOfBins, m_RemoveBiasedFeatures, m_BiasedFeatures);
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -316,7 +310,7 @@ void FindFeatureHistogram::execute()
 AbstractFilter::Pointer FindFeatureHistogram::newFilterInstance(bool copyFilterParameters) const
 {
   FindFeatureHistogram::Pointer filter = FindFeatureHistogram::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

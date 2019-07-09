@@ -41,6 +41,7 @@
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Math/GeometryMath.h"
@@ -51,6 +52,13 @@
 #include "OrientationAnalysis/OrientationAnalysisVersion.h"
 
 #include "EbsdLib/EbsdConstants.h"
+
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
 
 // -----------------------------------------------------------------------------
 //
@@ -63,10 +71,6 @@ FindFeatureNeighborCAxisMisalignments::FindFeatureNeighborCAxisMisalignments()
 , m_FeaturePhasesArrayPath("", "", "")
 , m_CrystalStructuresArrayPath("", "", "")
 , m_AvgCAxisMisalignmentsArrayName(SIMPL::FeatureData::AvgCAxisMisalignments)
-, m_AvgQuats(nullptr)
-, m_FeaturePhases(nullptr)
-, m_CrystalStructures(nullptr)
-, m_AvgCAxisMisalignments(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 
@@ -85,7 +89,7 @@ FindFeatureNeighborCAxisMisalignments::~FindFeatureNeighborCAxisMisalignments() 
 // -----------------------------------------------------------------------------
 void FindFeatureNeighborCAxisMisalignments::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   QStringList linkedProps("AvgCAxisMisalignmentsArrayName");
   parameters.push_back(SIMPL_NEW_LINKED_BOOL_FP("Find Average Misalignment Per Feature", FindAvgMisals, FilterParameter::Parameter, FindFeatureNeighborCAxisMisalignments, linkedProps));
   parameters.push_back(SeparatorFilterParameter::New("Feature Data", FilterParameter::RequiredArray));
@@ -107,8 +111,8 @@ void FindFeatureNeighborCAxisMisalignments::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Crystal Structures", CrystalStructuresArrayPath, FilterParameter::RequiredArray, FindFeatureNeighborCAxisMisalignments, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Feature Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("C-Axis Misalignment List", CAxisMisalignmentListArrayName, FilterParameter::CreatedArray, FindFeatureNeighborCAxisMisalignments));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Avgerage C-Axis Misalignments", AvgCAxisMisalignmentsArrayName, FilterParameter::CreatedArray, FindFeatureNeighborCAxisMisalignments));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("C-Axis Misalignment List", CAxisMisalignmentListArrayName, NeighborListArrayPath, NeighborListArrayPath, FilterParameter::CreatedArray, FindFeatureNeighborCAxisMisalignments));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Avgerage C-Axis Misalignments", AvgCAxisMisalignmentsArrayName, FeaturePhasesArrayPath, FeaturePhasesArrayPath, FilterParameter::CreatedArray, FindFeatureNeighborCAxisMisalignments));
   setFilterParameters(parameters);
 }
 
@@ -142,15 +146,15 @@ void FindFeatureNeighborCAxisMisalignments::initialize()
 // -----------------------------------------------------------------------------
 void FindFeatureNeighborCAxisMisalignments::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
 
   DataArrayPath tempPath;
 
   QVector<DataArrayPath> dataArrayPaths;
 
-  QVector<size_t> cDims(1, 4);
+  std::vector<size_t> cDims(1, 4);
   // Feature Data
   m_AvgQuatsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getAvgQuatsArrayPath(),
                                                                                                     cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
@@ -158,7 +162,7 @@ void FindFeatureNeighborCAxisMisalignments::dataCheck()
   {
     m_AvgQuats = m_AvgQuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getAvgQuatsArrayPath());
   }
@@ -170,13 +174,13 @@ void FindFeatureNeighborCAxisMisalignments::dataCheck()
   {
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeaturePhasesArrayPath());
   }
 
   // New Feature Data
-  if(m_FindAvgMisals == true)
+  if(m_FindAvgMisals)
   {
     tempPath.update(m_FeaturePhasesArrayPath.getDataContainerName(), getFeaturePhasesArrayPath().getAttributeMatrixName(), getAvgCAxisMisalignmentsArrayName());
     m_AvgCAxisMisalignmentsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
@@ -197,14 +201,13 @@ void FindFeatureNeighborCAxisMisalignments::dataCheck()
 
   // Now we are going to get a "Pointer" to the NeighborList object out of the DataContainer
   m_NeighborList = getDataContainerArray()->getPrereqArrayFromPath<NeighborList<int32_t>, AbstractFilter>(this, getNeighborListArrayPath(), cDims);
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getNeighborListArrayPath());
   }
 
   tempPath.update(m_NeighborListArrayPath.getDataContainerName(), getNeighborListArrayPath().getAttributeMatrixName(), getCAxisMisalignmentListArrayName());
-  m_CAxisMisalignmentList = getDataContainerArray()->createNonPrereqArrayFromPath<NeighborList<float>, AbstractFilter, float>(
-      this, tempPath, 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_CAxisMisalignmentList = getDataContainerArray()->createNonPrereqArrayFromPath<NeighborList<float>, AbstractFilter, float>(this, tempPath, 0, cDims, "", DataArrayID31);
 
   getDataContainerArray()->validateNumberOfTuples<AbstractFilter>(this, dataArrayPaths);
 }
@@ -227,10 +230,10 @@ void FindFeatureNeighborCAxisMisalignments::preflight()
 // -----------------------------------------------------------------------------
 void FindFeatureNeighborCAxisMisalignments::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -304,21 +307,21 @@ void FindFeatureNeighborCAxisMisalignments::execute()
         }
 
         misalignmentlists[i][j] = w * SIMPLib::Constants::k_180OverPi;
-        if(m_FindAvgMisals == true)
+        if(m_FindAvgMisals)
         {
           m_AvgCAxisMisalignments[i] += misalignmentlists[i][j];
         }
       }
       else
       {
-        if(m_FindAvgMisals == true)
+        if(m_FindAvgMisals)
         {
           hexneighborlistsize--;
         }
         misalignmentlists[i][j] = NAN;
       }
     }
-    if(m_FindAvgMisals == true)
+    if(m_FindAvgMisals)
     {
       if(hexneighborlistsize > 0)
       {
@@ -340,7 +343,6 @@ void FindFeatureNeighborCAxisMisalignments::execute()
     m_CAxisMisalignmentList.lock()->setList(static_cast<int32_t>(i), misaL);
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 // -----------------------------------------------------------------------------
 //
@@ -348,7 +350,7 @@ void FindFeatureNeighborCAxisMisalignments::execute()
 AbstractFilter::Pointer FindFeatureNeighborCAxisMisalignments::newFilterInstance(bool copyFilterParameters) const
 {
   FindFeatureNeighborCAxisMisalignments::Pointer filter = FindFeatureNeighborCAxisMisalignments::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

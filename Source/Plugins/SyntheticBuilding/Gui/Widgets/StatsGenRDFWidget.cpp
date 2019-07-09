@@ -39,21 +39,15 @@
 #include <iostream>
 
 //-- Qt Includes
-#include <QtConcurrent/QtConcurrentMap>
-#include <QtCore/QDir>
-#include <QtCore/QFile>
-#include <QtCore/QFileInfo>
-#include <QtCore/QSettings>
 #include <QtCore/QString>
 #include <QtCore/QVector>
-#include <QtGui/QCloseEvent>
 #include <QtWidgets/QAbstractItemDelegate>
-#include <QtWidgets/QFileDialog>
-#include <QtWidgets/QMessageBox>
 
 #include "SIMPLib/Math/RadialDistributionFunction.h"
+#include "SVWidgetsLib/Widgets/SVStyle.h"
 
 #include "SyntheticBuilding/Gui/Widgets/TableModels/SGMDFTableModel.h"
+#include "SyntheticBuilding/SyntheticBuildingConstants.h"
 
 //-- Qwt Includes AFTER SIMPLib Math due to improper defines in qwt_plot_curve.h
 #include <qwt.h>
@@ -125,18 +119,51 @@ void StatsGenRDFWidget::setupGui()
 // -----------------------------------------------------------------------------
 void StatsGenRDFWidget::initQwtPlot(QString xAxisName, QString yAxisName, QwtPlot* plot)
 {
-  plot->setAxisTitle(QwtPlot::xBottom, xAxisName);
-  plot->setAxisTitle(QwtPlot::yLeft, yAxisName);
+
+
+  QPalette pal;
+  pal.setColor(QPalette::Text, SVStyle::Instance()->getQLabel_color());
+  pal.setColor(QPalette::Foreground, Qt::white);
+  pal.setColor(QPalette::Window, Qt::black);
+
+  plot->setPalette(pal);
+
+  plot->plotLayout()->setAlignCanvasToScales(true);
+  for(int axis = 0; axis < QwtPlot::axisCnt; axis++)
+  {
+    plot->axisWidget(axis)->setMargin(0);
+    plot->axisWidget(axis)->setPalette(pal);
+  }
 
   QwtPlotCanvas* canvas = new QwtPlotCanvas();
+
   canvas->setAutoFillBackground(false);
   canvas->setFrameStyle(QFrame::NoFrame);
-  // canvas->setPalette(pal);
+  canvas->setPalette(pal);
   plot->setCanvas(canvas);
-  plot->setCanvasBackground(Qt::black); // Set the Background color
+
+  QFont font = SVStyle::Instance()->GetUIFont();
+  font.setWeight(QFont::Bold);
+  font.setPointSize(SG_FONT_SIZE);
+
+  QwtText xAxis(xAxisName);
+  xAxis.setRenderFlags(Qt::AlignHCenter | Qt::AlignTop);
+  xAxis.setFont(font);
+  xAxis.setColor(SVStyle::Instance()->getQLabel_color());
+  plot->setAxisTitle(QwtPlot::xBottom, xAxisName);
+
+  QwtText yAxis(yAxisName);
+  yAxis.setRenderFlags(Qt::AlignHCenter | Qt::AlignTop);
+  yAxis.setFont(font);
+  yAxis.setColor(SVStyle::Instance()->getQLabel_color());
+  plot->setAxisTitle(QwtPlot::yLeft, yAxisName);
+
+  const int margin = 0;
+  plot->setContentsMargins(margin, margin, margin, margin);
 
   QwtPlotPicker* plotPicker = new QwtPlotPicker(plot->xBottom, plot->yLeft, QwtPicker::CrossRubberBand, QwtPicker::AlwaysOn, plot->canvas());
   QwtPickerMachine* pickerMachine = new QwtPickerClickPointMachine();
+  plotPicker->setTrackerPen(QPen(SVStyle::Instance()->getQLabel_color()));
   plotPicker->setStateMachine(pickerMachine);
 
   m_PlotCurve = new QwtPlotCurve();
@@ -144,7 +171,7 @@ void StatsGenRDFWidget::initQwtPlot(QString xAxisName, QString yAxisName, QwtPlo
   // Use Antialiasing to improve plot render quality
   m_PlotCurve->setRenderHint(QwtPlotItem::RenderAntialiased, true);
   QPen pen;
-  pen.setColor(Qt::white);
+  pen.setColor(SVStyle::Instance()->getQLabel_color());
   pen.setWidth(2);
   m_PlotCurve->setPen(pen); // Set color and thickness for drawing the curve
   m_PlotCurve->attach(plot);
@@ -317,6 +344,12 @@ void StatsGenRDFWidget::updateRDFPlot(QVector<float>& freqs)
 #else
   curve->setData(xD, yD);
 #endif
+
+  QColor color = QColor("DodgerBlue");
+  curve->setPen(color, 2);
+  curve->setRenderHint(QwtPlotItem::RenderAntialiased, true);
+  curve->setStyle(QwtPlotCurve::Lines);
+
   ui->m_RDFPlot->replot();
   ui->m_RDFPlot->update();
   this->repaint();

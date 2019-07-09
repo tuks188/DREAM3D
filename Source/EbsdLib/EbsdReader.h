@@ -36,7 +36,6 @@
 #pragma once
 
 #include <QtCore/QString>
-#include <QtCore/QVector>
 #include <QtCore/QMap>
 
 #include "EbsdLib/EbsdSetGetMacros.h"
@@ -70,13 +69,14 @@ class EbsdLib_EXPORT EbsdReader
 
     EBSD_INSTANCE_STRING_PROPERTY(ErrorMessage)
 
+    using TransformationType = std::array<float, 3>;
 
     /** @brief Allow the user to set the origin of the scan */
     EBSD_INSTANCE_PROPERTY(uint32_t, UserZDir)
     EBSD_INSTANCE_PROPERTY(float, SampleTransformationAngle)
-    EBSD_INSTANCE_PROPERTY(QVector<float>, SampleTransformationAxis)
+    EBSD_INSTANCE_PROPERTY(TransformationType, SampleTransformationAxis)
     EBSD_INSTANCE_PROPERTY(float, EulerTransformationAngle)
-    EBSD_INSTANCE_PROPERTY(QVector<float>, EulerTransformationAxis)
+    EBSD_INSTANCE_PROPERTY(TransformationType, EulerTransformationAxis)
 
     /** @brief Sets the file name of the ebsd file to be read */
     EBSD_INSTANCE_STRING_PROPERTY(FileName)
@@ -141,6 +141,12 @@ class EbsdLib_EXPORT EbsdReader
     virtual Ebsd::NumType getPointerType(const QString& featureName) = 0;
 
     /**
+     * @brief freePointerByName
+     * @param featureName
+     */
+    //  virtual void freePointerByName(const QString& featureName) = 0;
+
+    /**
     * @brief Reads the complete EBSD data file storing all columns of data and the
     * header values in memory
     * @return 0 or positive value on success
@@ -152,16 +158,6 @@ class EbsdLib_EXPORT EbsdReader
     * @return 0 or positive value on success
     */
     virtual int readHeaderOnly() = 0;
-
-
-    /** @brief Allocates the proper amount of memory (after reading the header portion of the file)
-    * and then splats '0' across all the bytes of the memory allocation
-    */
-    virtual void initPointers(size_t numElements) = 0;
-
-    /** @brief 'free's the allocated memory and sets the pointer to nullptr
-    */
-    virtual void deletePointers() = 0;
 
     /**
      * @brief Allocats a contiguous chunk of memory to store values from the .ang file
@@ -175,7 +171,6 @@ class EbsdLib_EXPORT EbsdReader
 #if defined ( SIMPL_USE_SSE ) && defined ( __SSE2__ )
       T* m_buffer = static_cast<T*>( _mm_malloc (numberOfElements * sizeof(T), 16) );
 #else
-      //T*  m_buffer = new T[numberOfElements];
       T* m_buffer = static_cast<T*>(malloc(sizeof(T) * numberOfElements));
 #endif
       return m_buffer;
@@ -189,7 +184,7 @@ class EbsdLib_EXPORT EbsdReader
     template<typename T>
     void deallocateArrayData(T*& ptr)
     {
-      if (ptr != nullptr && this->m_ManageMemory == true)
+      if(ptr != nullptr && this->m_ManageMemory)
       {
 #if defined ( SIMPL_USE_SSE ) && defined ( __SSE2__ )
         _mm_free(ptr );
@@ -200,15 +195,66 @@ class EbsdLib_EXPORT EbsdReader
       }
     }
 
+    /**
+     * @brief
+     */
+    template <typename ClassType, typename T, typename HeaderEntryClass> int ReadH5EbsdHeaderData(ClassType* c, const QString& key, hid_t gid, const QMap<QString, EbsdHeaderEntry::Pointer>& headerMap)
+    {
+      T t;
+      std::string skey = key.toStdString();
+      herr_t err = H5Lite::readScalarDataset(gid, skey, t);
+      if(err < 0)
+      {
+        QString ss = QObject::tr("%1: The header value for '%2' was not found in the HDF5 file. Was this header originally found in the files that were imported into this H5EBSD File?")
+                         .arg(c->getNameOfClass())
+                         .arg(key);
+        c->setErrorCode(-90001);
+        c->setErrorMessage(ss);
+        return getErrorCode();
+      }
+      EbsdHeaderEntry::Pointer p = headerMap[key];
+      typename HeaderEntryClass::Pointer hec = std::dynamic_pointer_cast<HeaderEntryClass>(p);
+      hec->setValue(t);
+      return 0;
+    }
+
+    /**
+     * @brief
+     */
+    template <typename ClassType, typename T, typename HeaderEntryClass>
+    int ReadH5EbsdHeaderStringData(ClassType* c, const QString& key, hid_t gid, const QMap<QString, EbsdHeaderEntry::Pointer>& headerMap)
+    {
+
+      T t;
+      herr_t err = QH5Lite::readStringDataset(gid, key, t);
+      if(err < 0)
+      {
+        QString ss = QObject::tr("%1: The header value for '%2' was not found in the HDF5 file. Was this header originally found in the files that were imported into this H5EBSD File?")
+                         .arg(c->getNameOfClass())
+                         .arg(key);
+        c->setErrorCode(-90002);
+        c->setErrorMessage(ss);
+        return getErrorCode();
+      }
+
+      EbsdHeaderEntry::Pointer p = headerMap[key];
+      typename HeaderEntryClass::Pointer hec = std::dynamic_pointer_cast<HeaderEntryClass>(p);
+      hec->setValue(t);
+
+      return 0;
+    }
+
     QMap<QString, EbsdHeaderEntry::Pointer>& getHeaderMap() { return m_HeaderMap; }
 
   protected:
     QMap<QString, EbsdHeaderEntry::Pointer> m_HeaderMap;
 
 
-  private:
+  public:
     EbsdReader(const EbsdReader&) = delete;     // Copy Constructor Not Implemented
-    void operator=(const EbsdReader&) = delete; // Move assignment Not Implemented
+    EbsdReader(EbsdReader&&) = delete;          // Move Constructor Not Implemented
+    EbsdReader& operator=(const EbsdReader&) = delete; // Copy Assignment Not Implemented
+    EbsdReader& operator=(EbsdReader&&) = delete;      // Move Assignment Not Implemented
 };
 
 

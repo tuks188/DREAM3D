@@ -33,10 +33,6 @@
 *
 * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-
-
-
-
 #include "CtfPhase.h"
 
 
@@ -47,16 +43,12 @@ CtfPhase::CtfPhase() :
   m_PhaseIndex(-1),
   m_PhaseName("-1")
 {
-
 }
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-CtfPhase::~CtfPhase()
-{
-
-}
+CtfPhase::~CtfPhase() = default;
 
 // -----------------------------------------------------------------------------
 //
@@ -64,16 +56,13 @@ CtfPhase::~CtfPhase()
 void CtfPhase::convertEuropeanDecimals(QByteArray& line)
 {
   // Filter the line to convert European command style decimals to US/UK style points
-  //  QVector<char> cLine(line.size()+1);
-  //  ::memcpy( &(cLine.front()), line.c_str(), line.size() + 1);
-  for (int c = 0; c < line.size(); ++c)
+  for(char& c : line)
   {
-    if(line.at(c) == ',')
+    if(c == ',')
     {
-      line[c] = '.';
+      c = '.';
     }
   }
-
 }
 
 
@@ -138,7 +127,7 @@ void CtfPhase::printSelf(std::ostream& stream)
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-unsigned int CtfPhase::determineCrystalStructure()
+unsigned int CtfPhase::determineLaueGroup()
 {
   Ebsd::Ctf::LaueGroupTable symmetry = getLaueGroup();
 

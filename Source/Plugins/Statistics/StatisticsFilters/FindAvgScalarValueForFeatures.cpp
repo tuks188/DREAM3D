@@ -45,6 +45,13 @@
 #include "Statistics/StatisticsConstants.h"
 #include "Statistics/StatisticsVersion.h"
 
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
+
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
@@ -52,11 +59,7 @@ FindAvgScalarValueForFeatures::FindAvgScalarValueForFeatures()
 : m_SelectedCellArrayPath("", "", "")
 , m_FeatureIdsArrayPath("", "", "")
 , m_NewFeatureArrayArrayPath("", "", "")
-, m_InDataArray(nullptr)
-, m_FeatureIds(nullptr)
-, m_NewFeatureArray(nullptr)
 {
-
 }
 
 // -----------------------------------------------------------------------------
@@ -69,7 +72,7 @@ FindAvgScalarValueForFeatures::~FindAvgScalarValueForFeatures() = default;
 // -----------------------------------------------------------------------------
 void FindAvgScalarValueForFeatures::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Element Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req = DataArraySelectionFilterParameter::CreateCategoryRequirement(SIMPL::Defaults::AnyPrimitive, 1, AttributeMatrix::Category::Element);
@@ -111,10 +114,10 @@ void FindAvgScalarValueForFeatures::initialize()
 // -----------------------------------------------------------------------------
 void FindAvgScalarValueForFeatures::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -123,15 +126,14 @@ void FindAvgScalarValueForFeatures::dataCheck()
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
   cDims[0] = 1;
-  m_NewFeatureArrayPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
-      this, getNewFeatureArrayArrayPath(), 0.0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_NewFeatureArrayPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, getNewFeatureArrayArrayPath(), 0.0, cDims, "", DataArrayID31);
   if(nullptr != m_NewFeatureArrayPtr.lock())            /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_NewFeatureArray = m_NewFeatureArrayPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
   m_InDataArrayPtr = getDataContainerArray()->getPrereqIDataArrayFromPath<IDataArray, AbstractFilter>(this, getSelectedCellArrayPath());
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -141,8 +143,7 @@ void FindAvgScalarValueForFeatures::dataCheck()
     if(cDims != 1)
     {
       QString ss = QObject::tr("Selected array has number of components %1 and is not a scalar array. The path is %2").arg(cDims).arg(getSelectedCellArrayPath().serialize());
-      setErrorCondition(-11003);
-      notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+      setErrorCondition(-11003, ss);
     }
   }
 }
@@ -201,17 +202,16 @@ template <typename T> void findAverage(IDataArray::Pointer inDataPtr, FloatArray
 // -----------------------------------------------------------------------------
 void FindAvgScalarValueForFeatures::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   EXECUTE_FUNCTION_TEMPLATE(this, findAverage, m_InDataArrayPtr.lock(), m_InDataArrayPtr.lock(), m_NewFeatureArrayPtr.lock(), m_FeatureIds)
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -220,7 +220,7 @@ void FindAvgScalarValueForFeatures::execute()
 AbstractFilter::Pointer FindAvgScalarValueForFeatures::newFilterInstance(bool copyFilterParameters) const
 {
   FindAvgScalarValueForFeatures::Pointer filter = FindAvgScalarValueForFeatures::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

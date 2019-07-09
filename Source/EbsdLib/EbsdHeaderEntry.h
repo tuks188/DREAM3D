@@ -80,7 +80,7 @@
       EBSD_SHARED_POINTERS(EbsdHeaderEntry)
       EBSD_TYPE_MACRO(EbsdHeaderEntry)
 
-      virtual ~EbsdHeaderEntry() {}
+      virtual ~EbsdHeaderEntry() = default;
 
       /**
        * @brief Returns the key of the header entry
@@ -106,12 +106,13 @@
       virtual void print(std::ostream& out) = 0;
 
     protected:
-      EbsdHeaderEntry() {}
+      EbsdHeaderEntry() = default;
 
-
-    private:
+    public:
       EbsdHeaderEntry(const EbsdHeaderEntry&) = delete; // Copy Constructor Not Implemented
-      void operator=(const EbsdHeaderEntry&) = delete;  // Move assignment Not Implemented
+      EbsdHeaderEntry(EbsdHeaderEntry&&) = delete;      // Move Constructor Not Implemented
+      EbsdHeaderEntry& operator=(const EbsdHeaderEntry&) = delete; // Copy Assignment Not Implemented
+      EbsdHeaderEntry& operator=(EbsdHeaderEntry&&) = delete;      // Move Assignment Not Implemented
   };
 
 

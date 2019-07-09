@@ -37,7 +37,6 @@
 
 #include "hdf5.h"
 
-#include <QtCore/QVector>
 #include <QtCore/QString>
 
 #include "EbsdLib/EbsdLib.h"
@@ -63,7 +62,7 @@ class EbsdLib_EXPORT H5CtfImporter : public EbsdImporter
     EBSD_TYPE_MACRO_SUPER(H5CtfImporter, EbsdImporter)
     EBSD_STATIC_NEW_SUPERCLASS(EbsdImporter, H5CtfImporter)
 
-    virtual ~H5CtfImporter();
+    ~H5CtfImporter() override;
 
     /**
      * @brief Imports a specific file into the HDF5 file
@@ -71,7 +70,7 @@ class EbsdLib_EXPORT H5CtfImporter : public EbsdImporter
      * @param index The slice index for the file
      * @param angFile The absolute path to the input .ang file
      */
-    int importFile(hid_t fileId, int64_t index, const QString& angFile);
+    int importFile(hid_t fileId, int64_t index, const QString& angFile) override;
 
     /**
      * @brief Writes the phase data into the HDF5 file
@@ -86,27 +85,27 @@ class EbsdLib_EXPORT H5CtfImporter : public EbsdImporter
      * @param x Number of X Voxels (out)
      * @param y Number of Y Voxels (out)
      */
-    virtual void getDims(int64_t& x, int64_t& y);
+    void getDims(int64_t& x, int64_t& y) override;
 
     /**
      * @brief Returns the x and y resolution of the voxels
      * @param x The x resolution (out)
      * @param y The y resolution (out)
      */
-    virtual void getResolution(float& x, float& y);
+    void getSpacing(float& x, float& y) override;
 
     /**
      * @brief Return the number of slices imported
      * @return
      */
-    virtual int numberOfSlicesImported();
+    int numberOfSlicesImported() override;
 
     /**
      * @brief This function sets the version of the H5Ebsd file that will be written.
      * @param version
      * @return
      */
-    virtual void setFileVersion(uint32_t version);
+    void setFileVersion(uint32_t version) override;
 
   protected:
     H5CtfImporter();
@@ -114,17 +113,20 @@ class EbsdLib_EXPORT H5CtfImporter : public EbsdImporter
     int writeSliceData(hid_t fileId, CtfReader& reader, int z, int actualSlice);
 
   private:
-    int64_t xDim;
-    int64_t yDim;
-    int64_t zDim;
-    float xRes;
-    float yRes;
-    float zRes;
-    int m_NumSlicesImported;
-    int   m_FileVersion;
+    int64_t xDim = -1;
+    int64_t yDim = -1;
+    int64_t zDim = -1;
+    float xRes = 1.0f;
+    float yRes = 1.0f;
+    float zRes = 1.0f;
+    int m_NumSlicesImported = 1;
+    int m_FileVersion = Ebsd::H5Aztec::FileVersion;
 
+  public:
     H5CtfImporter(const H5CtfImporter&) = delete;  // Copy Constructor Not Implemented
-    void operator=(const H5CtfImporter&) = delete; // Move assignment Not Implemented
+    H5CtfImporter(H5CtfImporter&&) = delete;       // Move Constructor Not Implemented
+    H5CtfImporter& operator=(const H5CtfImporter&) = delete; // Copy Assignment Not Implemented
+    H5CtfImporter& operator=(H5CtfImporter&&) = delete;      // Move Assignment Not Implemented
 };
 
 

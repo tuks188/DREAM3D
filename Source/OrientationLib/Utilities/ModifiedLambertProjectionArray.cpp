@@ -70,7 +70,7 @@ QString ModifiedLambertProjectionArray::getTypeAsString() { return "ModifiedLamb
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-IDataArray::Pointer ModifiedLambertProjectionArray::createNewArray(size_t numElements, int rank, size_t* dims, const QString& name, bool allocate)
+IDataArray::Pointer ModifiedLambertProjectionArray::createNewArray(size_t numElements, int rank, const size_t* dims, const QString& name, bool allocate)
 {
   return ModifiedLambertProjectionArray::NullPointer();
 }
@@ -78,19 +78,10 @@ IDataArray::Pointer ModifiedLambertProjectionArray::createNewArray(size_t numEle
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-IDataArray::Pointer ModifiedLambertProjectionArray::createNewArray(size_t numElements, std::vector<size_t> dims, const QString& name, bool allocate)
+IDataArray::Pointer ModifiedLambertProjectionArray::createNewArray(size_t numElements, const std::vector<size_t>& dims, const QString& name, bool allocate)
 {
   return ModifiedLambertProjectionArray::NullPointer();
 }
-
-// -----------------------------------------------------------------------------
-//
-// -----------------------------------------------------------------------------
-IDataArray::Pointer ModifiedLambertProjectionArray::createNewArray(size_t numElements, QVector<size_t> dims, const QString& name, bool allocate)
-{
-  return ModifiedLambertProjectionArray::NullPointer();
-}
-
 
 // -----------------------------------------------------------------------------
 //
@@ -135,7 +126,7 @@ void ModifiedLambertProjectionArray::fillArrayWithNewModifiedLambertProjection(s
   m_ModifiedLambertProjectionArray.resize(n);
   for (size_t i = 0; i < n; ++i)
   {
-    if (m_ModifiedLambertProjectionArray[i].get() == nullptr)
+    if(m_ModifiedLambertProjectionArray[i] == nullptr)
     {
       m_ModifiedLambertProjectionArray[i] = ModifiedLambertProjection::New();
     }
@@ -148,7 +139,7 @@ void ModifiedLambertProjectionArray::fillArrayWithNewModifiedLambertProjection(s
 ModifiedLambertProjection::Pointer ModifiedLambertProjectionArray::getModifiedLambertProjection(int idx)
 {
 #ifndef NDEBUG
-  if(m_ModifiedLambertProjectionArray.size() > 0)
+  if(!m_ModifiedLambertProjectionArray.empty())
   {
     Q_ASSERT(idx < static_cast<int>(m_ModifiedLambertProjectionArray.size()));
   }
@@ -162,7 +153,7 @@ ModifiedLambertProjection::Pointer ModifiedLambertProjectionArray::getModifiedLa
 ModifiedLambertProjection::Pointer ModifiedLambertProjectionArray::operator[](int idx)
 {
 #ifndef NDEBUG
-  if(m_ModifiedLambertProjectionArray.size() > 0)
+  if(!m_ModifiedLambertProjectionArray.empty())
   {
     Q_ASSERT(idx < static_cast<int>(m_ModifiedLambertProjectionArray.size()));
   }
@@ -205,14 +196,14 @@ void ModifiedLambertProjectionArray::releaseOwnership()
 void* ModifiedLambertProjectionArray::getVoidPointer(size_t i)
 {
 #ifndef NDEBUG
-  if(m_ModifiedLambertProjectionArray.size() > 0)
+  if(!m_ModifiedLambertProjectionArray.empty())
   {
     Q_ASSERT(i < static_cast<size_t>(m_ModifiedLambertProjectionArray.size()));
   }
 #endif
   if(i >= this->getNumberOfTuples())
   {
-    return 0x0;
+    return nullptr;
   }
   return (void*)(&(m_ModifiedLambertProjectionArray[i]));
 }
@@ -255,9 +246,9 @@ int ModifiedLambertProjectionArray::getNumberOfComponents()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-QVector<size_t> ModifiedLambertProjectionArray::getComponentDimensions()
+std::vector<size_t> ModifiedLambertProjectionArray::getComponentDimensions()
 {
-  QVector<size_t> dims(1, 1);
+  std::vector<size_t> dims(1, 1);
   return dims;
 }
 
@@ -266,7 +257,6 @@ QVector<size_t> ModifiedLambertProjectionArray::getComponentDimensions()
 // -----------------------------------------------------------------------------
 void ModifiedLambertProjectionArray::SetRank(int rnk)
 {
-
 }
 
 // -----------------------------------------------------------------------------
@@ -288,25 +278,25 @@ size_t ModifiedLambertProjectionArray::getTypeSize()
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-int ModifiedLambertProjectionArray::eraseTuples(QVector<size_t>& idxs)
+int ModifiedLambertProjectionArray::eraseTuples(std::vector<size_t>& idxs)
 {
   int err = 0;
 
   // If nothing is to be erased just return
-  if(idxs.size() == 0)
+  if(idxs.empty())
   {
     return 0;
   }
 
   if (static_cast<size_t>(idxs.size()) >= getNumberOfTuples() )
   {
-    resize(0);
+    resizeTuples(0);
     return 0;
   }
 
   // Sanity Check the Indices in the vector to make sure we are not trying to remove any indices that are
   // off the end of the array and return an error code.
-  for(QVector<size_t>::size_type i = 0; i < idxs.size(); ++i)
+  for(std::vector<size_t>::size_type i = 0; i < idxs.size(); ++i)
   {
     if (idxs[i] >= static_cast<size_t>(m_ModifiedLambertProjectionArray.size()))
     {
@@ -354,7 +344,10 @@ int ModifiedLambertProjectionArray::copyTuple(size_t currentPos, size_t newPos)
 bool ModifiedLambertProjectionArray::copyFromArray(size_t destTupleOffset, IDataArray::Pointer sourceArray, size_t srcTupleOffset, size_t totalSrcTuples)
 {
   if(!m_IsAllocated) { return false; }
-  if(0 == m_ModifiedLambertProjectionArray.size()) { return false; }
+  if(m_ModifiedLambertProjectionArray.empty())
+  {
+    return false;
+  }
   if(destTupleOffset >= m_ModifiedLambertProjectionArray.size()) { return false; }
   if(!sourceArray->isAllocated()) { return false; }
   Self* source = dynamic_cast<Self*>(sourceArray.get());
@@ -406,9 +399,9 @@ void ModifiedLambertProjectionArray::initializeWithZeros()
 IDataArray::Pointer ModifiedLambertProjectionArray::deepCopy(bool forceNoAllocate)
 {
   ModifiedLambertProjectionArray::Pointer daCopyPtr = ModifiedLambertProjectionArray::New();
-  if(forceNoAllocate == false)
+  if(!forceNoAllocate)
   {
-    daCopyPtr->resize(getNumberOfTuples());
+    daCopyPtr->resizeTuples(getNumberOfTuples());
     ModifiedLambertProjectionArray& daCopy = *daCopyPtr;
     for(size_t i = 0; i < getNumberOfTuples(); i++)
     {
@@ -430,9 +423,9 @@ int32_t ModifiedLambertProjectionArray::resizeTotalElements(size_t size)
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-int32_t ModifiedLambertProjectionArray::resize(size_t numTuples)
+void ModifiedLambertProjectionArray::resizeTuples(size_t numTuples)
 {
-  return resizeTotalElements(numTuples);
+  resizeTotalElements(numTuples);
 }
 
 // -----------------------------------------------------------------------------
@@ -605,10 +598,10 @@ void Create2DExpandableDataset(hid_t gid, const QString& dsetName, int lambertSi
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-int ModifiedLambertProjectionArray::writeH5Data(hid_t parentId, QVector<size_t> tDims)
+int ModifiedLambertProjectionArray::writeH5Data(hid_t parentId, std::vector<size_t> tDims)
 {
   herr_t err = 0;
-  if (m_ModifiedLambertProjectionArray.size() == 0)
+  if(m_ModifiedLambertProjectionArray.empty())
   {
     return -2;
   }
@@ -635,7 +628,7 @@ int ModifiedLambertProjectionArray::writeH5Data(hid_t parentId, QVector<size_t> 
   // We start numbering our phases at 1. Anything in slot 0 is considered "Dummy" or invalid
   for(qint32 i = 1; i < m_ModifiedLambertProjectionArray.size(); ++i)
   {
-    if (m_ModifiedLambertProjectionArray[i].get() != nullptr)
+    if(m_ModifiedLambertProjectionArray[i] != nullptr)
     {
       north = m_ModifiedLambertProjectionArray[i]->getNorthSquare().get();
       south = m_ModifiedLambertProjectionArray[i]->getSouthSquare().get();

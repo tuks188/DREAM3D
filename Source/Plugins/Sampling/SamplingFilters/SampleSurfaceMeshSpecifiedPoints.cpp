@@ -42,9 +42,17 @@
 #include "SIMPLib/FilterParameters/InputFileFilterParameter.h"
 #include "SIMPLib/FilterParameters/OutputFileFilterParameter.h"
 #include "SIMPLib/Geometry/VertexGeom.h"
+#include "SIMPLib/Utilities/FileSystemPathHelper.h"
 
 #include "Sampling/SamplingConstants.h"
 #include "Sampling/SamplingVersion.h"
+
+enum createdPathID : RenameDataPath::DataID_t
+{
+  AttributeMatrixID21 = 21,
+
+  DataContainerID = 1
+};
 
 // -----------------------------------------------------------------------------
 //
@@ -52,7 +60,6 @@
 SampleSurfaceMeshSpecifiedPoints::SampleSurfaceMeshSpecifiedPoints()
 : m_InputFilePath("")
 , m_OutputFilePath("")
-, m_FeatureIds(nullptr)
 , m_NumPoints(0)
 {
 }
@@ -68,7 +75,7 @@ SampleSurfaceMeshSpecifiedPoints::~SampleSurfaceMeshSpecifiedPoints() = default;
 void SampleSurfaceMeshSpecifiedPoints::setupFilterParameters()
 {
   SampleSurfaceMesh::setupFilterParameters();
-  FilterParameterVector parameters = getFilterParameters();
+  FilterParameterVectorType parameters = getFilterParameters();
   parameters.push_back(SIMPL_NEW_INPUT_FILE_FP("Specified Points File", InputFilePath, FilterParameter::Parameter, SampleSurfaceMeshSpecifiedPoints, "*.raw, *.bin"));
   parameters.push_back(SIMPL_NEW_OUTPUT_FILE_FP("Sampled Values File", OutputFilePath, FilterParameter::Parameter, SampleSurfaceMeshSpecifiedPoints, "*.txt"));
   setFilterParameters(parameters);
@@ -91,8 +98,8 @@ void SampleSurfaceMeshSpecifiedPoints::readFilterParameters(AbstractFilterParame
 // -----------------------------------------------------------------------------
 void SampleSurfaceMeshSpecifiedPoints::updateVertexInstancePointers()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   if(nullptr != m_FeatureIdsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
@@ -112,26 +119,21 @@ void SampleSurfaceMeshSpecifiedPoints::initialize()
 // -----------------------------------------------------------------------------
 void SampleSurfaceMeshSpecifiedPoints::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
   DataArrayPath tempPath;
 
-  if(true == m_InputFilePath.isEmpty())
+  if(m_InputFilePath.isEmpty())
   {
     QString ss = QObject::tr("The input file must be set");
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), ss, -1);
-  }
-  if(true == m_OutputFilePath.isEmpty())
-  {
-    QString ss = QObject::tr("The output file must be set");
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), ss, -1);
+    setErrorCondition(-1, ss);
   }
 
-  DataContainer::Pointer v = getDataContainerArray()->createNonPrereqDataContainer<AbstractFilter>(this, "SpecifiedPoints");
-  if(getErrorCondition() < 0 || nullptr == v.get())
+  FileSystemPathHelper::CheckOutputFile(this, "Output File Path", getOutputFilePath(), true);
+
+  DataContainer::Pointer v = getDataContainerArray()->createNonPrereqDataContainer<AbstractFilter>(this, "SpecifiedPoints", DataContainerID);
+  if(getErrorCode() < 0 || nullptr == v.get())
   {
     return;
   }
@@ -139,10 +141,10 @@ void SampleSurfaceMeshSpecifiedPoints::dataCheck()
   VertexGeom::Pointer vertices = VertexGeom::CreateGeometry(0, SIMPL::Geometry::VertexGeometry, !getInPreflight());
   v->setGeometry(vertices);
 
-  QVector<size_t> tDims(1, 0);
-  v->createNonPrereqAttributeMatrix(this, "SpecifiedPointsData", tDims, AttributeMatrix::Type::Vertex);
+  std::vector<size_t> tDims(1, 0);
+  v->createNonPrereqAttributeMatrix(this, "SpecifiedPointsData", tDims, AttributeMatrix::Type::Vertex, AttributeMatrixID21);
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   tempPath.update("SpecifiedPoints", "SpecifiedPointsData", "FeatureIds");
   m_FeatureIdsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter, int32_t>(
       this, tempPath, 0, cDims);              /* Assigns the shared_ptr<>(this, tempPath, -301, dims);  Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
@@ -183,8 +185,7 @@ VertexGeom::Pointer SampleSurfaceMeshSpecifiedPoints::generate_points()
   if(m_NumPoints <= 0)
   {
     QString ss = QObject::tr("Number of points to sample (%1) must be positive").arg(m_NumPoints);
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-1, ss);
     return VertexGeom::NullPointer();
   }
 
@@ -210,7 +211,7 @@ VertexGeom::Pointer SampleSurfaceMeshSpecifiedPoints::generate_points()
 // -----------------------------------------------------------------------------
 void SampleSurfaceMeshSpecifiedPoints::assign_points(Int32ArrayType::Pointer iArray)
 {
-  QVector<size_t> tDims(1, m_NumPoints);
+  std::vector<size_t> tDims(1, m_NumPoints);
   getDataContainerArray()->getDataContainer("SpecifiedPoints")->getAttributeMatrix("SpecifiedPointsData")->resizeAttributeArrays(tDims);
   updateVertexInstancePointers();
 
@@ -226,10 +227,10 @@ void SampleSurfaceMeshSpecifiedPoints::assign_points(Int32ArrayType::Pointer iAr
 // -----------------------------------------------------------------------------
 void SampleSurfaceMeshSpecifiedPoints::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -243,8 +244,7 @@ void SampleSurfaceMeshSpecifiedPoints::execute()
     outFile << m_FeatureIds[i] << std::endl;
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -253,7 +253,7 @@ void SampleSurfaceMeshSpecifiedPoints::execute()
 AbstractFilter::Pointer SampleSurfaceMeshSpecifiedPoints::newFilterInstance(bool copyFilterParameters) const
 {
   SampleSurfaceMeshSpecifiedPoints::Pointer filter = SampleSurfaceMeshSpecifiedPoints::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

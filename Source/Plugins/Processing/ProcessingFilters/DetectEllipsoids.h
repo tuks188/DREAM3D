@@ -37,13 +37,13 @@
 
 #include <complex>
 
-#include <QtCore/QSemaphore>
+#include <QtCore/QMutex>
 
 #include "SIMPLib/Common/SIMPLibSetGetMacros.h"
 #include "SIMPLib/Filtering/AbstractFilter.h"
 #include "SIMPLib/SIMPLib.h"
 
-typedef std::vector<std::complex<double>> DE_ComplexDoubleVector;
+using DE_ComplexDoubleVector = std::vector<std::complex<double>>;
 
 class DetectEllipsoidsImpl;
 
@@ -69,7 +69,6 @@ class Processing_EXPORT DetectEllipsoids : public AbstractFilter
   PYB11_PROPERTY(float HoughTransformThreshold READ getHoughTransformThreshold WRITE setHoughTransformThreshold)
   PYB11_PROPERTY(float MinAspectRatio READ getMinAspectRatio WRITE setMinAspectRatio)
   PYB11_PROPERTY(int ImageScaleBarLength READ getImageScaleBarLength WRITE setImageScaleBarLength)
-  PYB11_PROPERTY(size_t Ellipse_Count READ getEllipse_Count WRITE setEllipse_Count)
 
 public:
   SIMPL_SHARED_POINTERS(DetectEllipsoids)
@@ -125,7 +124,7 @@ public:
   SIMPL_FILTER_PARAMETER(int, ImageScaleBarLength)
   Q_PROPERTY(int ImageScaleBarLength READ getImageScaleBarLength WRITE setImageScaleBarLength)
 
-  SIMPL_FILTER_PARAMETER(size_t, Ellipse_Count)
+  void incrementEllipseCount();
 
   /**
    * @brief getUniqueFeatureId
@@ -249,13 +248,17 @@ protected:
 
 private:
   static double m_img_scale_length;
-  int32_t m_MaxFeatureId;
-  int32_t m_NextExecutedFeatureId;
-  int32_t m_TotalNumberOfFeatures;
-  int32_t m_FeaturesCompleted;
-  QSemaphore m_MaxFeatureIdSem;
-  QSemaphore m_NextExecutedFeatureIdSem;
-  QSemaphore m_FeaturesCompletedSem;
+  int32_t m_MaxFeatureId = 0;
+  int32_t m_NextExecutedFeatureId = 1;
+  int32_t m_TotalNumberOfFeatures = 0;
+  int32_t m_FeaturesCompleted = 0;
+  size_t m_Ellipse_Count = 0;
+
+  QMutex m_MaxFeatureIdMutex;
+  QMutex m_NextExecutedFeatureIdMutex;
+  QMutex m_FeaturesCompletedMutex;
+  QMutex m_IncrementCountMutex;
+
   int m_ThreadIndex = 0;
   QMap<int, int> m_ThreadWork;
 
@@ -270,7 +273,7 @@ private:
    * @brief orientationFilter
    * @return
    */
-  DoubleArrayType::Pointer orientationFilter(int minAxisLength, int maxAxisLength, QVector<size_t>& tDims);
+  DoubleArrayType::Pointer orientationFilter(int minAxisLength, int maxAxisLength, std::vector<size_t>& tDims);
 
   /**
    * @brief houghCircleFilter
@@ -295,14 +298,14 @@ private:
    * @param kernel_tDims
    * @return
    */
-  Int32ArrayType::Pointer createOffsetArray(QVector<size_t> kernel_tDims);
+  Int32ArrayType::Pointer createOffsetArray(std::vector<size_t> kernel_tDims);
 
   /**
    * @brief smoothingFilter
    * @param n_size
    * @return
    */
-  std::vector<double> smoothingFilter(int n_size, QVector<size_t>& tDims);
+  std::vector<double> smoothingFilter(int n_size, std::vector<size_t>& tDims);
 
   /**
    * @brief plotEllipsev2
@@ -328,7 +331,7 @@ private:
    * @param val
    * @return
    */
-  Int32ArrayType::Pointer fillEllipse(Int32ArrayType::Pointer I, QVector<size_t> I_tDims, double xc, double yc, double p, double q, double theta, double val);
+  Int32ArrayType::Pointer fillEllipse(Int32ArrayType::Pointer I, std::vector<size_t> I_tDims, double xc, double yc, double p, double q, double theta, double val);
 
   /**
    * @brief sub2ind Helper Method.  Computes index from matrix coordinates
@@ -338,7 +341,7 @@ private:
    * @param z
    * @return
    */
-  size_t sub2ind(QVector<size_t> tDims, size_t x, size_t y, size_t z) const;
+  size_t sub2ind(std::vector<size_t> tDims, size_t x, size_t y, size_t z) const;
 
   /**
    * @brief ind2sub Helper Method.  Computes matrix coordinates from index
@@ -348,7 +351,7 @@ private:
    * @param y
    * @param z
    */
-  void ind2sub(QVector<size_t> tDims, size_t index, size_t& x, size_t& y, size_t& z) const;
+  void ind2sub(std::vector<size_t> tDims, size_t index, size_t& x, size_t& y, size_t& z) const;
 
 public:
   DetectEllipsoids(const DetectEllipsoids&) = delete;            // Copy Constructor Not Implemented

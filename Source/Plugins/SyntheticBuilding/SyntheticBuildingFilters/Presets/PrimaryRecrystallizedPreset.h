@@ -38,7 +38,7 @@
 //-- C++ includes
 #include <string>
 
-//-- MXA Includes
+//-- SIMPLib Includes
 #include "SIMPLib/Common/SIMPLibSetGetMacros.h"
 
 //-- StatsGen Includes
@@ -65,22 +65,24 @@ public:
 
   virtual QString getName();
 
-  void initializeOmega3TableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors);
-  void initializeBOverATableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors);
-  void initializeCOverATableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors);
-  void initializeNeighborTableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors);
-  void initializeClusteringTableModel(QMap<QString, QVector<float>>& data, QVector<SIMPL::Rgb>& colors);
+  void initializeOmega3TableModel(QMap<QString, QVector<float>>& data) override;
+  void initializeBOverATableModel(QMap<QString, QVector<float>>& data) override;
+  void initializeCOverATableModel(QMap<QString, QVector<float>>& data) override;
+  void initializeNeighborTableModel(QMap<QString, QVector<float>>& data) override;
+  void initializeClusteringTableModel(QMap<QString, QVector<float>>& data) override;
+
+  unsigned int getDistributionType(const QString& distType) override;
 
   SIMPL_INSTANCE_PROPERTY(float, PercentRecrystallized)
-
-  unsigned int getDistributionType(const QString& distType);
 
 protected:
   PrimaryRecrystallizedPreset();
 
-private:
+public:
   PrimaryRecrystallizedPreset(const PrimaryRecrystallizedPreset&) = delete; // Copy Constructor Not Implemented
-  void operator=(const PrimaryRecrystallizedPreset&) = delete;              // Move assignment Not Implemented
+  PrimaryRecrystallizedPreset(PrimaryRecrystallizedPreset&&) = delete;      // Move Constructor Not Implemented
+  PrimaryRecrystallizedPreset& operator=(const PrimaryRecrystallizedPreset&) = delete; // Copy Assignment Not Implemented
+  PrimaryRecrystallizedPreset& operator=(PrimaryRecrystallizedPreset&&) = delete;      // Move Assignment Not Implemented
 };
 
 DECLARE_FACTORY_CLASS(PrimaryRecrystallizedPresetFactory, PrimaryRecrystallizedPreset, "Recrystallized")

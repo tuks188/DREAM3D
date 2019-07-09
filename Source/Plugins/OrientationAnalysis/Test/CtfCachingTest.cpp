@@ -30,8 +30,6 @@
  *
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-#include <QtCore/QCoreApplication>
-#include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QThread>
 
@@ -137,7 +135,7 @@ public:
         DREAM3D_REQUIRE_EQUAL(propWasSet, true)
         ctfReader->setDataContainerArray(dca);
         ctfReader->preflight();
-        int err = ctfReader->getErrorCondition();
+        int err = ctfReader->getErrorCode();
         DREAM3D_REQUIRE_EQUAL(err, 0);
       }
       else
@@ -165,7 +163,7 @@ public:
         DREAM3D_REQUIRE_EQUAL(propWasSet, true)
         ctfReader->setDataContainerArray(dca);
         ctfReader->preflight();
-        int err = ctfReader->getErrorCondition();
+        int err = ctfReader->getErrorCode();
         DREAM3D_REQUIRE_EQUAL(err, 0);
       }
       else
@@ -193,7 +191,7 @@ public:
         DREAM3D_REQUIRE_EQUAL(propWasSet, true)
         ctfReader->setDataContainerArray(dca);
         ctfReader->preflight();
-        int err = ctfReader->getErrorCondition();
+        int err = ctfReader->getErrorCode();
         DREAM3D_REQUIRE_EQUAL(err, 0);
       }
       else
@@ -234,7 +232,7 @@ public:
         DREAM3D_REQUIRE_EQUAL(propWasSet, true)
         ctfReader->setDataContainerArray(dca);
         ctfReader->preflight();
-        int err = ctfReader->getErrorCondition();
+        int err = ctfReader->getErrorCode();
         DREAM3D_REQUIRE_EQUAL(err, 0);
       }
       else
@@ -266,7 +264,7 @@ public:
         DREAM3D_REQUIRE_EQUAL(propWasSet, true)
         ctfReader->setDataContainerArray(dca);
         ctfReader->preflight();
-        int err = ctfReader->getErrorCondition();
+        int err = ctfReader->getErrorCode();
         DREAM3D_REQUIRE_EQUAL(err, 0);
       }
       else

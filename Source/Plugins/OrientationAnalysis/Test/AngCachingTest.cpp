@@ -30,8 +30,6 @@
  *
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-#include <QtCore/QCoreApplication>
-#include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QThread>
 
@@ -137,7 +135,7 @@ public:
         DREAM3D_REQUIRE_EQUAL(propWasSet, true)
         angReader->setDataContainerArray(dca);
         angReader->preflight();
-        int err = angReader->getErrorCondition();
+        int err = angReader->getErrorCode();
         DREAM3D_REQUIRE_EQUAL(err, 0);
       }
       else
@@ -149,7 +147,7 @@ public:
 
       Ang_Private_Data data = angReader->property("Data").value<Ang_Private_Data>();
 
-      // XStep, YStep -> Resolution(x, y)
+      // XStep, YStep -> Spacing(x, y)
       DREAM3D_REQUIRE_EQUAL(data.resolution[0], xStep1)
       DREAM3D_REQUIRE_EQUAL(data.resolution[1], yStep1)
 
@@ -172,7 +170,7 @@ public:
         DREAM3D_REQUIRE_EQUAL(propWasSet, true)
         angReader->setDataContainerArray(dca);
         angReader->preflight();
-        int err = angReader->getErrorCondition();
+        int err = angReader->getErrorCode();
         DREAM3D_REQUIRE_EQUAL(err, 0);
       }
       else
@@ -184,7 +182,7 @@ public:
 
       Ang_Private_Data data = angReader->property("Data").value<Ang_Private_Data>();
 
-      // XStep, YStep -> Resolution(x, y)
+      // XStep, YStep -> Spacing(x, y)
       DREAM3D_REQUIRE_EQUAL(data.resolution[0], xStep1)
       DREAM3D_REQUIRE_EQUAL(data.resolution[1], yStep1)
 
@@ -207,7 +205,7 @@ public:
         DREAM3D_REQUIRE_EQUAL(propWasSet, true)
         angReader->setDataContainerArray(dca);
         angReader->preflight();
-        int err = angReader->getErrorCondition();
+        int err = angReader->getErrorCode();
         DREAM3D_REQUIRE_EQUAL(err, 0);
       }
       else
@@ -219,7 +217,7 @@ public:
 
       Ang_Private_Data data = angReader->property("Data").value<Ang_Private_Data>();
 
-      // XStep, YStep -> Resolution(x, y)
+      // XStep, YStep -> Spacing(x, y)
       DREAM3D_REQUIRE_EQUAL(data.resolution[0], xStep2)
       DREAM3D_REQUIRE_EQUAL(data.resolution[1], yStep2)
 
@@ -268,7 +266,7 @@ public:
         DREAM3D_REQUIRE_EQUAL(propWasSet, true)
         angReader->setDataContainerArray(dca);
         angReader->preflight();
-        int err = angReader->getErrorCondition();
+        int err = angReader->getErrorCode();
         DREAM3D_REQUIRE_EQUAL(err, 0);
       }
       else
@@ -280,7 +278,7 @@ public:
 
       Ang_Private_Data data = angReader->property("Data").value<Ang_Private_Data>();
 
-      // XStep, YStep -> Resolution(x, y)
+      // XStep, YStep -> Spacing(x, y)
       DREAM3D_REQUIRE_EQUAL(data.resolution[0], xStep2)
       DREAM3D_REQUIRE_EQUAL(data.resolution[1], yStep2)
 
@@ -307,7 +305,7 @@ public:
         DREAM3D_REQUIRE_EQUAL(propWasSet, true)
         angReader->setDataContainerArray(dca);
         angReader->preflight();
-        int err = angReader->getErrorCondition();
+        int err = angReader->getErrorCode();
         DREAM3D_REQUIRE_EQUAL(err, 0);
       }
       else
@@ -319,7 +317,7 @@ public:
 
       Ang_Private_Data data = angReader->property("Data").value<Ang_Private_Data>();
 
-      // XStep, YStep -> Resolution(x, y)
+      // XStep, YStep -> Spacing(x, y)
       DREAM3D_REQUIRE_EQUAL(data.resolution[0], xStep2)
       DREAM3D_REQUIRE_EQUAL(data.resolution[1], yStep2)
 

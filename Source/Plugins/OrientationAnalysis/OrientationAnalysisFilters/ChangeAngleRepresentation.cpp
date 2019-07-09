@@ -66,9 +66,7 @@ public:
   , convFactor(factor)
   {
   }
-  virtual ~ChangeAngleRepresentationImpl()
-  {
-  }
+  virtual ~ChangeAngleRepresentationImpl() = default;
 
   void convert(size_t start, size_t end) const
   {
@@ -95,7 +93,6 @@ private:
 ChangeAngleRepresentation::ChangeAngleRepresentation()
 : m_ConversionType(SIMPL::EulerAngleConversionType::DegreesToRadians)
 , m_CellEulerAnglesArrayPath("", "", "")
-, m_CellEulerAngles(nullptr)
 {
 }
 
@@ -109,7 +106,7 @@ ChangeAngleRepresentation::~ChangeAngleRepresentation() = default;
 // -----------------------------------------------------------------------------
 void ChangeAngleRepresentation::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   {
     ChoiceFilterParameter::Pointer parameter = ChoiceFilterParameter::New();
@@ -157,10 +154,10 @@ void ChangeAngleRepresentation::initialize()
 // -----------------------------------------------------------------------------
 void ChangeAngleRepresentation::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> cDims(1, 3);
+  std::vector<size_t> cDims(1, 3);
   m_CellEulerAnglesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<float>, AbstractFilter>(this, getCellEulerAnglesArrayPath(),
                                                                                                            cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_CellEulerAnglesPtr.lock())                                                                       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -187,10 +184,10 @@ void ChangeAngleRepresentation::preflight()
 // -----------------------------------------------------------------------------
 void ChangeAngleRepresentation::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -215,7 +212,7 @@ void ChangeAngleRepresentation::execute()
   totalPoints *= 3;
 //  qDebug() << "ChangeAngleRepresentation: " << m_ConversionFactor << "\n";
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, totalPoints), ChangeAngleRepresentationImpl(m_CellEulerAngles, conversionFactor), tbb::auto_partitioner());
   }
@@ -226,7 +223,6 @@ void ChangeAngleRepresentation::execute()
     serial.convert(0, totalPoints);
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -235,7 +231,7 @@ void ChangeAngleRepresentation::execute()
 AbstractFilter::Pointer ChangeAngleRepresentation::newFilterInstance(bool copyFilterParameters) const
 {
   ChangeAngleRepresentation::Pointer filter = ChangeAngleRepresentation::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

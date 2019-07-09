@@ -14,12 +14,14 @@
 #include "SIMPLib/FilterParameters/AttributeMatrixSelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/BooleanFilterParameter.h"
 #include "SIMPLib/FilterParameters/ChoiceFilterParameter.h"
+#include "SIMPLib/FilterParameters/DataContainerCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/DoubleFilterParameter.h"
 #include "SIMPLib/FilterParameters/DynamicTableFilterParameter.h"
 #include "SIMPLib/FilterParameters/FloatVec2FilterParameter.h"
 #include "SIMPLib/FilterParameters/FloatVec3FilterParameter.h"
 #include "SIMPLib/FilterParameters/IntFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/PreflightUpdatedValueFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Math/RadialDistributionFunction.h"
@@ -35,6 +37,13 @@
 #include "SyntheticBuilding/SyntheticBuildingFilters/Presets/PrimaryRecrystallizedPreset.h"
 #include "SyntheticBuilding/SyntheticBuildingFilters/Presets/PrimaryRolledPreset.h"
 #include "SyntheticBuilding/SyntheticBuildingFilters/StatsGeneratorUtilities.h"
+
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  AttributeMatrixID20 = 20,
+  AttributeMatrixID21 = 21,
+};
 
 // -----------------------------------------------------------------------------
 //
@@ -54,7 +63,6 @@ GeneratePrecipitateStatsData::GeneratePrecipitateStatsData()
 , m_DataContainerName(SIMPL::Defaults::StatsGenerator)
 , m_CellEnsembleAttributeMatrixName(SIMPL::Defaults::CellEnsembleAttributeMatrixName)
 , m_AppendToExistingAttributeMatrix(false)
-, m_SelectedEnsembleAttributeMatrix()
 , m_PrecipitateStatsData(nullptr)
 {
   initialize();
@@ -70,20 +78,20 @@ GeneratePrecipitateStatsData::~GeneratePrecipitateStatsData() = default;
 // -----------------------------------------------------------------------------
 void GeneratePrecipitateStatsData::initialize()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   setCancel(false);
   m_StatsDataArray = nullptr;
   m_PrecipitateStatsData = nullptr;
   m_CrystalStructures = nullptr;
   m_PhaseTypes = nullptr;
   m_PhaseNames = nullptr;
-  m_RdfMinMaxDistance.x = 10;
-  m_RdfMinMaxDistance.y = 80;
+  m_RdfMinMaxDistance[0] = 10;
+  m_RdfMinMaxDistance[1] = 80;
   m_RdfNumBins = 50;
-  m_RdfBoxSize.x = 100;
-  m_RdfBoxSize.y = 100;
-  m_RdfBoxSize.z = 100;
+  m_RdfBoxSize[0] = 100;
+  m_RdfBoxSize[1] = 100;
+  m_RdfBoxSize[2] = 100;
 }
 
 // -----------------------------------------------------------------------------
@@ -91,7 +99,7 @@ void GeneratePrecipitateStatsData::initialize()
 // -----------------------------------------------------------------------------
 void GeneratePrecipitateStatsData::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_STRING_FP("Phase Name", PhaseName, FilterParameter::Parameter, GeneratePrecipitateStatsData));
   {
     ChoiceFilterParameter::Pointer parameter = ChoiceFilterParameter::New();
@@ -202,8 +210,8 @@ void GeneratePrecipitateStatsData::setupFilterParameters()
   parameters.push_back(
       SIMPL_NEW_LINKED_BOOL_FP("Create Data Container & Ensemble AttributeMatrix", CreateEnsembleAttributeMatrix, FilterParameter::Parameter, GeneratePrecipitateStatsData, linkedProps));
 
-  parameters.push_back(SIMPL_NEW_STRING_FP("Data Container", DataContainerName, FilterParameter::CreatedArray, GeneratePrecipitateStatsData));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Cell Ensemble Attribute Matrix", CellEnsembleAttributeMatrixName, FilterParameter::CreatedArray, GeneratePrecipitateStatsData));
+  parameters.push_back(SIMPL_NEW_DC_CREATION_FP("Data Container", DataContainerName, FilterParameter::CreatedArray, GeneratePrecipitateStatsData));
+  parameters.push_back(SIMPL_NEW_AM_WITH_LINKED_DC_FP("Cell Ensemble Attribute Matrix", CellEnsembleAttributeMatrixName, DataContainerName, FilterParameter::CreatedArray, GeneratePrecipitateStatsData));
 
   linkedProps.clear();
   linkedProps << "SelectedEnsembleAttributeMatrix";
@@ -216,8 +224,7 @@ void GeneratePrecipitateStatsData::setupFilterParameters()
 #define FLOAT_RANGE_CHECK(var, min, max, error)                                                                                                                                                        \
   if(m_##var < min || m_##var > max)                                                                                                                                                                   \
   {                                                                                                                                                                                                    \
-    setErrorCondition(error);                                                                                                                                                                          \
-    notifyErrorMessage(getHumanLabel(), "Valid range for " #var " is " #min "~" #max, getErrorCondition());                                                                                            \
+    setErrorCondition(error, "Valid range for " #var " is " #min "~" #max);                                                                                                                            \
   }
 
 // -----------------------------------------------------------------------------
@@ -226,8 +233,8 @@ void GeneratePrecipitateStatsData::setupFilterParameters()
 void GeneratePrecipitateStatsData::dataCheck()
 {
   initialize();
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   FLOAT_RANGE_CHECK(Mu, 0.0001, 10.0, -95000);
   FLOAT_RANGE_CHECK(Sigma, 0.0, 5.0, -95001);
@@ -236,8 +243,7 @@ void GeneratePrecipitateStatsData::dataCheck()
 
   if((m_CreateEnsembleAttributeMatrix && m_AppendToExistingAttributeMatrix) || (!m_CreateEnsembleAttributeMatrix && !m_AppendToExistingAttributeMatrix))
   {
-    setErrorCondition(-95010);
-    notifyErrorMessage(getHumanLabel(), "CreateEnsembleAttributeMatrix & AppendToExistingAttributeMatrix can NOT both be true or false. One must be true and one must be false.", getErrorCondition());
+    setErrorCondition(-95010, "CreateEnsembleAttributeMatrix & AppendToExistingAttributeMatrix can NOT both be true or false. One must be true and one must be false.");
     return;
   }
 
@@ -246,40 +252,40 @@ void GeneratePrecipitateStatsData::dataCheck()
   {
     DataContainerArray::Pointer dca = getDataContainerArray();
     DataContainer::Pointer dc = dca->createNonPrereqDataContainer(this, getDataContainerName());
-    if(getErrorCondition() < 0)
+    if(getErrorCode() < 0)
     {
       return;
     }
 
-    QVector<size_t> tDims(1, 2); // we need 2 slots in the array. ZERO=Junk, 1 = our new primary stats data
-    AttributeMatrix::Pointer cellEnsembleAttrMat = dc->createNonPrereqAttributeMatrix(this, getCellEnsembleAttributeMatrixName(), tDims, AttributeMatrix::Type::CellEnsemble);
-    if(getErrorCondition() < 0)
+    std::vector<size_t> tDims(1, 2); // we need 2 slots in the array. ZERO=Junk, 1 = our new primary stats data
+    AttributeMatrix::Pointer cellEnsembleAttrMat = dc->createNonPrereqAttributeMatrix(this, getCellEnsembleAttributeMatrixName(), tDims, AttributeMatrix::Type::CellEnsemble, AttributeMatrixID21);
+    if(getErrorCode() < 0)
     {
       return;
     }
     StatsDataArray::Pointer statsDataArray = StatsDataArray::New();
-    statsDataArray->resize(tDims[0]);
-    cellEnsembleAttrMat->addAttributeArray(SIMPL::EnsembleData::Statistics, statsDataArray);
+    statsDataArray->resizeTuples(tDims[0]);
+    cellEnsembleAttrMat->insertOrAssign(statsDataArray);
     m_StatsDataArray = statsDataArray.get();
 
     PrecipitateStatsData::Pointer PrecipitateStatsData = PrecipitateStatsData::New();
     statsDataArray->setStatsData(1, PrecipitateStatsData);
     m_PrecipitateStatsData = PrecipitateStatsData.get();
 
-    QVector<size_t> cDims(1, 1);
-    UInt32ArrayType::Pointer crystalStructures = UInt32ArrayType::CreateArray(tDims, cDims, SIMPL::EnsembleData::CrystalStructures);
+    std::vector<size_t> cDims(1, 1);
+    UInt32ArrayType::Pointer crystalStructures = UInt32ArrayType::CreateArray(tDims, cDims, SIMPL::EnsembleData::CrystalStructures, true);
     crystalStructures->setValue(0, Ebsd::CrystalStructure::UnknownCrystalStructure);
-    cellEnsembleAttrMat->addAttributeArray(SIMPL::EnsembleData::CrystalStructures, crystalStructures);
+    cellEnsembleAttrMat->insertOrAssign(crystalStructures);
     m_CrystalStructures = crystalStructures.get();
 
-    UInt32ArrayType::Pointer phaseTypes = UInt32ArrayType::CreateArray(tDims, cDims, SIMPL::EnsembleData::PhaseTypes);
+    UInt32ArrayType::Pointer phaseTypes = UInt32ArrayType::CreateArray(tDims, cDims, SIMPL::EnsembleData::PhaseTypes, true);
     phaseTypes->setValue(0, static_cast<PhaseType::EnumType>(PhaseType::Type::Unknown));
-    cellEnsembleAttrMat->addAttributeArray(SIMPL::EnsembleData::PhaseTypes, phaseTypes);
+    cellEnsembleAttrMat->insertOrAssign(phaseTypes);
     m_PhaseTypes = phaseTypes.get();
 
-    StringDataArray::Pointer phaseNames = StringDataArray::CreateArray(tDims[0], SIMPL::EnsembleData::PhaseName);
+    StringDataArray::Pointer phaseNames = StringDataArray::CreateArray(tDims[0], SIMPL::EnsembleData::PhaseName, true);
     phaseNames->setValue(0, PhaseType::getPhaseTypeString(PhaseType::Type::Unknown));
-    cellEnsembleAttrMat->addAttributeArray(SIMPL::EnsembleData::PhaseName, phaseNames);
+    cellEnsembleAttrMat->insertOrAssign(phaseNames);
     m_PhaseNames = phaseNames.get();
 
     setPhaseIndex(1); // If we are creating the StatsDataArray then we are the first phase
@@ -292,21 +298,20 @@ void GeneratePrecipitateStatsData::dataCheck()
     AttributeMatrix::Pointer cellEnsembleAttrMat = dca->getAttributeMatrix(m_SelectedEnsembleAttributeMatrix);
     if(nullptr == cellEnsembleAttrMat.get())
     {
-      setErrorCondition(-95020);
-      notifyErrorMessage(getHumanLabel(), QString("AttributeMatrix does not exist at path %1").arg(m_SelectedEnsembleAttributeMatrix.serialize("/")), getErrorCondition());
+      setErrorCondition(-95020, QString("AttributeMatrix does not exist at path %1").arg(m_SelectedEnsembleAttributeMatrix.serialize("/")));
       return;
     }
 
     // Resize the AttributeMatrix, which should resize all the AttributeArrays
-    QVector<size_t> tDims(1, cellEnsembleAttrMat->getNumberOfTuples() + 1);
+    std::vector<size_t> tDims(1, cellEnsembleAttrMat->getNumberOfTuples() + 1);
     cellEnsembleAttrMat->resizeAttributeArrays(tDims);
 
     StatsDataArray::Pointer statsDataArray = cellEnsembleAttrMat->getAttributeArrayAs<StatsDataArray>(SIMPL::EnsembleData::Statistics);
     if(nullptr == statsDataArray.get())
     {
       statsDataArray = StatsDataArray::New();
-      statsDataArray->resize(tDims[0]);
-      cellEnsembleAttrMat->addAttributeArray(SIMPL::EnsembleData::Statistics, statsDataArray);
+      statsDataArray->resizeTuples(tDims[0]);
+      cellEnsembleAttrMat->insertOrAssign(statsDataArray);
     }
     m_StatsDataArray = statsDataArray.get();
 
@@ -314,32 +319,32 @@ void GeneratePrecipitateStatsData::dataCheck()
     statsDataArray->setStatsData(tDims[0] - 1, PrecipitateStatsData);
     m_PrecipitateStatsData = PrecipitateStatsData.get();
 
-    QVector<size_t> cDims(1, 1);
+    std::vector<size_t> cDims(1, 1);
 
     UInt32ArrayType::Pointer crystalStructures = cellEnsembleAttrMat->getAttributeArrayAs<UInt32ArrayType>(SIMPL::EnsembleData::CrystalStructures);
     if(nullptr == crystalStructures.get())
     {
-      crystalStructures = UInt32ArrayType::CreateArray(tDims, cDims, SIMPL::EnsembleData::CrystalStructures);
+      crystalStructures = UInt32ArrayType::CreateArray(tDims, cDims, SIMPL::EnsembleData::CrystalStructures, true);
       crystalStructures->setValue(0, Ebsd::CrystalStructure::UnknownCrystalStructure);
-      cellEnsembleAttrMat->addAttributeArray(SIMPL::EnsembleData::CrystalStructures, crystalStructures);
+      cellEnsembleAttrMat->insertOrAssign(crystalStructures);
     }
     m_CrystalStructures = crystalStructures.get();
 
     UInt32ArrayType::Pointer phaseTypes = cellEnsembleAttrMat->getAttributeArrayAs<UInt32ArrayType>(SIMPL::EnsembleData::PhaseTypes);
     if(nullptr == phaseTypes.get())
     {
-      phaseTypes = UInt32ArrayType::CreateArray(tDims, cDims, SIMPL::EnsembleData::PhaseTypes);
+      phaseTypes = UInt32ArrayType::CreateArray(tDims, cDims, SIMPL::EnsembleData::PhaseTypes, true);
       phaseTypes->setValue(0, static_cast<PhaseType::EnumType>(PhaseType::Type::Unknown));
-      cellEnsembleAttrMat->addAttributeArray(SIMPL::EnsembleData::PhaseTypes, phaseTypes);
+      cellEnsembleAttrMat->insertOrAssign(phaseTypes);
     }
     m_PhaseTypes = phaseTypes.get();
 
     StringDataArray::Pointer phaseNames = cellEnsembleAttrMat->getAttributeArrayAs<StringDataArray>(SIMPL::EnsembleData::PhaseName);
     if(nullptr == phaseNames.get())
     {
-      phaseNames = StringDataArray::CreateArray(tDims[0], SIMPL::EnsembleData::PhaseName);
+      phaseNames = StringDataArray::CreateArray(tDims[0], SIMPL::EnsembleData::PhaseName, true);
       phaseNames->setValue(0, PhaseType::getPhaseTypeString(PhaseType::Type::Unknown));
-      cellEnsembleAttrMat->addAttributeArray(SIMPL::EnsembleData::PhaseName, phaseNames);
+      cellEnsembleAttrMat->insertOrAssign(phaseNames);
     }
     m_PhaseNames = phaseNames.get();
 
@@ -377,7 +382,7 @@ void GeneratePrecipitateStatsData::execute()
 {
   initialize();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -387,11 +392,10 @@ void GeneratePrecipitateStatsData::execute()
     return;
   }
 
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     QString ss = QObject::tr("Some error message");
-    setErrorCondition(-95012);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-95012, ss);
     return;
   }
 
@@ -403,8 +407,7 @@ void GeneratePrecipitateStatsData::execute()
   err = StatsGen::GenLogNormalPlotData<FloatVectorType>(m_Mu, m_Sigma, x, y, size, m_MinCutOff, m_MaxCutOff);
   if(err == 1)
   {
-    setErrorCondition(-95011);
-    notifyErrorMessage(getHumanLabel(), "Error generating the LogNormal Data", getErrorCondition());
+    setErrorCondition(-95011, "Error generating the LogNormal Data");
     return;
   }
   float yMax = 0.0f;
@@ -424,14 +427,12 @@ void GeneratePrecipitateStatsData::execute()
   err = StatsGen::GenCutOff<float, FloatVectorType>(m_Mu, m_Sigma, m_MinCutOff, m_MaxCutOff, m_BinStepSize, xCo, yCo, yMax, numsizebins, binSizes);
   if(err == 1)
   {
-    setErrorCondition(-95012);
-    notifyErrorMessage(getHumanLabel(), "Error generating the Min or Max Cut Off values", getErrorCondition());
+    setErrorCondition(-95012, "Error generating the Min or Max Cut Off values");
     return;
   }
 
   QMap<QString, QVector<float>> dataMap;
   dataMap[AbstractMicrostructurePreset::kBinNumbers] = binSizes;
-  QVector<SIMPL::Rgb> colors;
 
   AbstractMicrostructurePreset::Pointer absPresetPtr;
   if(m_MicroPresetModel == 0)
@@ -462,8 +463,8 @@ void GeneratePrecipitateStatsData::execute()
   // Feature Size Distribution
   {
     VectorOfFloatArray data;
-    FloatArrayType::Pointer d1 = FloatArrayType::CreateArray(1, SIMPL::StringConstants::Average);
-    FloatArrayType::Pointer d2 = FloatArrayType::CreateArray(1, SIMPL::StringConstants::StandardDeviation);
+    FloatArrayType::Pointer d1 = FloatArrayType::CreateArray(1, SIMPL::StringConstants::Average, true);
+    FloatArrayType::Pointer d2 = FloatArrayType::CreateArray(1, SIMPL::StringConstants::StandardDeviation, true);
     data.push_back(d1);
     data.push_back(d2);
     d1->setValue(0, m_Mu);
@@ -474,7 +475,7 @@ void GeneratePrecipitateStatsData::execute()
   }
 
   {
-    absPresetPtr->initializeOmega3TableModel(dataMap, colors); // Beta
+    absPresetPtr->initializeOmega3TableModel(dataMap); // Beta
     VectorOfFloatArray data;
     FloatArrayType::Pointer d1 = FloatArrayType::FromQVector(dataMap[AbstractMicrostructurePreset::kAlpha], SIMPL::StringConstants::Alpha);
     FloatArrayType::Pointer d2 = FloatArrayType::FromQVector(dataMap[AbstractMicrostructurePreset::kBeta], SIMPL::StringConstants::Beta);
@@ -485,7 +486,7 @@ void GeneratePrecipitateStatsData::execute()
   }
 
   {
-    absPresetPtr->initializeBOverATableModel(dataMap, colors); // Beta
+    absPresetPtr->initializeBOverATableModel(dataMap); // Beta
     VectorOfFloatArray data;
     FloatArrayType::Pointer d1 = FloatArrayType::FromQVector(dataMap[AbstractMicrostructurePreset::kAlpha], SIMPL::StringConstants::Alpha);
     FloatArrayType::Pointer d2 = FloatArrayType::FromQVector(dataMap[AbstractMicrostructurePreset::kBeta], SIMPL::StringConstants::Beta);
@@ -496,7 +497,7 @@ void GeneratePrecipitateStatsData::execute()
   }
 
   {
-    absPresetPtr->initializeCOverATableModel(dataMap, colors); // Beta
+    absPresetPtr->initializeCOverATableModel(dataMap); // Beta
     VectorOfFloatArray data;
     FloatArrayType::Pointer d1 = FloatArrayType::FromQVector(dataMap[AbstractMicrostructurePreset::kAlpha], SIMPL::StringConstants::Alpha);
     FloatArrayType::Pointer d2 = FloatArrayType::FromQVector(dataMap[AbstractMicrostructurePreset::kBeta], SIMPL::StringConstants::Beta);
@@ -522,7 +523,7 @@ void GeneratePrecipitateStatsData::execute()
   QTextStream ss(&msg);
 
   ss << getPhaseName() << ":: Initialize ODF Values....";
-  notifyStatusMessage(getHumanLabel(), msg);
+  notifyStatusMessage(msg);
 
   {
     absPresetPtr->initializeODFTableModel(dataMap);
@@ -548,7 +549,7 @@ void GeneratePrecipitateStatsData::execute()
 
   msg.clear();
   ss << getPhaseName() << ":: Initialize MDF Values....";
-  notifyStatusMessage(getHumanLabel(), msg);
+  notifyStatusMessage(msg);
   {
     absPresetPtr->initializeMDFTableModel(dataMap);
     QVector<float> e1s;
@@ -586,7 +587,7 @@ void GeneratePrecipitateStatsData::execute()
 
   msg.clear();
   ss << getPhaseName() << ":: Initialize Axis ODF Values....";
-  notifyStatusMessage(getHumanLabel(), msg);
+  notifyStatusMessage(msg);
   {
     absPresetPtr->initializeAxisODFTableModel(dataMap);
     QVector<float> e1s;
@@ -608,24 +609,23 @@ void GeneratePrecipitateStatsData::execute()
 
   msg.clear();
   ss << getPhaseName() << ":: Initialize RDF Values....";
-  notifyStatusMessage(getHumanLabel(), msg);
+  notifyStatusMessage(msg);
 
   {
     std::vector<float> boxDims(3);
-    boxDims[0] = m_RdfBoxSize.x;
-    boxDims[1] = m_RdfBoxSize.y;
-    boxDims[2] = m_RdfBoxSize.z;
+    boxDims[0] = m_RdfBoxSize[0];
+    boxDims[1] = m_RdfBoxSize[1];
+    boxDims[2] = m_RdfBoxSize[2];
     std::vector<float> boxRes(3);
     boxRes[0] = 0.1f;
     boxRes[1] = 0.1f;
     boxRes[2] = 0.1f;
 
     // Generate the RDF Frequencies
-    std::vector<float> rdfFrequencies = RadialDistributionFunction::GenerateRandomDistribution(m_RdfMinMaxDistance.x, m_RdfMinMaxDistance.y, m_RdfNumBins, boxDims, boxRes);
+    std::vector<float> rdfFrequencies = RadialDistributionFunction::GenerateRandomDistribution(m_RdfMinMaxDistance[0], m_RdfMinMaxDistance[1], m_RdfNumBins, boxDims, boxRes);
     QVector<float> qFreq = QVector<float>::fromStdVector(rdfFrequencies);
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -671,7 +671,7 @@ void GeneratePrecipitateStatsData::normalizePhaseFractions(StatsDataArray* stats
 AbstractFilter::Pointer GeneratePrecipitateStatsData::newFilterInstance(bool copyFilterParameters) const
 {
   GeneratePrecipitateStatsData::Pointer filter = GeneratePrecipitateStatsData::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

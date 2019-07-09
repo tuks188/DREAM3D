@@ -42,24 +42,33 @@
 #include <tbb/task_scheduler_init.h>
 #endif
 
-#include "OrientationLib/OrientationMath/OrientationArray.hpp"
-#include "OrientationLib/OrientationMath/OrientationTransforms.hpp"
 #include "SIMPLib/Common/Constants.h"
 #include "SIMPLib/DataArrays/DynamicListArray.hpp"
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/ChoiceFilterParameter.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
+#include "SIMPLib/FilterParameters/DataContainerCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/FloatVec3FilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Math/GeometryMath.h"
-
 #include "SIMPLib/Geometry/TriangleGeom.h"
 #include "SIMPLib/Geometry/VertexGeom.h"
 #include "SIMPLib/Math/SIMPLibRandom.h"
 
+#include "OrientationLib/OrientationMath/OrientationArray.hpp"
+#include "OrientationLib/OrientationMath/OrientationTransforms.hpp"
+
 #include "SyntheticBuilding/SyntheticBuildingConstants.h"
 #include "SyntheticBuilding/SyntheticBuildingVersion.h"
+
+enum createdPathID : RenameDataPath::DataID_t
+{
+  AttributeMatrixID21 = 21,
+
+  DataContainerID = 1
+};
 
 /**
  * @brief The InsertAtomsImpl class implements a threaded algorithm that inserts vertex points ('atoms') onto surface meshed Features
@@ -70,13 +79,13 @@ class InsertAtomsImpl
   Int32Int32DynamicListArray::Pointer m_FaceIds;
   VertexGeom::Pointer m_FaceBBs;
   QuatF* m_AvgQuats;
-  FloatVec3_t m_LatticeConstants;
+  FloatVec3Type m_LatticeConstants;
   uint32_t m_Basis;
   QVector<VertexGeom::Pointer> m_Points;
   QVector<BoolArrayType::Pointer> m_InFeature;
 
 public:
-  InsertAtomsImpl(TriangleGeom::Pointer faces, Int32Int32DynamicListArray::Pointer faceIds, VertexGeom::Pointer faceBBs, QuatF* avgQuats, FloatVec3_t latticeConstants, uint32_t basis,
+  InsertAtomsImpl(TriangleGeom::Pointer faces, Int32Int32DynamicListArray::Pointer faceIds, VertexGeom::Pointer faceBBs, QuatF* avgQuats, FloatVec3Type latticeConstants, uint32_t basis,
                   QVector<VertexGeom::Pointer> points, QVector<BoolArrayType::Pointer> inFeature)
   : m_Faces(faces)
   , m_FaceIds(faceIds)
@@ -88,17 +97,15 @@ public:
   , m_InFeature(inFeature)
   {
   }
-  virtual ~InsertAtomsImpl()
-  {
-  }
+  virtual ~InsertAtomsImpl() = default;
 
   void checkPoints(size_t start, size_t end) const
   {
     float radius = 0.0f;
-    FloatArrayType::Pointer llPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Lower_Left");
-    FloatArrayType::Pointer urPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Upper_Right");
-    FloatArrayType::Pointer ll_rotPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Lower_Left_Rotated");
-    FloatArrayType::Pointer ur_rotPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Upper_Right_Rotated");
+    FloatArrayType::Pointer llPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Lower_Left", true);
+    FloatArrayType::Pointer urPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Upper_Right", true);
+    FloatArrayType::Pointer ll_rotPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Lower_Left_Rotated", true);
+    FloatArrayType::Pointer ur_rotPtr = FloatArrayType::CreateArray(3, "_INTERNAL_USE_ONLY_Upper_Right_Rotated", true);
     float* ll = llPtr->getPointer(0);
     float* ur = urPtr->getPointer(0);
     float* ll_rot = ll_rotPtr->getPointer(0);
@@ -129,12 +136,12 @@ public:
       for(int64_t i = 0; i < numPoints; i++)
       {
         point = vertArray->getVertexPointer(i);
-        if(boolArray->getValue(i) == false)
+        if(!boolArray->getValue(i))
         {
           code = GeometryMath::PointInPolyhedron(m_Faces.get(), faceIds, m_FaceBBs.get(), point, ll, ur, radius);
           if(code == 'i' || code == 'V' || code == 'E' || code == 'F')
           {
-            m_InFeature[start]->setValue(i, true);
+            m_InFeature[iter]->setValue(i, true);
           }
         }
       }
@@ -148,7 +155,7 @@ public:
   }
 #endif
 
-  void generatePoints(size_t iter, QVector<VertexGeom::Pointer> points, QVector<BoolArrayType::Pointer> inFeature, QuatF* m_AvgQuats, FloatVec3_t latticeConstants, uint32_t basis, float* ll,
+  void generatePoints(size_t iter, QVector<VertexGeom::Pointer> points, QVector<BoolArrayType::Pointer> inFeature, QuatF* m_AvgQuats, FloatVec3Type latticeConstants, uint32_t basis, float* ll,
                       float* ur) const
   {
     float g[3][3] = {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
@@ -181,13 +188,17 @@ public:
     {
       atomMult = 4;
     }
-    int64_t xPoints = (int64_t(deltaX / latticeConstants.x) + 1);
-    int64_t yPoints = (int64_t(deltaY / latticeConstants.y) + 1);
-    int64_t zPoints = (int64_t(deltaZ / latticeConstants.z) + 1);
+    if(basis == 3)
+    {
+      atomMult = 8;
+    }
+    int64_t xPoints = (int64_t(deltaX / latticeConstants[0]) + 1);
+    int64_t yPoints = (int64_t(deltaY / latticeConstants[1]) + 1);
+    int64_t zPoints = (int64_t(deltaZ / latticeConstants[2]) + 1);
     int64_t nPoints = atomMult * xPoints * yPoints * zPoints;
 
     points[iter]->resizeVertexList(nPoints);
-    inFeature[iter]->resize(nPoints);
+    inFeature[iter]->resizeTuples(nPoints);
 
     int64_t count = 0;
     float coords[3] = {0.0f, 0.0f, 0.0f};
@@ -198,40 +209,71 @@ public:
       {
         for(int64_t i = 0; i < xPoints; i++)
         {
-          coords[0] = float(i) * latticeConstants.x + minx;
-          coords[1] = float(j) * latticeConstants.y + miny;
-          coords[2] = float(k) * latticeConstants.z + minz;
+          coords[0] = float(i) * latticeConstants[0] + minx;
+          coords[1] = float(j) * latticeConstants[1] + miny;
+          coords[2] = float(k) * latticeConstants[2] + minz;
           MatrixMath::Multiply3x3with3x1(gT, coords, coordsT);
           points[iter]->setCoords(count, coordsT);
           count++;
           if(basis == 1)
           {
-            coords[0] = coords[0] + (0.5 * latticeConstants.x);
-            coords[1] = coords[1] + (0.5 * latticeConstants.y);
-            coords[2] = coords[2] + (0.5 * latticeConstants.z);
+            coords[0] = coords[0] + (0.5f * latticeConstants[0]);
+            coords[1] = coords[1] + (0.5f * latticeConstants[1]);
+            coords[2] = coords[2] + (0.5f * latticeConstants[2]);
             MatrixMath::Multiply3x3with3x1(gT, coords, coordsT);
             points[iter]->setCoords(count, coordsT);
             count++;
           }
-          if(basis == 2)
+          if(basis == 2||3)
           {
             // makes the (0.5,0.5,0) atom
-            coords[0] = coords[0] + (0.5 * latticeConstants.x);
-            coords[1] = coords[1] + (0.5 * latticeConstants.y);
+            coords[0] = coords[0] + (0.5f * latticeConstants[0]);
+            coords[1] = coords[1] + (0.5f * latticeConstants[1]);
             coords[2] = coords[2];
             MatrixMath::Multiply3x3with3x1(gT, coords, coordsT);
             points[iter]->setCoords(count, coordsT);
             count++;
             // makes the (0.5,0,0.5) atom
             coords[0] = coords[0];
-            coords[1] = coords[1] - (0.5 * latticeConstants.y);
-            coords[2] = coords[2] + (0.5 * latticeConstants.z);
+            coords[1] = coords[1] - (0.5f * latticeConstants[1]);
+            coords[2] = coords[2] + (0.5f * latticeConstants[2]);
             MatrixMath::Multiply3x3with3x1(gT, coords, coordsT);
             points[iter]->setCoords(count, coordsT);
             count++;
             // makes the (0,0.5,0.5) atom
-            coords[0] = coords[0] - (0.5 * latticeConstants.x);
-            coords[1] = coords[1] + (0.5 * latticeConstants.y);
+            coords[0] = coords[0] - (0.5f * latticeConstants[0]);
+            coords[1] = coords[1] + (0.5f * latticeConstants[1]);
+            coords[2] = coords[2];
+            MatrixMath::Multiply3x3with3x1(gT, coords, coordsT);
+            points[iter]->setCoords(count, coordsT);
+            count++;
+          }
+          if(basis == 3)
+          {
+            // (+0.25,+0.25,+0.25) for (0,0,0)
+            coords[0] = coords[0] + (0.25f * latticeConstants[0]);
+            coords[1] = coords[1] - (0.25f * latticeConstants[1]);
+            coords[2] = coords[2] - (0.25f * latticeConstants[2]);
+            MatrixMath::Multiply3x3with3x1(gT, coords, coordsT);
+            points[iter]->setCoords(count, coordsT);
+            count++;
+            // (+0.25,+0.25,+0.25) for (0.5,0.5,0)
+            coords[0] = coords[0] + (0.5f * latticeConstants[0]);
+            coords[1] = coords[1] + (0.5f * latticeConstants[1]);
+            coords[2] = coords[2];
+            MatrixMath::Multiply3x3with3x1(gT, coords, coordsT);
+            points[iter]->setCoords(count, coordsT);
+            count++;
+            // (+0.25,+0.25,+0.25) for (0.5,0,0.5)
+            coords[0] = coords[0];
+            coords[1] = coords[1] - (0.5f * latticeConstants[1]);
+            coords[2] = coords[2] + (0.5f * latticeConstants[2]);
+            MatrixMath::Multiply3x3with3x1(gT, coords, coordsT);
+            points[iter]->setCoords(count, coordsT);
+            count++;
+            // (+0.25,+0.25,+0.25) for (0,0.5,0.5)
+            coords[0] = coords[0] - (0.5f * latticeConstants[0]);
+            coords[1] = coords[1] + (0.5f * latticeConstants[1]);
             coords[2] = coords[2];
             MatrixMath::Multiply3x3with3x1(gT, coords, coordsT);
             points[iter]->setCoords(count, coordsT);
@@ -253,14 +295,10 @@ InsertAtoms::InsertAtoms()
 , m_SurfaceMeshFaceLabelsArrayPath(SIMPL::Defaults::TriangleDataContainerName, SIMPL::Defaults::FaceAttributeMatrixName, SIMPL::FaceData::SurfaceMeshFaceLabels)
 , m_AvgQuatsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellFeatureAttributeMatrixName, SIMPL::FeatureData::AvgQuats)
 , m_AtomFeatureLabelsArrayName(SIMPL::VertexData::AtomFeatureLabels)
-, m_SurfaceMeshFaceLabels(nullptr)
-, m_AvgQuats(nullptr)
-, m_AtomFeatureLabels(nullptr)
 {
-  m_LatticeConstants.x = 1.0f;
-  m_LatticeConstants.y = 1.0f;
-  m_LatticeConstants.z = 1.0f;
-
+  m_LatticeConstants[0] = 1.0f;
+  m_LatticeConstants[1] = 1.0f;
+  m_LatticeConstants[2] = 1.0f;
 }
 
 // -----------------------------------------------------------------------------
@@ -273,7 +311,7 @@ InsertAtoms::~InsertAtoms() = default;
 // -----------------------------------------------------------------------------
 void InsertAtoms::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_FLOAT_VEC3_FP("Lattice Constants (Angstroms)", LatticeConstants, FilterParameter::Parameter, InsertAtoms));
   {
     ChoiceFilterParameter::Pointer parameter = ChoiceFilterParameter::New();
@@ -286,6 +324,7 @@ void InsertAtoms::setupFilterParameters()
     choices.push_back("Simple Cubic");
     choices.push_back("Body Centered Cubic");
     choices.push_back("Face Centered Cubic");
+    choices.push_back("Cubic Diamond");
     parameter->setChoices(choices);
     parameter->setCategory(FilterParameter::Parameter);
     parameters.push_back(parameter);
@@ -301,10 +340,10 @@ void InsertAtoms::setupFilterParameters()
         DataArraySelectionFilterParameter::CreateRequirement(SIMPL::TypeNames::Float, 4, AttributeMatrix::Type::CellFeature, IGeometry::Type::Image);
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Average Quaternions", AvgQuatsArrayPath, FilterParameter::RequiredArray, InsertAtoms, req));
   }
-  parameters.push_back(SIMPL_NEW_STRING_FP("Data Container", VertexDataContainerName, FilterParameter::CreatedArray, InsertAtoms));
+  parameters.push_back(SIMPL_NEW_DC_CREATION_FP("Data Container", VertexDataContainerName, FilterParameter::CreatedArray, InsertAtoms));
   parameters.push_back(SeparatorFilterParameter::New("Vertex Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Vertex Attribute Matrix", VertexAttributeMatrixName, FilterParameter::CreatedArray, InsertAtoms));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Atom Feature Labels", AtomFeatureLabelsArrayName, FilterParameter::CreatedArray, InsertAtoms));
+  parameters.push_back(SIMPL_NEW_AM_WITH_LINKED_DC_FP("Vertex Attribute Matrix", VertexAttributeMatrixName, VertexDataContainerName, FilterParameter::CreatedArray, InsertAtoms));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Atom Feature Labels", AtomFeatureLabelsArrayName, VertexDataContainerName, VertexAttributeMatrixName, FilterParameter::CreatedArray, InsertAtoms));
   setFilterParameters(parameters);
 }
 
@@ -314,7 +353,7 @@ void InsertAtoms::setupFilterParameters()
 void InsertAtoms::readFilterParameters(AbstractFilterParametersReader* reader, int index)
 {
   reader->openFilterGroup(this, index);
-  setVertexDataContainerName(reader->readString("VertexDataContainerName", getVertexDataContainerName()));
+  setVertexDataContainerName(reader->readDataArrayPath("VertexDataContainerName", getVertexDataContainerName()));
   setVertexAttributeMatrixName(reader->readString("VertexAttributeMatrixName", getVertexAttributeMatrixName()));
   setAtomFeatureLabelsArrayName(reader->readString("AtomFeatureLabelsArrayName", getAtomFeatureLabelsArrayName()));
   setAvgQuatsArrayPath(reader->readDataArrayPath("AvgQuatsArrayPath", getAvgQuatsArrayPath()));
@@ -329,8 +368,8 @@ void InsertAtoms::readFilterParameters(AbstractFilterParametersReader* reader, i
 // -----------------------------------------------------------------------------
 void InsertAtoms::updateVertexInstancePointers()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   if(nullptr != m_AtomFeatureLabelsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_AtomFeatureLabels = m_AtomFeatureLabelsPtr.lock()->getPointer(0);
@@ -349,21 +388,21 @@ void InsertAtoms::initialize()
 // -----------------------------------------------------------------------------
 void InsertAtoms::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
   TriangleGeom::Pointer triangles = getDataContainerArray()->getPrereqGeometryFromDataContainer<TriangleGeom, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath().getDataContainerName());
 
   QVector<IDataArray::Pointer> dataArrays;
 
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(triangles->getTriangles());
   }
 
-  DataContainer::Pointer v = getDataContainerArray()->createNonPrereqDataContainer<AbstractFilter>(this, getVertexDataContainerName());
-  if(getErrorCondition() < 0)
+  DataContainer::Pointer v = getDataContainerArray()->createNonPrereqDataContainer<AbstractFilter>(this, getVertexDataContainerName(), DataContainerID);
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -371,21 +410,21 @@ void InsertAtoms::dataCheck()
   VertexGeom::Pointer vertices = VertexGeom::CreateGeometry(0, SIMPL::Geometry::VertexGeometry, !getInPreflight());
   v->setGeometry(vertices);
 
-  QVector<size_t> tDims(1, 0);
-  AttributeMatrix::Pointer vertexAttrMat = v->createNonPrereqAttributeMatrix(this, getVertexAttributeMatrixName(), tDims, AttributeMatrix::Type::Vertex);
-  if(getErrorCondition() < 0 || nullptr == vertexAttrMat.get())
+  std::vector<size_t> tDims(1, 0);
+  AttributeMatrix::Pointer vertexAttrMat = v->createNonPrereqAttributeMatrix(this, getVertexAttributeMatrixName(), tDims, AttributeMatrix::Type::Vertex, AttributeMatrixID21);
+  if(getErrorCode() < 0 || nullptr == vertexAttrMat.get())
   {
     return;
   }
 
-  QVector<size_t> cDims(1, 2);
+  std::vector<size_t> cDims(1, 2);
   m_SurfaceMeshFaceLabelsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getSurfaceMeshFaceLabelsArrayPath(),
                                                                                                                    cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_SurfaceMeshFaceLabelsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_SurfaceMeshFaceLabels = m_SurfaceMeshFaceLabelsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrays.push_back(m_SurfaceMeshFaceLabelsPtr.lock());
   }
@@ -399,7 +438,7 @@ void InsertAtoms::dataCheck()
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
   cDims[0] = 1;
-  tempPath.update(getVertexDataContainerName(), getVertexAttributeMatrixName(), getAtomFeatureLabelsArrayName());
+  tempPath.update(getVertexDataContainerName().getDataContainerName(), getVertexAttributeMatrixName(), getAtomFeatureLabelsArrayName());
   m_AtomFeatureLabelsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter, int32_t>(
       this, tempPath, -301, cDims);                  /* Assigns the shared_ptr<>(this, tempPath, -301, dims);  Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_AtomFeatureLabelsPtr.lock())       /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -408,6 +447,11 @@ void InsertAtoms::dataCheck()
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
   getDataContainerArray()->validateNumberOfTuples<AbstractFilter>(this, dataArrays);
+
+  if(m_Basis < 0 || m_Basis > 3)
+  {
+    setErrorCondition(-302, "Basis value out of range. Valid values are: 0=Simpl Cubic, 1=Body Centered Cubic, 2=Face Centered Cubic, 3=Cubic Diamond");
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -436,7 +480,7 @@ void InsertAtoms::assign_points(QVector<VertexGeom::Pointer> points, QVector<Boo
     bool* inside = inFeature[i]->getPointer(0);
     for(int64_t j = 0; j < numPoints; j++)
     {
-      if(inside[j] == true)
+      if(inside[j])
       {
         count++;
       }
@@ -448,7 +492,7 @@ void InsertAtoms::assign_points(QVector<VertexGeom::Pointer> points, QVector<Boo
   VertexGeom::Pointer vertices = VertexGeom::CreateGeometry(count, SIMPL::VertexData::SurfaceMeshNodes);
 
   AttributeMatrix::Pointer vertexAttrMat = v->getAttributeMatrix(getVertexAttributeMatrixName());
-  QVector<size_t> tDims(1, count);
+  std::vector<size_t> tDims(1, count);
   vertexAttrMat->resizeAttributeArrays(tDims);
   updateVertexInstancePointers();
 
@@ -460,7 +504,7 @@ void InsertAtoms::assign_points(QVector<VertexGeom::Pointer> points, QVector<Boo
     bool* inside = inFeature[i]->getPointer(0);
     for(int64_t j = 0; j < numPoints; j++)
     {
-      if(inside[j] == true)
+      if(inside[j])
       {
         coords[0] = points[i]->getVertexPointer(j)[0];
         coords[1] = points[i]->getVertexPointer(j)[1];
@@ -479,10 +523,10 @@ void InsertAtoms::assign_points(QVector<VertexGeom::Pointer> points, QVector<Boo
 // -----------------------------------------------------------------------------
 void InsertAtoms::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -517,26 +561,24 @@ void InsertAtoms::execute()
     }
   }
 
-  if(mismatchedFeatures == true)
+  if(mismatchedFeatures)
   {
     QString ss = QObject::tr("The number of Features in the AvgQuats array (%1) is larger than the largest Feature Id in the SurfaceMeshFaceLabels array").arg(numFeaturesIn);
-    setErrorCondition(-5555);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-5555, ss);
     return;
   }
 
   if(largestFeature != (numFeaturesIn - 1))
   {
     QString ss = QObject::tr("The number of Features in the AvgQuats array (%1) does not match the largest Feature Id in the SurfaceMeshFaceLabels array").arg(numFeaturesIn);
-    setErrorCondition(-5555);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-5555, ss);
     return;
   }
 
-  FloatVec3_t latticeConstants;
-  latticeConstants.x = m_LatticeConstants.x / 10000.0;
-  latticeConstants.y = m_LatticeConstants.y / 10000.0;
-  latticeConstants.z = m_LatticeConstants.z / 10000.0;
+  FloatVec3Type latticeConstants;
+  latticeConstants[0] = m_LatticeConstants[0] / 10000.0f;
+  latticeConstants[1] = m_LatticeConstants[1] / 10000.0f;
+  latticeConstants[2] = m_LatticeConstants[2] / 10000.0f;
 
   DataContainer::Pointer sm = getDataContainerArray()->getDataContainer(getSurfaceMeshFaceLabelsArrayPath().getDataContainerName());
   SIMPL_RANDOMNG_NEW()
@@ -551,8 +593,8 @@ void InsertAtoms::execute()
   int64_t numFaces = m_SurfaceMeshFaceLabelsPtr.lock()->getNumberOfTuples();
 
   // create array to hold bounding vertices for each face
-  FloatArrayType::Pointer llPtr = FloatArrayType::CreateArray(3, "Lower_Left_Internal_Use_Only");
-  FloatArrayType::Pointer urPtr = FloatArrayType::CreateArray(3, "Upper_Right_Internal_Use_Only");
+  FloatArrayType::Pointer llPtr = FloatArrayType::CreateArray(3, "Lower_Left_Internal_Use_Only", true);
+  FloatArrayType::Pointer urPtr = FloatArrayType::CreateArray(3, "Upper_Right_Internal_Use_Only", true);
   float* ll = llPtr->getPointer(0);
   float* ur = urPtr->getPointer(0);
   VertexGeom::Pointer faceBBs = VertexGeom::CreateGeometry(2 * numFaces, "faceBBs");
@@ -582,7 +624,7 @@ void InsertAtoms::execute()
   QVector<int32_t> linkCount(numFeatures, 0);
 
   // fill out lists with number of references to cells
-  Int32ArrayType::Pointer linkLocPtr = Int32ArrayType::CreateArray(numFaces, "_INTERNAL_USE_ONLY_cell refs");
+  Int32ArrayType::Pointer linkLocPtr = Int32ArrayType::CreateArray(numFaces, "_INTERNAL_USE_ONLY_cell refs", true);
   linkLocPtr->initializeWithZeros();
   int32_t* linkLoc = linkLocPtr->getPointer(0);
 
@@ -629,13 +671,13 @@ void InsertAtoms::execute()
   for(int32_t i = 0; i < numFeatures; i++)
   {
     points[i] = VertexGeom::CreateGeometry(0, "_INTERNAL_USE_ONLY_points");
-    inFeature[i] = BoolArrayType::CreateArray(0, "_INTERNAL_USE_ONLY_inside");
+    inFeature[i] = BoolArrayType::CreateArray(0, "_INTERNAL_USE_ONLY_inside", true);
   }
 
   QuatF* avgQuats = reinterpret_cast<QuatF*>(m_AvgQuats);
 
 #ifdef SIMPL_USE_PARALLEL_ALGORITHMS
-  if(doParallel == true)
+  if(doParallel)
   {
     tbb::parallel_for(tbb::blocked_range<size_t>(0, numFeatures), InsertAtomsImpl(triangleGeom, faceLists, faceBBs, avgQuats, latticeConstants, m_Basis, points, inFeature), tbb::auto_partitioner());
   }
@@ -648,7 +690,6 @@ void InsertAtoms::execute()
 
   assign_points(points, inFeature);
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -657,7 +698,7 @@ void InsertAtoms::execute()
 AbstractFilter::Pointer InsertAtoms::newFilterInstance(bool copyFilterParameters) const
 {
   InsertAtoms::Pointer filter = InsertAtoms::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     filter->setFilterParameters(getFilterParameters());
     copyFilterParameterInstanceVariables(filter.get());

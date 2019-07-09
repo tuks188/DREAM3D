@@ -44,6 +44,13 @@
 #include "Statistics/StatisticsConstants.h"
 #include "Statistics/StatisticsVersion.h"
 
+/* Create Enumerations to allow the created Attribute Arrays to take part in renaming */
+enum createdPathID : RenameDataPath::DataID_t
+{
+  DataArrayID30 = 30,
+  DataArrayID31 = 31,
+};
+
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
@@ -51,9 +58,6 @@ FindBoundaryElementFractions::FindBoundaryElementFractions()
 : m_FeatureIdsArrayPath("", "", "")
 , m_BoundaryCellsArrayPath("", "", "")
 , m_BoundaryCellFractionsArrayPath("", "", "")
-, m_FeatureIds(nullptr)
-, m_BoundaryCells(nullptr)
-, m_BoundaryCellFractions(nullptr)
 {
 }
 
@@ -67,7 +71,7 @@ FindBoundaryElementFractions::~FindBoundaryElementFractions() = default;
 // -----------------------------------------------------------------------------
 void FindBoundaryElementFractions::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SeparatorFilterParameter::New("Element Data", FilterParameter::RequiredArray));
   {
     DataArraySelectionFilterParameter::RequirementType req = DataArraySelectionFilterParameter::CreateCategoryRequirement(SIMPL::TypeNames::Int32, 1, AttributeMatrix::Category::Element);
@@ -107,19 +111,19 @@ void FindBoundaryElementFractions::initialize()
 // -----------------------------------------------------------------------------
 void FindBoundaryElementFractions::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   QVector<DataArrayPath> dataArrayPaths;
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeatureIdsArrayPath());
   }
@@ -130,15 +134,14 @@ void FindBoundaryElementFractions::dataCheck()
   {
     m_BoundaryCells = m_BoundaryCellsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getBoundaryCellsArrayPath());
   }
 
   getDataContainerArray()->validateNumberOfTuples(this, dataArrayPaths);
 
-  m_BoundaryCellFractionsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(
-      this, getBoundaryCellFractionsArrayPath(), 0, cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
+  m_BoundaryCellFractionsPtr = getDataContainerArray()->createNonPrereqArrayFromPath<DataArray<float>, AbstractFilter, float>(this, getBoundaryCellFractionsArrayPath(), 0, cDims, "", DataArrayID31);
   if(nullptr != m_BoundaryCellFractionsPtr.lock())          /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_BoundaryCellFractions = m_BoundaryCellFractionsPtr.lock()->getPointer(0);
@@ -166,10 +169,10 @@ void FindBoundaryElementFractions::find_surface_voxel_fractions()
   size_t totalPoints = m_FeatureIdsPtr.lock()->getNumberOfTuples();
   size_t numfeatures = m_BoundaryCellFractionsPtr.lock()->getNumberOfTuples();
 
-  FloatArrayType::Pointer m_SurfVoxCounts = FloatArrayType::CreateArray(numfeatures, "_INTERNAL_USE_ONLY_SurfVoxCounts");
+  FloatArrayType::Pointer m_SurfVoxCounts = FloatArrayType::CreateArray(numfeatures, "_INTERNAL_USE_ONLY_SurfVoxCounts", true);
   m_SurfVoxCounts->initializeWithZeros();
   float* surfvoxcounts = m_SurfVoxCounts->getPointer(0);
-  FloatArrayType::Pointer m_VoxCounts = FloatArrayType::CreateArray(numfeatures, "_INTERNAL_USE_ONLY_VoxCounts");
+  FloatArrayType::Pointer m_VoxCounts = FloatArrayType::CreateArray(numfeatures, "_INTERNAL_USE_ONLY_VoxCounts", true);
   m_VoxCounts->initializeWithZeros();
   float* voxcounts = m_VoxCounts->getPointer(0);
 
@@ -193,17 +196,16 @@ void FindBoundaryElementFractions::find_surface_voxel_fractions()
 // -----------------------------------------------------------------------------
 void FindBoundaryElementFractions::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
 
   find_surface_voxel_fractions();
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -212,7 +214,7 @@ void FindBoundaryElementFractions::execute()
 AbstractFilter::Pointer FindBoundaryElementFractions::newFilterInstance(bool copyFilterParameters) const
 {
   FindBoundaryElementFractions::Pointer filter = FindBoundaryElementFractions::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

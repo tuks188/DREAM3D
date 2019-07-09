@@ -41,6 +41,7 @@
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/IntFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedBooleanFilterParameter.h"
+#include "SIMPLib/FilterParameters/MultiDataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
 
@@ -55,10 +56,6 @@ FillBadData::FillBadData()
 , m_MinAllowedDefectSize(1)
 , m_FeatureIdsArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::FeatureIds)
 , m_CellPhasesArrayPath(SIMPL::Defaults::ImageDataContainerName, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::CellData::Phases)
-, m_AlreadyChecked(nullptr)
-, m_Neighbors(nullptr)
-, m_FeatureIds(nullptr)
-, m_CellPhases(nullptr)
 {
 }
 
@@ -72,7 +69,7 @@ FillBadData::~FillBadData() = default;
 // -----------------------------------------------------------------------------
 void FillBadData::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
   parameters.push_back(SIMPL_NEW_INTEGER_FP("Minimum Allowed Defect Size", MinAllowedDefectSize, FilterParameter::Parameter, FillBadData));
   QStringList linkedProps;
   linkedProps << "CellPhasesArrayPath";
@@ -87,6 +84,10 @@ void FillBadData::setupFilterParameters()
     DataArraySelectionFilterParameter::RequirementType req =
         DataArraySelectionFilterParameter::CreateRequirement(SIMPL::TypeNames::Int32, 1, AttributeMatrix::Type::Cell, IGeometry::Type::Image);
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Phases", CellPhasesArrayPath, FilterParameter::RequiredArray, FillBadData, req));
+  }
+  {
+    MultiDataArraySelectionFilterParameter::RequirementType req;
+    parameters.push_back(SIMPL_NEW_MDA_SELECTION_FP("Attribute Arrays to Ignore", IgnoredDataArrayPaths, FilterParameter::Parameter, FillBadData, req));
   }
   setFilterParameters(parameters);
 }
@@ -118,27 +119,27 @@ void FillBadData::initialize()
 // -----------------------------------------------------------------------------
 void FillBadData::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   initialize();
 
   QVector<DataArrayPath> dataArrayPaths;
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeatureIdsArrayPath());
   }
 
-  if(m_StoreAsNewPhase == true)
+  if(m_StoreAsNewPhase)
   {
     m_CellPhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getCellPhasesArrayPath(),
                                                                                                           cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
@@ -146,7 +147,7 @@ void FillBadData::dataCheck()
     {
       m_CellPhases = m_CellPhasesPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getCellPhasesArrayPath());
     }
@@ -173,10 +174,10 @@ void FillBadData::preflight()
 // -----------------------------------------------------------------------------
 void FillBadData::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -184,16 +185,15 @@ void FillBadData::execute()
   DataContainer::Pointer m = getDataContainerArray()->getDataContainer(m_FeatureIdsArrayPath.getDataContainerName());
   size_t totalPoints = m_FeatureIdsPtr.lock()->getNumberOfTuples();
 
-  Int32ArrayType::Pointer neighborsPtr = Int32ArrayType::CreateArray(totalPoints, "_INTERNAL_USE_ONLY_Neighbors");
+  Int32ArrayType::Pointer neighborsPtr = Int32ArrayType::CreateArray(totalPoints, "_INTERNAL_USE_ONLY_Neighbors", true);
   m_Neighbors = neighborsPtr->getPointer(0);
   neighborsPtr->initializeWithValue(-1);
 
-  BoolArrayType::Pointer alreadCheckedPtr = BoolArrayType::CreateArray(totalPoints, "_INTERNAL_USE_ONLY_AlreadyChecked");
+  BoolArrayType::Pointer alreadCheckedPtr = BoolArrayType::CreateArray(totalPoints, "_INTERNAL_USE_ONLY_AlreadyChecked", true);
   m_AlreadyChecked = alreadCheckedPtr->getPointer(0);
   alreadCheckedPtr->initializeWithZeros();
 
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   int64_t dims[3] = {
       static_cast<int64_t>(udims[0]), static_cast<int64_t>(udims[1]), static_cast<int64_t>(udims[2]),
@@ -219,7 +219,7 @@ void FillBadData::execute()
     }
   }
 
-  if(m_StoreAsNewPhase == true)
+  if(m_StoreAsNewPhase)
   {
     for(size_t i = 0; i < totalPoints; i++)
     {
@@ -250,7 +250,7 @@ void FillBadData::execute()
 
   for(size_t i = 0; i < totalPoints; i++)
   {
-    if(m_AlreadyChecked[i] == false && m_FeatureIds[i] == 0)
+    if(!m_AlreadyChecked[i] && m_FeatureIds[i] == 0)
     {
       currentvlist.push_back(static_cast<int64_t>(i));
       count = 0;
@@ -288,7 +288,7 @@ void FillBadData::execute()
           {
             good = 0;
           }
-          if(good == 1 && m_FeatureIds[neighbor] == 0 && m_AlreadyChecked[neighbor] == false)
+          if(good == 1 && m_FeatureIds[neighbor] == 0 && !m_AlreadyChecked[neighbor])
           {
             currentvlist.push_back(neighbor);
             m_AlreadyChecked[neighbor] = true;
@@ -301,7 +301,7 @@ void FillBadData::execute()
         for(size_t k = 0; k < currentvlist.size(); k++)
         {
           m_FeatureIds[currentvlist[k]] = 0;
-          if(m_StoreAsNewPhase == true)
+          if(m_StoreAsNewPhase)
           {
             m_CellPhases[currentvlist[k]] = maxPhase + 1;
           }
@@ -428,17 +428,16 @@ void FillBadData::execute()
       neighbor = m_Neighbors[j];
       if(featurename < 0 && neighbor != -1 && m_FeatureIds[neighbor] > 0)
       {
-        for(QList<QString>::iterator iter = voxelArrayNames.begin(); iter != voxelArrayNames.end(); ++iter)
+        for(const auto& arrayName : voxelArrayNames)
         {
-          IDataArray::Pointer p = m->getAttributeMatrix(attrMatName)->getAttributeArray(*iter);
+          IDataArray::Pointer p = m->getAttributeMatrix(attrMatName)->getAttributeArray(arrayName);
           p->copyTuple(neighbor, j);
         }
       }
     }
   }
 
-  // If there is an error set this to something negative and also set a message
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -447,7 +446,7 @@ void FillBadData::execute()
 AbstractFilter::Pointer FillBadData::newFilterInstance(bool copyFilterParameters) const
 {
   FillBadData::Pointer filter = FillBadData::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

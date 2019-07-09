@@ -15,9 +15,7 @@
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-OrientationUtility::OrientationUtility()
-{
-}
+OrientationUtility::OrientationUtility() = default;
 
 // -----------------------------------------------------------------------------
 //
@@ -29,7 +27,7 @@ OrientationUtility::~OrientationUtility() = default;
 // -----------------------------------------------------------------------------
 void OrientationUtility::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   parameters.push_back(OrientationUtilityFilterParameter::New("", "", "", FilterParameter::Parameter));
 
@@ -78,7 +76,6 @@ void OrientationUtility::preflight()
 // -----------------------------------------------------------------------------
 void OrientationUtility::execute()
 {
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -87,7 +84,7 @@ void OrientationUtility::execute()
 AbstractFilter::Pointer OrientationUtility::newFilterInstance(bool copyFilterParameters) const
 {
   OrientationUtility::Pointer filter = OrientationUtility::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

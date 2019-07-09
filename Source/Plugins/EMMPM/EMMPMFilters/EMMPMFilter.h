@@ -45,6 +45,8 @@
 
 #include "EMMPM/EMMPMDLLExport.h"
 
+class EMMPMFilterMessageHandler;
+
 /**
  * @brief The EMMPMFilter class. See [Filter documentation](@ref emmpmfilter) for details.
  */
@@ -74,6 +76,8 @@ public:
   SIMPL_TYPE_MACRO_SUPER_OVERRIDE(EMMPMFilter, AbstractFilter)
 
   ~EMMPMFilter() override;
+
+  friend EMMPMFilterMessageHandler;
 
   SIMPL_FILTER_PARAMETER(DataArrayPath, InputDataArrayPath)
   Q_PROPERTY(DataArrayPath InputDataArrayPath READ getInputDataArrayPath WRITE setInputDataArrayPath)
@@ -252,6 +256,12 @@ protected:
    */
   void setPreviousSigma(std::vector<float> prevSigma);
 
+  /**
+   * @brief handleEmmpmMessage
+   * @param msg
+   */
+  virtual void handleEmmpmMessage(const AbstractMessage::Pointer &msg);
+
 private:
   DEFINE_DATAARRAY_VARIABLE(uint8_t, InputImage)
   DEFINE_DATAARRAY_VARIABLE(uint8_t, OutputImage)
@@ -261,8 +271,10 @@ private:
 
   EMMPM_Data::Pointer m_Data;
 
-  EMMPMFilter(const EMMPMFilter&);    // Copy Constructor Not Implemented
+public:
+  EMMPMFilter(const EMMPMFilter&) = delete;            // Copy Constructor Not Implemented
+  EMMPMFilter(EMMPMFilter&&) = delete;                 // Move Constructor Not Implemented
   EMMPMFilter& operator=(const EMMPMFilter&) = delete; // Copy Assignment Not Implemented
-  EMMPMFilter& operator=(EMMPMFilter&&) = delete;      // Move Assignment
+  EMMPMFilter& operator=(EMMPMFilter&&) = delete;      // Move Assignment Not Implemented
 };
 

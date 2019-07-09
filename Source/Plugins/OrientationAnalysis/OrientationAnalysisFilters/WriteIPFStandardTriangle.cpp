@@ -42,6 +42,7 @@
 #include "SIMPLib/FilterParameters/ChoiceFilterParameter.h"
 #include "SIMPLib/FilterParameters/IntFilterParameter.h"
 #include "SIMPLib/FilterParameters/OutputFileFilterParameter.h"
+#include "SIMPLib/Utilities/FileSystemPathHelper.h"
 
 #include "OrientationLib/LaueOps/LaueOps.h"
 
@@ -79,7 +80,7 @@ WriteIPFStandardTriangle::~WriteIPFStandardTriangle() = default;
 // -----------------------------------------------------------------------------
 void WriteIPFStandardTriangle::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   QVector<QString> choices = QVector<QString>::fromStdVector(LaueOps::GetLaueNames());
   choices.pop_back(); // Remove the last name because we don't need it.
@@ -114,55 +115,31 @@ void WriteIPFStandardTriangle::initialize()
 // -----------------------------------------------------------------------------
 void WriteIPFStandardTriangle::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
   QString ss;
-  if(getOutputFile().isEmpty() == true)
-  {
-    ss = QObject::tr("The output file must be set");
-    setErrorCondition(-1);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
-    return;
-  }
+
+  FileSystemPathHelper::CheckOutputFile(this, "Output File Path", getOutputFile(), true);
 
   QFileInfo fi(getOutputFile());
-  QDir parentPath = fi.path();
   QString ext = fi.completeSuffix();
-
-  if(parentPath.exists() == false)
-  {
-    setWarningCondition(-1002);
-    ss = QObject::tr("The directory path for the output file does not exist. DREAM.3D will attempt to create this path during execution of the filter");
-    notifyWarningMessage(getHumanLabel(), ss, getWarningCondition());
-  }
-
-  if(ext.isEmpty())
-  {
-    ss = QObject::tr("The output file does not have an extension");
-    setErrorCondition(-1003);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
-    return;
-  }
-  else if(ext != "tif" && ext != "bmp" && ext != "png")
+  if(ext != "tif" && ext != "bmp" && ext != "png")
   {
     ss = QObject::tr("The output file has an unsupported extension.  Please select a TIF, BMP, or PNG file");
-    setErrorCondition(-1004);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-1004, ss);
     return;
   }
 
   if(m_ImageSize <= 0)
   {
-    setErrorCondition(-1005);
-    notifyErrorMessage(getHumanLabel(), "The size of the image must be positive", getErrorCondition());
+    setErrorCondition(-1005, "The size of the image must be positive");
     return;
   }
 
   if(m_LaueClass < 0 || m_LaueClass > 10)
   {
-    setErrorCondition(-1006);
-    notifyErrorMessage(getHumanLabel(), "The Laue Class value must be in the range [0-10]. See documentation for the complete list of values.", getErrorCondition());
+    setErrorCondition(-1006, "The Laue Class value must be in the range [0-10]. See documentation for the complete list of values.");
     return;
   }
 }
@@ -185,10 +162,10 @@ void WriteIPFStandardTriangle::preflight()
 // -----------------------------------------------------------------------------
 void WriteIPFStandardTriangle::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -256,8 +233,7 @@ void WriteIPFStandardTriangle::execute()
     writeImage(image);
   }
 
-  /* Let the GUI know we are done with this filter */
-  notifyStatusMessage(getHumanLabel(), "Complete");
+
 }
 
 // -----------------------------------------------------------------------------
@@ -267,11 +243,11 @@ void WriteIPFStandardTriangle::writeImage(QImage& image)
 {
 
   QString ss = QObject::tr("Writing Image %1").arg(getOutputFile());
-  notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+  notifyStatusMessage(ss);
 
   QFileInfo fi((m_OutputFile));
   QDir parent(fi.absolutePath());
-  if(parent.exists() == false)
+  if(!parent.exists())
   {
     parent.mkpath(fi.absolutePath());
   }
@@ -280,8 +256,7 @@ void WriteIPFStandardTriangle::writeImage(QImage& image)
   if(!saved)
   {
     QString ss = QObject::tr("The Triangle image file '%1' was not saved").arg(getOutputFile());
-    setErrorCondition(-90011);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-90011, ss);
   }
 }
 
@@ -291,7 +266,7 @@ void WriteIPFStandardTriangle::writeImage(QImage& image)
 AbstractFilter::Pointer WriteIPFStandardTriangle::newFilterInstance(bool copyFilterParameters) const
 {
   WriteIPFStandardTriangle::Pointer filter = WriteIPFStandardTriangle::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

@@ -67,49 +67,40 @@ using namespace H5Support_NAMESPACE;
       return -1; }\
   }
 
-#define WRITE_EBSD_HEADER_STRING_DATA(reader, m_msgType, prpty, key)\
-  {\
-    m_msgType t = reader.get##prpty();\
-    err = QH5Lite::writeStringDataset(gid, key, t);\
-    if (err < 0) {\
-      QString ss = \
-                   QObject::tr("H5CtfImporter Error: Could not write Ctf Header value '%1' to the HDF5 file with data set name '%2'\n")\
-                   .arg(t).arg(key);\
-      progressMessage(ss, 100);\
-      err = H5Gclose(gid); err = H5Gclose(ctfGroup);\
-      return -1; }\
+#define WRITE_EBSD_HEADER_STRING_DATA(reader, m_msgType, prpty, key)                                                                                                                                   \
+  {                                                                                                                                                                                                    \
+    m_msgType t = reader.get##prpty();                                                                                                                                                                 \
+    err = QH5Lite::writeStringDataset(gid, key, t);                                                                                                                                                    \
+    if(err < 0)                                                                                                                                                                                        \
+    {                                                                                                                                                                                                  \
+      QString ss = QObject::tr("H5CtfImporter Error: Could not write Ctf Header value '%1' to the HDF5 file with data set name '%2'\n").arg(t, key);                                                   \
+      progressMessage(ss, 100);                                                                                                                                                                        \
+      err = H5Gclose(gid);                                                                                                                                                                             \
+      err = H5Gclose(ctfGroup);                                                                                                                                                                        \
+      return -1;                                                                                                                                                                                       \
+    }                                                                                                                                                                                                  \
   }
 
-#define WRITE_EBSD_DATA_ARRAY(reader, m_msgType, gid, key)\
-  {\
-    if (nullptr != dataPtr) {\
-      err = QH5Lite::writePointerDataset(gid, key, rank, dims, dataPtr);\
-      if (err < 0) {\
-        QString ss = \
-                     QObject::tr("H5CtfImporter Error: Could not write Ctf Data array for '%1' to the HDF5 file with data set name '%2'\n")\
-                     .arg(key).arg(key);\
-        progressMessage(ss, 100);\
-        err = H5Gclose(gid); err = H5Gclose(ctfGroup);\
-        return -1; }\
-    }\
+#define WRITE_EBSD_DATA_ARRAY(reader, m_msgType, gid, key)                                                                                                                                             \
+  {                                                                                                                                                                                                    \
+    if(nullptr != dataPtr)                                                                                                                                                                             \
+    {                                                                                                                                                                                                  \
+      err = QH5Lite::writePointerDataset(gid, key, rank, dims, dataPtr);                                                                                                                               \
+      if(err < 0)                                                                                                                                                                                      \
+      {                                                                                                                                                                                                \
+        QString ss = QObject::tr("H5CtfImporter Error: Could not write Ctf Data array for '%1' to the HDF5 file with data set name '%2'\n").arg(key, key);                                             \
+        progressMessage(ss, 100);                                                                                                                                                                      \
+        err = H5Gclose(gid);                                                                                                                                                                           \
+        err = H5Gclose(ctfGroup);                                                                                                                                                                      \
+        return -1;                                                                                                                                                                                     \
+      }                                                                                                                                                                                                \
+    }                                                                                                                                                                                                  \
   }
-
-
 
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-H5CtfImporter::H5CtfImporter():
-  EbsdImporter(),
-  xDim(0),
-  yDim(0),
-  xRes(0),
-  yRes(0),
-  zRes(0),
-  m_NumSlicesImported(1),
-  m_FileVersion(Ebsd::H5::FileVersion)
-{
-}
+H5CtfImporter::H5CtfImporter() = default;
 
 // -----------------------------------------------------------------------------
 //
@@ -128,7 +119,7 @@ void H5CtfImporter::getDims(int64_t& x, int64_t& y)
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-void H5CtfImporter::getResolution(float& x, float& y)
+void H5CtfImporter::getSpacing(float& x, float& y)
 {
   x = xRes;
   y = yRes;
@@ -149,7 +140,7 @@ int H5CtfImporter::importFile(hid_t fileId, int64_t z, const QString& ctfFile)
 {
   herr_t err = -1;
   setCancel(false);
-  setErrorCondition(0);
+  setErrorCode(0);
   setPipelineMessage("");
 
   //  std::cout << "H5CtfImporter: Importing " << ctfFile << std::endl;
@@ -185,7 +176,7 @@ int H5CtfImporter::importFile(hid_t fileId, int64_t z, const QString& ctfFile)
       ss = reader.getErrorMessage();
     }
     setPipelineMessage(ss);
-    setErrorCondition(err);
+    setErrorCode(err);
     progressMessage(ss, 100);
 
 
@@ -198,22 +189,22 @@ int H5CtfImporter::importFile(hid_t fileId, int64_t z, const QString& ctfFile)
     H5T_class_t type_class;
     size_t type_size = 0;
     hid_t attr_type = -1;
-    err = QH5Lite::getAttributeInfo(fileId, "/", Ebsd::H5::FileVersionStr, dims, type_class, type_size, attr_type);
+    err = QH5Lite::getAttributeInfo(fileId, "/", Ebsd::H5Aztec::FileVersionStr, dims, type_class, type_size, attr_type);
     if (attr_type < 0) // The attr_type variable was never set which means the attribute was NOT there
     {
       // The file version does not exist so write it to the file
-      err = QH5Lite::writeScalarAttribute(fileId, QString("/"), Ebsd::H5::FileVersionStr, m_FileVersion);
+      err = QH5Lite::writeScalarAttribute(fileId, QString("/"), Ebsd::H5Aztec::FileVersionStr, m_FileVersion);
     }
     else
     {
       H5Aclose(attr_type);
     }
 
-    err = QH5Lite::getAttributeInfo(fileId, "/", Ebsd::H5::EbsdLibVersionStr, dims, type_class, type_size, attr_type);
+    err = QH5Lite::getAttributeInfo(fileId, "/", Ebsd::H5Aztec::EbsdLibVersionStr, dims, type_class, type_size, attr_type);
     if (attr_type < 0) // The attr_type variable was never set which means the attribute was NOT there
     {
       // The file version does not exist so write it to the file
-      err = QH5Lite::writeStringAttribute(fileId, QString("/"), Ebsd::H5::EbsdLibVersionStr, EbsdLib::Version::Complete());
+      err = QH5Lite::writeStringAttribute(fileId, QString("/"), Ebsd::H5Aztec::EbsdLibVersionStr, EbsdLib::Version::Complete());
     }
     else
     {
@@ -249,18 +240,18 @@ int H5CtfImporter::writeSliceData(hid_t fileId, CtfReader& reader, int z, int ac
   {
     QString ss = QObject::tr("H5CtfImporter Error: A Group for Z index %1 could not be created. Please check other error messages from the HDF5 library for possible reasons.").arg(z);
     setPipelineMessage(ss);
-    setErrorCondition(-500);
+    setErrorCode(-500);
     return -1;
   }
 
-  hid_t gid = QH5Utilities::createGroup(ctfGroup, Ebsd::H5::Header);
+  hid_t gid = QH5Utilities::createGroup(ctfGroup, Ebsd::H5Aztec::Header);
   if(gid < 0)
   {
     QString ss = QObject::tr("H5CtfImporter Error: The 'Header' Group for Z index %1 could not be created. Please check other error messages from the HDF5 library for possible reasons.").arg(z);
     progressMessage(ss, 100);
     err = H5Gclose(ctfGroup);
     setPipelineMessage(ss);
-    setErrorCondition(-600);
+    setErrorCode(-600);
     return -1;
   }
 
@@ -296,7 +287,7 @@ int H5CtfImporter::writeSliceData(hid_t fileId, CtfReader& reader, int z, int ac
   WRITE_EBSD_HEADER_DATA(reader, float, TiltAngle, Ebsd::Ctf::TiltAngle);
   WRITE_EBSD_HEADER_DATA(reader, float, TiltAxis, Ebsd::Ctf::TiltAxis)
 
-  hid_t phasesGid = QH5Utilities::createGroup(gid, Ebsd::H5::Phases);
+  hid_t phasesGid = QH5Utilities::createGroup(gid, Ebsd::H5Aztec::Phases);
   if(phasesGid < 0)
   {
     QString ss = QObject::tr("H5CtfImporter Error: The 'Header' Group for the Phases could not be created."
@@ -306,7 +297,7 @@ int H5CtfImporter::writeSliceData(hid_t fileId, CtfReader& reader, int z, int ac
     err = H5Gclose(gid);
     err = H5Gclose(ctfGroup);
     setPipelineMessage(ss);
-    setErrorCondition(-600);
+    setErrorCode(-600);
     return -1;
   }
   err = writePhaseData(reader, phasesGid);
@@ -314,14 +305,14 @@ int H5CtfImporter::writeSliceData(hid_t fileId, CtfReader& reader, int z, int ac
   err = H5Gclose(phasesGid);
 
   QString ctfCompleteHeader = reader.getOriginalHeader();
-  err = QH5Lite::writeStringDataset(gid, Ebsd::H5::OriginalHeader, ctfCompleteHeader);
-  err = QH5Lite::writeStringDataset(gid, Ebsd::H5::OriginalFile, reader.getFileName());
+  err = QH5Lite::writeStringDataset(gid, Ebsd::H5Aztec::OriginalHeader, ctfCompleteHeader);
+  err = QH5Lite::writeStringDataset(gid, Ebsd::H5Aztec::OriginalFile, reader.getFileName());
 
   // Close the "Header" group
   err = H5Gclose(gid);
 
   // Create the "Data" group
-  gid = QH5Utilities::createGroup(ctfGroup, Ebsd::H5::Data);
+  gid = QH5Utilities::createGroup(ctfGroup, Ebsd::H5Aztec::Data);
   if(gid < 0)
   {
     QString ss = QObject::tr("H5CtfImporter Error: The 'Data' Group for Z index %1 could not be created."
@@ -329,7 +320,7 @@ int H5CtfImporter::writeSliceData(hid_t fileId, CtfReader& reader, int z, int ac
     progressMessage(ss, 100);
     err = H5Gclose(ctfGroup);
     setPipelineMessage(ss);
-    setErrorCondition(-700);
+    setErrorCode(-700);
     return -1;
   }
 
@@ -339,28 +330,29 @@ int H5CtfImporter::writeSliceData(hid_t fileId, CtfReader& reader, int z, int ac
 
   Ebsd::NumType numType = Ebsd::UnknownNumType;
   QList<QString> columnNames = reader.getColumnNames();
-  for (qint32 i = 0; i < columnNames.size(); ++i)
+  for(const QString& name : columnNames)
+  // for (qint32 i = 0; i < columnNames.size(); ++i)
   {
-    numType = reader.getPointerType(columnNames[i]);
+    numType = reader.getPointerType(name);
     if(numType == Ebsd::Int32)
     {
-      int32_t* dataPtr = static_cast<int32_t*>(reader.getPointerByName(columnNames[i]));
+      int32_t* dataPtr = static_cast<int32_t*>(reader.getPointerByName(name));
       if(nullptr == dataPtr)
       {
         assert(false);
       } // We are going to crash here. I would rather crash than have bad data
       dataPtr = dataPtr + (actualSlice * dims[0]); // Put the pointer at the proper offset into the larger array
-      WRITE_EBSD_DATA_ARRAY(reader, int, gid, columnNames[i]);
+      WRITE_EBSD_DATA_ARRAY(reader, int, gid, name);
     }
     else if(numType == Ebsd::Float)
     {
-      float* dataPtr = static_cast<float*>(reader.getPointerByName(columnNames[i]));
+      float* dataPtr = static_cast<float*>(reader.getPointerByName(name));
       if(nullptr == dataPtr)
       {
         assert(false);
       } // We are going to crash here. I would rather crash than have bad data
       dataPtr = dataPtr + (actualSlice * dims[0]); // Put the pointer at the proper offset into the larger array
-      WRITE_EBSD_DATA_ARRAY(reader, float, gid, columnNames[i]);
+      WRITE_EBSD_DATA_ARRAY(reader, float, gid, name);
     }
     else
     {
@@ -395,38 +387,37 @@ int H5CtfImporter::writeSliceData(hid_t fileId, CtfReader& reader, int z, int ac
       return -1; }\
   }
 
-#define WRITE_PHASE_HEADER_STRING_DATA(reader, m_msgType, prpty, key)\
-  {\
-    m_msgType t = reader->get##prpty();\
-    err = QH5Lite::writeStringDataset(pid, key, t);\
-    if (err < 0) {\
-      QString ss = \
-                   QObject::tr("H5CtfImporter Error: Could not write Ctf Header value '%1' to the HDF5 file with data set name '%2'\n")\
-                   .arg(t).arg(key);\
-      progressMessage(ss, 100);\
-      progressMessage(ss, 100);\
-      err = H5Gclose(pid);\
-      return -1; }\
+#define WRITE_PHASE_HEADER_STRING_DATA(reader, m_msgType, prpty, key)                                                                                                                                  \
+  {                                                                                                                                                                                                    \
+    m_msgType t = reader->get##prpty();                                                                                                                                                                \
+    err = QH5Lite::writeStringDataset(pid, key, t);                                                                                                                                                    \
+    if(err < 0)                                                                                                                                                                                        \
+    {                                                                                                                                                                                                  \
+      QString ss = QObject::tr("H5CtfImporter Error: Could not write Ctf Header value '%1' to the HDF5 file with data set name '%2'\n").arg(t, key);                                                   \
+      progressMessage(ss, 100);                                                                                                                                                                        \
+      progressMessage(ss, 100);                                                                                                                                                                        \
+      err = H5Gclose(pid);                                                                                                                                                                             \
+      return -1;                                                                                                                                                                                       \
+    }                                                                                                                                                                                                  \
   }
 
-#define WRITE_PHASE_DATA_ARRAY(reader, m_msgType, gid, prpty, key)\
-  {\
-    QVector<m_msgType> tempVar = reader->get##prpty();\
-    dims[0] = tempVar.size();\
-    m_msgType* dataPtr = &(tempVar.front());\
-    if (nullptr != dataPtr) {\
-      err = QH5Lite::writePointerDataset(pid, key, rank, dims, dataPtr);\
-      if (err < 0) {\
-        QString ss = \
-                     QObject::tr("H5CtfImporter Error: Could not write Ctf Data array for '%1' to the HDF5 file with data set name '%2'\n")\
-                     .arg(key).arg(key);\
-        progressMessage(ss, 100);\
-        err = H5Gclose(pid); \
-        return -1; }\
-    }\
+#define WRITE_PHASE_DATA_ARRAY(reader, m_msgType, gid, prpty, key)                                                                                                                                     \
+  {                                                                                                                                                                                                    \
+    QVector<m_msgType> tempVar = reader->get##prpty();                                                                                                                                                 \
+    dims[0] = tempVar.size();                                                                                                                                                                          \
+    m_msgType* dataPtr = &(tempVar.front());                                                                                                                                                           \
+    if(nullptr != dataPtr)                                                                                                                                                                             \
+    {                                                                                                                                                                                                  \
+      err = QH5Lite::writePointerDataset(pid, key, rank, dims, dataPtr);                                                                                                                               \
+      if(err < 0)                                                                                                                                                                                      \
+      {                                                                                                                                                                                                \
+        QString ss = QObject::tr("H5CtfImporter Error: Could not write Ctf Data array for '%1' to the HDF5 file with data set name '%2'\n").arg(key, key);                                             \
+        progressMessage(ss, 100);                                                                                                                                                                      \
+        err = H5Gclose(pid);                                                                                                                                                                           \
+        return -1;                                                                                                                                                                                     \
+      }                                                                                                                                                                                                \
+    }                                                                                                                                                                                                  \
   }
-
-
 
 // -----------------------------------------------------------------------------
 //
@@ -439,14 +430,15 @@ int H5CtfImporter::writePhaseData(CtfReader& reader, hid_t phasesGid)
   hsize_t dims[1] = { 0 };
   QVector<CtfPhase::Pointer> phases = reader.getPhaseVector();
   Ebsd::Ctf::LaueGroupStrings laueGroupStrings;
-  for (QVector<CtfPhase::Pointer>::iterator phase = phases.begin(); phase != phases.end(); ++phase )
+  for(const CtfPhase::Pointer& phase : phases)
+  // for (QVector<CtfPhase::Pointer>::iterator phase = phases.begin(); phase != phases.end(); ++phase )
   {
-    CtfPhase* p = (*phase).get();
-    hid_t pid = QH5Utilities::createGroup(phasesGid, QString::number(p->getPhaseIndex()));
+    CtfPhase* p = phase.get();
+    hid_t pid = QH5Utilities::createGroup(phasesGid, QString::number(phase->getPhaseIndex()));
 
-    WRITE_PHASE_DATA_ARRAY( (*phase), float, pid, LatticeConstants, Ebsd::Ctf::LatticeConstants);
-    WRITE_PHASE_HEADER_STRING_DATA((*phase), QString, PhaseName, Ebsd::Ctf::PhaseName)
-    WRITE_PHASE_HEADER_DATA((*phase), int, LaueGroup, Ebsd::Ctf::LaueGroup)
+    WRITE_PHASE_DATA_ARRAY(phase, float, pid, LatticeConstants, Ebsd::Ctf::LatticeConstants);
+    WRITE_PHASE_HEADER_STRING_DATA(phase, QString, PhaseName, Ebsd::Ctf::PhaseName)
+    WRITE_PHASE_HEADER_DATA(phase, int, LaueGroup, Ebsd::Ctf::LaueGroup)
 
     err = QH5Lite::writeStringAttribute(pid, Ebsd::Ctf::LaueGroup, "Name",
                                         laueGroupStrings.getString(p->getLaueGroup()));
@@ -459,10 +451,10 @@ int H5CtfImporter::writePhaseData(CtfReader& reader, hid_t phasesGid)
       return -1;
     }
 
-    WRITE_PHASE_HEADER_DATA((*phase), int, SpaceGroup, Ebsd::Ctf::SpaceGroup)
-    WRITE_PHASE_HEADER_STRING_DATA((*phase), QString, Internal1, Ebsd::Ctf::Internal1)
-    WRITE_PHASE_HEADER_STRING_DATA((*phase), QString, Internal2, Ebsd::Ctf::Internal2)
-    WRITE_PHASE_HEADER_STRING_DATA((*phase), QString, Comment, Ebsd::Ctf::Comment)
+    WRITE_PHASE_HEADER_DATA(phase, int, SpaceGroup, Ebsd::Ctf::SpaceGroup)
+    WRITE_PHASE_HEADER_STRING_DATA(phase, QString, Internal1, Ebsd::Ctf::Internal1)
+    WRITE_PHASE_HEADER_STRING_DATA(phase, QString, Internal2, Ebsd::Ctf::Internal2)
+    WRITE_PHASE_HEADER_STRING_DATA(phase, QString, Comment, Ebsd::Ctf::Comment)
     err = H5Gclose(pid);
   }
   return err;

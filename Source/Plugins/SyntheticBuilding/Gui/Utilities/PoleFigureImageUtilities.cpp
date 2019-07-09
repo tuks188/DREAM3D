@@ -101,7 +101,7 @@ int PoleFigureImageUtilities::countPixelNeighbors(int imageWidth, int imageHeigh
   int targetIndex = (imageWidth * pY) + pX;
   float delta = (pX - cX) * (pX - cX) + (pY - cY) * (pY - cY);
 
-  if(genmask == true)
+  if(genmask)
   {
     if(delta > radSqrd)
     {
@@ -210,14 +210,14 @@ QImage PoleFigureImageUtilities::GenerateScalarBar(int imageWidth, int imageHeig
 
   // Draw the Text Labels of the Scale Bar
   int startFontPtSize = 10;
-  QFont font("Arial", startFontPtSize, QFont::Bold);
+  QFont font("Lato", startFontPtSize, QFont::Bold);
 
   QFontMetrics metrics(font);
   int fontPixelsHeight = metrics.height();
   while(fontPixelsHeight < colorHeight * 2)
   {
     startFontPtSize++;
-    font = QFont("Arial", startFontPtSize, QFont::Bold);
+    font = QFont("Lato", startFontPtSize, QFont::Bold);
     metrics = QFontMetrics(font);
     fontPixelsHeight = metrics.height();
   }
@@ -241,7 +241,7 @@ QImage PoleFigureImageUtilities::GenerateScalarBar(int imageWidth, int imageHeig
   while(endOfStringYPos < imageWidth)
   {
     startFontPtSize++;
-    font = QFont("Arial", startFontPtSize, QFont::Bold);
+    font = QFont("Lato", startFontPtSize, QFont::Bold);
     metrics = QFontMetrics(font);
     QString label("Upper & Lower");
     QString label2 = QString("Samples: ") + QString::number(config.eulers->getNumberOfTuples());
@@ -254,7 +254,7 @@ QImage PoleFigureImageUtilities::GenerateScalarBar(int imageWidth, int imageHeig
     endOfStringYPos = topLeft.x() + (imageWidth * scaleBarRelativeWidth) + 10 + labelWidth;
   }
   startFontPtSize--;
-  font = QFont("Arial", startFontPtSize, QFont::Bold);
+  font = QFont("Lato", startFontPtSize, QFont::Bold);
   metrics = QFontMetrics(font);
   QString label("Upper & Lower");
   QString label2 = QString("Samples: ") + QString::number(config.eulers->getNumberOfTuples());
@@ -283,6 +283,37 @@ QImage PoleFigureImageUtilities::GenerateScalarBar(int imageWidth, int imageHeig
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
+void PoleFigureImageUtilities::PaintSymmetryDirection(const QString& text, QFontMetrics *metrics, QPainter *painter, int x, int y)
+{
+
+  QVector<int> offsets;
+  int i = 0;
+  QString mod;
+  int fontHeight = metrics->height();
+
+  while(i < text.length())
+  {
+    if(text.at(i) == '-')
+    {
+      int offset = metrics->width(mod);
+      i++;
+      mod = mod + text.at(i);
+      int width = metrics->width(text.at(i)) * .80;
+      painter->drawRect(x + offset, y - 0.80 * fontHeight, width, 1);
+    }
+    else
+    {
+      mod = mod + text.at(i);
+    }
+    i++;
+  }
+  painter->drawText(x, y, mod);
+}
+
+
+// -----------------------------------------------------------------------------
+//
+// -----------------------------------------------------------------------------
 QImage PoleFigureImageUtilities::PaintPoleFigureOverlay(int imageWidth, int imageHeight, QString label, QImage image)
 {
   int pxHigh = 0;
@@ -292,7 +323,7 @@ QImage PoleFigureImageUtilities::PaintPoleFigureOverlay(int imageWidth, int imag
   // Pole figure was 512 Pixels square.
   int fontPtSize = imageHeight / 32;
 
-  QFont font("Arial", fontPtSize, QFont::Bold);
+  QFont font("Lato", fontPtSize, QFont::Bold);
   QFontMetrics metrics(font);
   pxHigh = metrics.height();
   pxWide = metrics.width(QString("Y"));
@@ -340,14 +371,13 @@ QImage PoleFigureImageUtilities::PaintPoleFigureOverlay(int imageWidth, int imag
   while(labelWidth < maxWidth)
   {
     fontPtSize++;
-    font = QFont("Arial", fontPtSize, QFont::Bold);
+    font = QFont("Lato", fontPtSize, QFont::Bold);
     metrics = QFontMetrics(font);
     labelWidth = metrics.width(label); // Figure out which string is longer (pixel wise)
   }
   painter.setFont(font);
   pxHigh = metrics.height() + 2;
-  // pxWide = metrics.width(label);
-  painter.drawText(pxOffset, pxHigh, label);
+  PaintSymmetryDirection(label, &metrics, &painter, pxOffset, pxHigh);
 
   // Draw slightly transparent lines
   // penWidth = 1;
@@ -386,7 +416,7 @@ QImage PoleFigureImageUtilities::CreateQImageFromRgbaArray(UInt8ArrayType* poleF
   image = image.mirrored(false, true);
 
   QString imageLabel = (poleFigurePtr->getName());
-  if(includeOverlay == true)
+  if(includeOverlay)
   {
     image = PoleFigureImageUtilities::PaintPoleFigureOverlay(imageDimension, imageDimension, imageLabel, image);
   }
@@ -453,7 +483,7 @@ QImage PoleFigureImageUtilities::Create3ImagePoleFigure(UInt8ArrayType* i0, UInt
   painter.drawImage(pos1, img0); // Draw the first image in the upper Left
   painter.drawImage(pos2, img1); // Draw the second image in the upper right
   painter.drawImage(pos3, img2); // Draw the third image in the lower Left
-  if((config.discrete && config.discreteHeatMap) || config.discrete == false)
+  if((config.discrete && config.discreteHeatMap) || !config.discrete)
   {
     painter.drawImage(pos4, scalarBar); // Draw the Scalar Bar
   }

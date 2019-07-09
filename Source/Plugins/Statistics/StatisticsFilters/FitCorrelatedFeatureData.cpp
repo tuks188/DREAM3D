@@ -60,9 +60,6 @@ FitCorrelatedFeatureData::FitCorrelatedFeatureData()
 , m_FeaturePhasesArrayPath("", "", "")
 , m_BiasedFeaturesArrayPath("", "", "")
 , m_NewEnsembleArrayArrayPath("", "", "")
-, m_BiasedFeatures(nullptr)
-, m_NewEnsembleArray(nullptr)
-, m_FeaturePhases(nullptr)
 {
 }
 
@@ -76,7 +73,7 @@ FitCorrelatedFeatureData::~FitCorrelatedFeatureData() = default;
 // -----------------------------------------------------------------------------
 void FitCorrelatedFeatureData::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   {
     ChoiceFilterParameter::Pointer parameter = ChoiceFilterParameter::New();
@@ -151,10 +148,10 @@ void FitCorrelatedFeatureData::initialize()
 // -----------------------------------------------------------------------------
 void FitCorrelatedFeatureData::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
 
-  QVector<size_t> dims(1, 1);
+  std::vector<size_t> dims(1, 1);
   m_FeaturePhasesPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeaturePhasesArrayPath(),
                                                                                                            dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeaturePhasesPtr.lock())                                                                        /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -162,15 +159,13 @@ void FitCorrelatedFeatureData::dataCheck()
     m_FeaturePhases = m_FeaturePhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
-  if(m_SelectedFeatureArrayPath.isEmpty() == true)
+  if(m_SelectedFeatureArrayPath.isEmpty())
   {
-    setErrorCondition(-11000);
-    notifyErrorMessage(getHumanLabel(), "An array from the Volume DataContainer must be selected.", getErrorCondition());
+    setErrorCondition(-11000, "An array from the Volume DataContainer must be selected.");
   }
-  if(m_CorrelatedFeatureArrayPath.isEmpty() == true)
+  if(m_CorrelatedFeatureArrayPath.isEmpty())
   {
-    setErrorCondition(-11000);
-    notifyErrorMessage(getHumanLabel(), "An array from the Volume DataContainer must be selected.", getErrorCondition());
+    setErrorCondition(-11000, "An array from the Volume DataContainer must be selected.");
   }
 
   int numComp = 0;
@@ -201,7 +196,7 @@ void FitCorrelatedFeatureData::dataCheck()
     m_NewEnsembleArray = m_NewEnsembleArrayPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
 
-  if(m_RemoveBiasedFeatures == true)
+  if(m_RemoveBiasedFeatures)
   {
     dims.resize(1);
     dims[0] = 1;
@@ -286,7 +281,7 @@ void fitData(IDataArray::Pointer inputData, float* ensembleArray, int32_t* eIds,
   int32_t ensemble;
   for(size_t i = 1; i < numfeatures; i++)
   {
-    if(removeBiasedFeatures == false || biasedFeatures[i] == false)
+    if(!removeBiasedFeatures || !biasedFeatures[i])
     {
       ensemble = eIds[i];
       values[ensemble][bPtr[i]].push_back(static_cast<float>(fPtr[i]));
@@ -304,7 +299,6 @@ void fitData(IDataArray::Pointer inputData, float* ensembleArray, int32_t* eIds,
       }
     }
   }
-  return;
 }
 
 // -----------------------------------------------------------------------------
@@ -320,7 +314,7 @@ template <typename T> Int32ArrayType::Pointer binData(typename DataArray<T>::Poi
   T* fPtr = featureArray->getPointer(0);
   size_t numfeatures = featureArray->getNumberOfTuples();
 
-  typename DataArray<int32_t>::Pointer binArray = DataArray<int32_t>::CreateArray(numfeatures, "binIds");
+  typename DataArray<int32_t>::Pointer binArray = DataArray<int32_t>::CreateArray(numfeatures, "binIds", true);
   int32_t* bPtr = binArray->getPointer(0);
 
   float max = -100000000.0;
@@ -353,10 +347,10 @@ template <typename T> Int32ArrayType::Pointer binData(typename DataArray<T>::Poi
 // -----------------------------------------------------------------------------
 void FitCorrelatedFeatureData::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -370,16 +364,14 @@ void FitCorrelatedFeatureData::execute()
   if(nullptr == inputData.get())
   {
     ss = QObject::tr("Selected array '%1' does not exist in the Voxel Data Container. Was it spelled correctly?").arg(m_SelectedFeatureArrayPath.getDataArrayName());
-    setErrorCondition(-11001);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-11001, ss);
     return;
   }
   IDataArray::Pointer correlatedData = m->getAttributeMatrix(m_CorrelatedFeatureArrayPath.getAttributeMatrixName())->getAttributeArray(m_CorrelatedFeatureArrayPath.getDataArrayName());
   if(nullptr == correlatedData.get())
   {
     ss = QObject::tr("Selected array '%1' does not exist in the Voxel Data Container. Was it spelled correctly?").arg(m_CorrelatedFeatureArrayPath.getDataArrayName());
-    setErrorCondition(-11001);
-    notifyErrorMessage(getHumanLabel(), ss, getErrorCondition());
+    setErrorCondition(-11001, ss);
     return;
   }
 
@@ -474,7 +466,6 @@ void FitCorrelatedFeatureData::execute()
     fitData<bool>(inputData, m_NewEnsembleArray, m_FeaturePhases, numEnsembles, m_DistributionType, binArray, m_NumberOfCorrelatedBins, m_RemoveBiasedFeatures, m_BiasedFeatures);
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -483,7 +474,7 @@ void FitCorrelatedFeatureData::execute()
 AbstractFilter::Pointer FitCorrelatedFeatureData::newFilterInstance(bool copyFilterParameters) const
 {
   FitCorrelatedFeatureData::Pointer filter = FitCorrelatedFeatureData::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }

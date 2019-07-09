@@ -36,10 +36,10 @@ public:
   }
   virtual void execute()
   {
-    setErrorCondition(0);
-    setWarningCondition(0);
+    clearErrorCode();
+    clearWarningCode();
     dataCheck();
-    if(getErrorCondition() < 0)
+    if(getErrorCode() < 0)
     {
       return;
     }
@@ -47,7 +47,7 @@ public:
     DataContainer::Pointer m = getDataContainerArray()->getDataContainer(SIMPL::Defaults::DataContainerName);
 
     int size = UnitTest::FeatureIdsTest::XSize * UnitTest::FeatureIdsTest::YSize * UnitTest::FeatureIdsTest::ZSize;
-    QVector<size_t> tDims(3, 0);
+    std::vector<size_t> tDims(3, 0);
     tDims[0] = UnitTest::FeatureIdsTest::XSize;
     tDims[1] = UnitTest::FeatureIdsTest::YSize;
     tDims[2] = UnitTest::FeatureIdsTest::ZSize;
@@ -93,20 +93,20 @@ private:
 
   void dataCheck()
   {
-    setErrorCondition(0);
-    setWarningCondition(0);
+    clearErrorCode();
+    clearWarningCode();
     DataContainer::Pointer m = getDataContainerArray()->getPrereqDataContainer(this, getDataContainerName());
-    if(getErrorCondition() < 0)
+    if(getErrorCode() < 0)
     {
       return;
     }
     AttributeMatrix::Pointer cellAttrMat = m->getPrereqAttributeMatrix(this, getCellAttributeMatrixName(), -301);
-    if(getErrorCondition() < 0)
+    if(getErrorCode() < 0)
     {
       return;
     }
 
-    QVector<size_t> dims(1, 1);
+    std::vector<size_t> dims(1, 1);
     m_FeatureIdsPtr =
         cellAttrMat->createNonPrereqArray<DataArray<int32_t>, AbstractFilter>(this, m_FeatureIdsArrayName, 0, dims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
     if(nullptr != m_FeatureIdsPtr.lock()) /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
@@ -212,16 +212,18 @@ protected:
     int64_t nz = UnitTest::FeatureIdsTest::ZSize;
     /* FIXME: ImageGeom */ m->getGeometryAs<ImageGeom>()->setDimensions(nx, ny, nz);
     getDataContainerArray()->addDataContainer(m);
-    QVector<size_t> tDims(3, 0);
+    std::vector<size_t> tDims(3, 0);
     tDims[0] = nx;
     tDims[1] = ny;
     tDims[2] = nz;
     AttributeMatrix::Pointer attrMat = AttributeMatrix::New(tDims, SIMPL::Defaults::CellAttributeMatrixName, SIMPL::AttributeMatrixType::Cell);
-    m->addAttributeMatrix(attrMat->getName(), attrMat);
+    m->addAttributeMatrix(attrMat);
   }
 
-private:
-  CreateDataContainer(const CreateDataContainer&) = delete; // Copy Constructor Not Implemented
-  void operator=(const CreateDataContainer&);               // Move assignment Not Implemented
+public:
+  CreateDataContainer(const CreateDataContainer&) = delete;            // Copy Constructor Not Implemented
+  CreateDataContainer(CreateDataContainer&&) = delete;                 // Move Constructor Not Implemented
+  CreateDataContainer& operator=(const CreateDataContainer&) = delete; // Copy Assignment Not Implemented
+  CreateDataContainer& operator=(CreateDataContainer&&) = delete;      // Move Assignment Not Implemented
 };
 

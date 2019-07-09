@@ -39,6 +39,7 @@
 #include "SIMPLib/FilterParameters/AbstractFilterParametersReader.h"
 #include "SIMPLib/FilterParameters/DataArraySelectionFilterParameter.h"
 #include "SIMPLib/FilterParameters/LinkedChoicesFilterParameter.h"
+#include "SIMPLib/FilterParameters/LinkedPathCreationFilterParameter.h"
 #include "SIMPLib/FilterParameters/SeparatorFilterParameter.h"
 #include "SIMPLib/FilterParameters/StringFilterParameter.h"
 #include "SIMPLib/Geometry/ImageGeom.h"
@@ -61,13 +62,6 @@ FindFeatureReferenceMisorientations::FindFeatureReferenceMisorientations()
 , m_FeatureAvgMisorientationsArrayName(SIMPL::FeatureData::FeatureAvgMisorientations)
 , m_FeatureReferenceMisorientationsArrayName(SIMPL::CellData::FeatureReferenceMisorientations)
 , m_ReferenceOrientation(0)
-, m_FeatureIds(nullptr)
-, m_CellPhases(nullptr)
-, m_GBEuclideanDistances(nullptr)
-, m_Quats(nullptr)
-, m_CrystalStructures(nullptr)
-, m_FeatureReferenceMisorientations(nullptr)
-, m_FeatureAvgMisorientations(nullptr)
 {
   m_OrientationOps = LaueOps::getOrientationOpsQVector();
 
@@ -83,7 +77,7 @@ FindFeatureReferenceMisorientations::~FindFeatureReferenceMisorientations() = de
 // -----------------------------------------------------------------------------
 void FindFeatureReferenceMisorientations::setupFilterParameters()
 {
-  FilterParameterVector parameters;
+  FilterParameterVectorType parameters;
 
   {
     LinkedChoicesFilterParameter::Pointer parameter = LinkedChoicesFilterParameter::New();
@@ -138,9 +132,9 @@ void FindFeatureReferenceMisorientations::setupFilterParameters()
     parameters.push_back(SIMPL_NEW_DA_SELECTION_FP("Crystal Structures", CrystalStructuresArrayPath, FilterParameter::RequiredArray, FindFeatureReferenceMisorientations, req));
   }
   parameters.push_back(SeparatorFilterParameter::New("Cell Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Feature Reference Misorientations", FeatureReferenceMisorientationsArrayName, FilterParameter::CreatedArray, FindFeatureReferenceMisorientations));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Feature Reference Misorientations", FeatureReferenceMisorientationsArrayName, FeatureIdsArrayPath, FeatureIdsArrayPath, FilterParameter::CreatedArray, FindFeatureReferenceMisorientations));
   parameters.push_back(SeparatorFilterParameter::New("Cell Feature Data", FilterParameter::CreatedArray));
-  parameters.push_back(SIMPL_NEW_STRING_FP("Average Misorientations", FeatureAvgMisorientationsArrayName, FilterParameter::CreatedArray, FindFeatureReferenceMisorientations));
+  parameters.push_back(SIMPL_NEW_DA_WITH_LINKED_AM_FP("Average Misorientations", FeatureAvgMisorientationsArrayName, AvgQuatsArrayPath, AvgQuatsArrayPath, FilterParameter::CreatedArray, FindFeatureReferenceMisorientations));
   setFilterParameters(parameters);
 }
 
@@ -172,22 +166,22 @@ void FindFeatureReferenceMisorientations::initialize()
 // -----------------------------------------------------------------------------
 void FindFeatureReferenceMisorientations::dataCheck()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   DataArrayPath tempPath;
 
   getDataContainerArray()->getPrereqGeometryFromDataContainer<ImageGeom, AbstractFilter>(this, getFeatureIdsArrayPath().getDataContainerName());
 
   QVector<DataArrayPath> dataArrayPaths;
 
-  QVector<size_t> cDims(1, 1);
+  std::vector<size_t> cDims(1, 1);
   m_FeatureIdsPtr = getDataContainerArray()->getPrereqArrayFromPath<DataArray<int32_t>, AbstractFilter>(this, getFeatureIdsArrayPath(),
                                                                                                         cDims); /* Assigns the shared_ptr<> to an instance variable that is a weak_ptr<> */
   if(nullptr != m_FeatureIdsPtr.lock())                                                                         /* Validate the Weak Pointer wraps a non-nullptr pointer to a DataArray<T> object */
   {
     m_FeatureIds = m_FeatureIdsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getFeatureIdsArrayPath());
   }
@@ -198,7 +192,7 @@ void FindFeatureReferenceMisorientations::dataCheck()
   {
     m_CellPhases = m_CellPhasesPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getCellPhasesArrayPath());
   }
@@ -233,7 +227,7 @@ void FindFeatureReferenceMisorientations::dataCheck()
   {
     m_Quats = m_QuatsPtr.lock()->getPointer(0);
   } /* Now assign the raw pointer to data from the DataArray<T> object */
-  if(getErrorCondition() >= 0)
+  if(getErrorCode() >= 0)
   {
     dataArrayPaths.push_back(getQuatsArrayPath());
   }
@@ -256,7 +250,7 @@ void FindFeatureReferenceMisorientations::dataCheck()
     {
       m_GBEuclideanDistances = m_GBEuclideanDistancesPtr.lock()->getPointer(0);
     } /* Now assign the raw pointer to data from the DataArray<T> object */
-    if(getErrorCondition() >= 0)
+    if(getErrorCode() >= 0)
     {
       dataArrayPaths.push_back(getGBEuclideanDistancesArrayPath());
     }
@@ -283,10 +277,10 @@ void FindFeatureReferenceMisorientations::preflight()
 // -----------------------------------------------------------------------------
 void FindFeatureReferenceMisorientations::execute()
 {
-  setErrorCondition(0);
-  setWarningCondition(0);
+  clearErrorCode();
+  clearWarningCode();
   dataCheck();
-  if(getErrorCondition() < 0)
+  if(getErrorCode() < 0)
   {
     return;
   }
@@ -303,15 +297,14 @@ void FindFeatureReferenceMisorientations::execute()
   float n1 = 0.0f, n2 = 0.0f, n3 = 0.0f;
   uint32_t phase1 = Ebsd::CrystalStructure::UnknownCrystalStructure;
   uint32_t phase2 = Ebsd::CrystalStructure::UnknownCrystalStructure;
-  size_t udims[3] = {0, 0, 0};
-  std::tie(udims[0], udims[1], udims[2]) = m->getGeometryAs<ImageGeom>()->getDimensions();
+  SizeVec3Type udims = m->getGeometryAs<ImageGeom>()->getDimensions();
 
   uint32_t maxUInt32 = std::numeric_limits<uint32_t>::max();
   // We have more points than can be allocated on a 32 bit machine. Assert Now.
   if(totalPoints > maxUInt32)
   {
     QString ss = QObject::tr("The volume is too large for a 32 bit machine. Try reducing the input volume size. Total Voxels: %1").arg(totalPoints);
-    notifyStatusMessage(getMessagePrefix(), getHumanLabel(), ss);
+    notifyStatusMessage(ss);
     return;
   }
 
@@ -333,7 +326,7 @@ void FindFeatureReferenceMisorientations::execute()
     }
   }
 
-  FloatArrayType::Pointer avgMisoPtr = FloatArrayType::CreateArray(totalFeatures * 2, "_INTERNAL_USE_ONLY_AVERAGE_MISORIENTATION");
+  FloatArrayType::Pointer avgMisoPtr = FloatArrayType::CreateArray(totalFeatures * 2, "_INTERNAL_USE_ONLY_AVERAGE_MISORIENTATION", true);
   avgMisoPtr->initializeWithZeros();
   float* avgMiso = avgMisoPtr->getPointer(0);
 
@@ -386,7 +379,6 @@ void FindFeatureReferenceMisorientations::execute()
     }
   }
 
-  notifyStatusMessage(getHumanLabel(), "Complete");
 }
 
 // -----------------------------------------------------------------------------
@@ -395,7 +387,7 @@ void FindFeatureReferenceMisorientations::execute()
 AbstractFilter::Pointer FindFeatureReferenceMisorientations::newFilterInstance(bool copyFilterParameters) const
 {
   FindFeatureReferenceMisorientations::Pointer filter = FindFeatureReferenceMisorientations::New();
-  if(true == copyFilterParameters)
+  if(copyFilterParameters)
   {
     copyFilterParameterInstanceVariables(filter.get());
   }
