@@ -56,16 +56,18 @@
 
 #include "DREAM3DToolsConfiguration.h"
 
-#include "SandboxTool/UpdateMDHeader.hpp"
+#include "SandboxTool/RemoveSIMPLMacros.h"
+#include "SandboxTool/UpdateFilterHeaders.hpp"
 
-/**
- * @brief findPath
- * @param groupName
- * @param filtName
- * @param ext
- * @return
- */
-QString findPath(const QString& groupName, const QString& filtName, const QString& ext)
+    /**
+     * @brief findPath
+     * @param groupName
+     * @param filtName
+     * @param ext
+     * @return
+     */
+    QString
+    findPath(const QString& groupName, const QString& filtName, const QString& ext)
 {
   //  std::cout << groupName.toStdString() << "::" << filtName.toStdString() << std::endl;
   QString prefix = D3DTools::GetDREAM3DSourceDir() + "/";
@@ -115,7 +117,8 @@ QString findPath(const QString& groupName, const QString& filtName, const QStrin
 // -----------------------------------------------------------------------------
 //
 // -----------------------------------------------------------------------------
-template <typename T> void RecursiveFileSearch(const QDir& currentDir, const QStringList& filters)
+template <typename T>
+void RecursiveFileSearch(const QDir& currentDir, const QStringList& filters)
 {
 
   if(currentDir.dirName().compare("zRel") == 0 || currentDir.dirName().compare("Build") == 0)
@@ -166,45 +169,46 @@ int main(int argc, char* argv[])
 #endif
 
   std::list<QDir> dirs;
-  // dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjParentDir()));
+#if 1
+  // dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir()));
+  // dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins"));
+  // dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/ExternalProjects/SIMPL/Source/SIMPLib/CoreFilters"));
+  // dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../SIMPLView/Source"));
 
-  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/ExternalProjects/SIMPL/Source/SIMPLib/CoreFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../SIMPLView/Source"));
+  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/ExternalProjects/SIMPLView/Source"));
+  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/ExternalProjects/SIMPLVtkLib"));
+  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/ExternalProjects/Plugins/SimulationIO"));
+  // dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/ExternalProjects/Plugins/ITKImageProcessing"));
+  // dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/Source"));
+  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/Test"));
+  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/Tools"));
 
-  // dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/Source/Plugins"));
   //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/Source/EbsdLib"));
   //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/Source/OrientationLib"));
 
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/Anisotropy/AnisotropyFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/AskNDEToolbox/AskNDEToolboxFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/BrukerIntegration/BrukerIntegrationFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/CAxisByPolarizedLight/CAxisByPolarizedLightFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/DataFusion/DataFusionFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/DatasetMerging/DatasetMergingFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/DictionaryIndexing/DictionaryIndexingFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/DREAM3DReview/DREAM3DReviewFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/Fusion/FusionFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/ImageProcessing/ImageProcessingFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/ITKImageProcessing/ITKImageProcessingFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/Leroy2/Leroy2Filters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/MDIToolbox/MDIToolboxFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/NETLIntegration/NETLIntegrationFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/ProgWorkshop/ProgWorkshopFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/SMTKPlugin/SMTKPluginFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/SimulationIO/SimulationIOFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/TomvizToolbox/TomvizToolboxFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/UCSBUtilities/UCSBUtilitiesFilters"));
-  //  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/VolumeMeshing/VolumeMeshingFilters"));
+//  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/AskNDEToolbox/"));
+//  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/BrukerIntegration/"));
+//  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/CAxisByPolarizedLight/"));
+//  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/DictionaryIndexing/"));
+//  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/MDIToolbox/"));
+//  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/AskNDEToolbox/"));
+//  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/Leroy2/"));
+//  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/NETLIntegration/"));
+//  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/ProgWorkshop/"));
+//  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/SMTKPlugin/"));
+//  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/TomvizToolbox/"));
+//  dirs.emplace_back(QDir(D3DTools::GetDREAM3DProjDir() + "/../DREAM3D_Plugins/VolumeMeshing/"));
+#endif
 
   QStringList filters;
-  // filters.append("*.cpp");
+  filters.append("*.cpp");
+  //  filters.append("*.hpp");
   filters.append("*.h");
   // filters.append("*.md");
 
   for(auto const& dir : dirs)
   {
-    qDebug() << "====> Search Directory " << dir.absolutePath();
-    RecursiveFileSearch<UpdateMDHeader>(dir, filters);
+    RecursiveFileSearch<RemoveSIMPLMacros>(dir, filters);
   }
 
   return 0;
